@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Changed**: quality-rubric method, after the baseline audit: wrapped native inputs measured by their label (Scripts D and F), no gap in the LT3 anchors, CT2 searches only user-facing text (Script J), SO2 measures synthesised cues from an OfflineAudioContext render (Script K), and the rig records headed or headless plus the fixed Script C markers, Script H selector and K4 and K5; baseline scores unchanged.
 * **Added**: government and health-body research for exercise figures: licences side by side (US federal works, UK, Canadian, Australian and New Zealand open licences, WHO), the publications checked per country, health organisations and physio sheets, and a coverage table for every card and goalkeeper move; the media Decision and the credits check gain public-domain US federal works and OGL v3.0.
 
 * **Added**: exercise dossier research: the six sections, the claim rules (youth sources first, adult evidence labelled, ranges with time frames, no looks or size promises, cautious injury claims, plain words), the youth adaptation evidence, a worked front plank example, and the dossier content-model Decision.

@@ -74,8 +74,13 @@ Every audit runs the same way, so two runs of the same commit give the same scor
 - **App and data:** the commit under audit, started with `npm run demo` on the reviewer's
   machine; `npm run demo:reset` before each pass. Only the invented demo household (Kai
   and Sam, accounts at example.com) is used. No deployed service, no family data.
-- **Browser:** Playwright's bundled Chromium, headed, `deviceScaleFactor: 2`. Version
-  recorded in the audit.
+- **Browser:** Playwright's bundled Chromium, `deviceScaleFactor: 2`, headed where it
+  launches. The audit records the version and whether the browser ran **headed or
+  headless**. Headless Chromium grants no screen wake lock, so every player screen (K2 to
+  K5) also shows the app's wake-lock fallback notice ("Screen may dim: ..."). In a headless
+  run that notice is measured like any other element, since it is what a device without a
+  wake lock shows, and the audit says so in its rig notes. Scores are compared across
+  audits only in the same mode, as with the machine.
 - **Viewports:** keeper screens at 1180 x 820 (iPad landscape) and 820 x 1180 (iPad
   portrait); parent screens at 390 x 844 (phone). These are the demo script's sizes.
 - **CPU:** 4x slowdown through the DevTools protocol for every timing item, standing in
@@ -95,8 +100,8 @@ Every audit runs the same way, so two runs of the same commit give the same scor
 | K1 | Keeper home, Today's path | keeper, both iPad |
 | K2 | Player, warm-up move on a countdown | keeper, both iPad |
 | K3 | Player, timed hold set (Front plank) | keeper, both iPad |
-| K4 | Player, rep set (Glute bridge), after a form-cue rating | keeper, both iPad |
-| K5 | Player, rest between sets | keeper, both iPad |
+| K4 | Player, rep set: Glute bridge set 2, after rating set 1 and skipping rest | keeper, both iPad |
+| K5 | Player, rest between sets: the Front plank rest after the first rating | keeper, both iPad |
 | K6 | Finish, Session done | keeper, both iPad |
 | K7 | Something hurts, the report form | keeper, both iPad |
 | K8 | Keeper home, training paused | keeper, both iPad |
@@ -105,6 +110,19 @@ Every audit runs the same way, so two runs of the same commit give the same scor
 The **core loop run** is the demo script's sections 1 to 5 in order, from a fresh reset,
 which passes through every screen above. When a later build adds a screen to the core
 loop, the reviewer adds it here in the same PR that adds the screen.
+
+### Fixed for every audit
+
+Set in the baseline audit (#54) and reused unchanged, so later audits repeat it:
+
+- **K4** is Glute bridge set 2, reached by rating set 1 and skipping rest.
+- **K5** is the Front plank rest after the first rating.
+- **Script C markers** (FL2), control label then marker text: Start session, "Knees up,
+  arms swing"; Next, "Small circles, then big"; Set done, "How did set 1 look?"; the last
+  Next, "Session done"; Done for today, "Keeper home"; Approve, "Parent approved Starter
+  plan"; Tell my parent, "Your parent has been told"; Clear the pause, "Parent cleared the
+  training pause".
+- **Script H selector** (TC4): `.timer-time, .counter-value`.
 
 ## Visual consistency
 
@@ -142,7 +160,8 @@ failures, and no AAA failures on K2 to K5. 2: no AA failures. 1: 1 to 3 AA failu
 
 **TC2 Control contrast.** Measure: for each button look from VC4 and each form control,
 the contrast of its fill, or else its border, against the background behind it (Script
-F). This app's own threshold, stricter than WCAG 1.4.11, because controls are found at a
+F). A native input wrapped in a `<label>` is measured by the label's fill and border,
+since the label is what the user sees and taps. This app's own threshold, stricter than WCAG 1.4.11, because controls are found at a
 glance from the floor. 3: every control at least 3:1. 2: one control below 3:1, not a
 primary or safety control. 1: two or three below. 0: a primary or safety control below
 3:1, or more than three below. **Target 3.**[^wcag]
@@ -166,7 +185,9 @@ per screen. 3: at least 16 CSS px everywhere and at least 20 px on K2 to K5. 2: 
 
 **LT1 Target size.** Measure: Script D with a 44 px threshold on every screen, and with
 56 px on the in-session controls of K2 to K5 (start, end or done, next, skip rest, the
-form cues, Something hurts, Stop). Links inside running text are exempt. 3: everything
+form cues, Something hurts, Stop). A native input wrapped in a `<label>` is measured by
+the label's box, since the label is what the user taps. Links inside running text are
+exempt. 3: everything
 at least 44 by 44 and the in-session controls at least 56 by 56. 2: everything at least
 44 by 44. 1: everything at least 24 by 24. 0: anything below 24. **Target 3.**[^touch]
 
@@ -179,7 +200,8 @@ timer or counter, the exercise name, the primary action, Something hurts and Sto
 fully inside the viewport without scrolling; and whether `overflowX` from Script D is above 0 on any
 screen. 3: all in view everywhere, no horizontal scroll. 2: no horizontal scroll; one
 non-safety element needs a scroll in one orientation. 1: up to three such elements.
-0: horizontal scroll anywhere, or Something hurts or Stop out of view. **Target 3.**[^platform]
+0: horizontal scroll anywhere, Something hurts or Stop out of view, or more than three
+elements out of view. **Target 3.**[^platform]
 
 **LT4 Zoom and reflow.** Measure: keeper screens at 590 x 410 (the iPad landscape view at
 200% zoom) and parent screens at 320 x 640 (the WCAG reflow width): count screens where
@@ -229,9 +251,13 @@ session done, and a safety stop or pain report. 3: all 7 have a cue, and the saf
 is a different sound from every success cue. 2: 5 or 6. 1: 1 to 4. 0: none.
 **Target 3.**[^sound]
 
-**SO2 Even levels.** Measure: for every cue file the app ships, peak and RMS level from
-`ffmpeg -hide_banner -i <file> -af astats=metadata=0 -f null -` (overall section).[^ffmpeg-astats]
-3: every peak at most -1.0 dB, and RMS levels within 3 dB of each other. 2: within 6 dB.
+**SO2 Even levels.** Measure: peak and RMS level of every cue, by one of two methods. A
+cue file the app ships is read with
+`ffmpeg -hide_banner -i <file> -af astats=metadata=0 -f null -` (overall
+section).[^ffmpeg-astats] A cue the app synthesises in the browser with Web Audio is
+rendered with an `OfflineAudioContext` through the app's own cue code and read from the
+rendered buffer (Script K). Both give peak and RMS in dBFS, scored together against the
+same anchors. 3: every peak at most -1.0 dB, and RMS levels within 3 dB of each other. 2: within 6 dB.
 1: within 10 dB. 0: a peak above -0.1 dB (clipping), a wider spread, or no files.
 **Target 3.**[^sound]
 
@@ -256,8 +282,8 @@ runs.
 
 **FL2 Screen change.** Measure: Script C for eight transitions: Start session; Next on a
 warm-up move; Set done to the rating; the last step to Session done; Done for today;
-Approve; Tell my parent; Clear the pause. The marker text for each is fixed in the first
-audit and reused. Slowest of the eight. 3: at most 300 ms. 2: at most 1 s. 1: at most
+Approve; Tell my parent; Clear the pause. The marker text for each is the one under
+"Fixed for every audit". Slowest of the eight. 3: at most 300 ms. 2: at most 1 s. 1: at most
 3 s. 0: over 3 s. **Target 3.**[^latency]
 
 **FL3 Opening the app.** Measure: reload Keeper home with the service worker installed;
@@ -278,7 +304,8 @@ three, no action sent twice. 1: no action sent twice. 0: any action sent twice.
 
 ## Copy tone
 
-Strings come from Script I on every screen; CT2 also searches `web/src` (not tests).
+Strings come from Script I on every screen; CT2 also searches the user-facing text in
+`web/src` (not tests) with Script J.
 
 **CT1 Short text.** Measure: words (whitespace-separated) per control label and per
 sentence. Rules: control labels at most 3 words; sentences on K2 to K5 at most 12 words;
@@ -288,7 +315,8 @@ elsewhere at most 20. Share of strings that meet their rule. 3: 100%. 2: at leas
 **CT2 No pressure.** Measure: case-insensitive matches of this list: "don't lose", "you'll
 lose", "lose your", "you missed", "missed a day", "hurry", "last chance", "only N left",
 "before it's too late", "don't give up", "you failed", "lazy", "disappointed", "we miss
-you", "your streak will", "one more", "!!". 3: none. 2: one, on a parent-only screen.
+you", "your streak will", "one more", "!!". In `web/src` only string literals and JSX
+text count (Script J), never operators such as `!!` or comments. 3: none. 2: one, on a parent-only screen.
 1: one or two anywhere else. 0: three or more, or any on K7, K8 or a stop screen.
 **Target 3.**[^copy]
 
@@ -356,7 +384,7 @@ date. Scores and answers stay in the owner's private notes (usability check, AC3
 The scripts are run by the reviewer, in a scratch folder outside the repo. Scripts A, C,
 D, F, H and I are pasted into the page (DevTools console or Playwright `page.evaluate`);
 B and E are added before the first navigation with `context.addInitScript`; G is
-Playwright code.
+Playwright code; K runs with `page.evaluate` once the app has loaded.
 
 ## Setup
 
@@ -456,9 +484,10 @@ async ([label, marker, timeoutMs = 10000]) => {
 ((min = 44) => {
   const sel = 'button, a[href], input, select, textarea, summary, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [tabindex]:not([tabindex="-1"])';
   const inText = e => e.matches('a[href]') && getComputedStyle(e).display === 'inline' && e.parentElement.closest('p, li');
-  const boxes = [...document.querySelectorAll(sel)]
+  const hit = e => (e.matches('input, select, textarea') && e.closest('label')) || e;   // a wrapped native input is its label
+  const boxes = [...new Set([...document.querySelectorAll(sel)].filter(e => !inText(e)).map(hit))]
     .map(e => ({ e, r: e.getBoundingClientRect(), name: (e.getAttribute('aria-label') || e.textContent || e.tagName).trim().slice(0, 40) }))
-    .filter(b => b.r.width > 0 && b.r.height > 0 && !inText(b.e));
+    .filter(b => b.r.width > 0 && b.r.height > 0);
   const small = boxes.filter(b => b.r.width < min || b.r.height < min)
     .map(b => ({ name: b.name, w: Math.round(b.r.width), h: Math.round(b.r.height) }));
   const gap = (p, q) => Math.max(0, Math.max(p.left, q.left) - Math.min(p.right, q.right), Math.max(p.top, q.top) - Math.min(p.bottom, q.bottom));
@@ -514,7 +543,8 @@ a latency pass.
   const ratio = (p, q) => { const [x, y] = [lum(p), lum(q)].sort((m, n) => n - m); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
   const clear = c => c === 'transparent' || /rgba\(.*,\s*0\)$/.test(c);
   const behind = e => { for (let n = e.parentElement; n; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (!clear(c)) return c; } return 'rgb(255, 255, 255)'; };
-  return [...document.querySelectorAll('button, [role="button"], input, select, textarea')].map(e => {
+  const hit = e => (e.matches('input, select, textarea') && e.closest('label')) || e;   // a wrapped native input is its label
+  return [...new Set([...document.querySelectorAll('button, [role="button"], input, select, textarea')].map(hit))].map(e => {
     const s = getComputedStyle(e), bg = behind(e);
     const fill = clear(s.backgroundColor) ? 1 : ratio(s.backgroundColor, bg);
     const border = parseFloat(s.borderTopWidth) > 0 && !clear(s.borderTopColor) ? ratio(s.borderTopColor, bg) : 1;
@@ -522,6 +552,41 @@ a latency pass.
   });
 })()
 ```
+
+## Script K: levels of synthesised cues (Playwright `page.evaluate`)
+
+```js
+async () => {
+  // The app's sound module exposes window.__cues = { names, render(ctx, name), seconds(name) }:
+  // render() schedules the named cue at time 0 on ctx.destination of any BaseAudioContext,
+  // the same function the app calls with its live AudioContext.
+  const cues = window.__cues;
+  if (!cues) return { error: 'no window.__cues hook' };
+  const rate = 48000, floor = 0.001;   // -60 dBFS: leading and trailing samples below it are trimmed
+  const db = v => (v > 0 ? +(20 * Math.log10(v)).toFixed(1) : -Infinity);
+  const out = [];
+  for (const name of cues.names) {
+    const seconds = (cues.seconds?.(name) ?? 3) + 0.5;
+    const ctx = new OfflineAudioContext(2, Math.ceil(seconds * rate), rate);
+    await cues.render(ctx, name);
+    const buf = await ctx.startRendering();
+    const chans = [...Array(buf.numberOfChannels)].map((_, c) => buf.getChannelData(c));
+    const loud = i => chans.some(d => Math.abs(d[i]) >= floor);
+    let first = 0, last = buf.length - 1;
+    while (first < buf.length && !loud(first)) first++;
+    while (last > first && !loud(last)) last--;
+    let peak = 0, sum = 0, n = 0;
+    for (const d of chans) for (let i = first; i <= last; i++) { const a = Math.abs(d[i]); if (a > peak) peak = a; sum += d[i] * d[i]; n++; }
+    out.push({ name, peakDb: db(peak), rmsDb: db(n ? Math.sqrt(sum / n) : 0), ms: Math.round(((last - first + 1) / rate) * 1000) });
+  }
+  return out;
+}
+```
+
+The render length is set by the audit, not by the cue, so Script K trims the silence before
+and after the cue before taking RMS; a shipped file is read whole by ffmpeg. Synthesised
+cues with no `window.__cues` hook cannot be measured, so SO2 scores 0 for them, as for no
+files.
 
 ## Script G: pressed state (Playwright)
 
@@ -552,7 +617,7 @@ async function looksPressed(page, locator) {
   ctx.font = `${s.fontStyle} ${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
   const m = ctx.measureText('0');
   return { fontSize: s.fontSize, digitPx: +(m.actualBoundingBoxAscent + m.actualBoundingBoxDescent).toFixed(1) };
-})('<the timer or counter selector, fixed in the first audit>')
+})('.timer-time, .counter-value')
 ```
 
 ## Script I: visible strings
@@ -569,6 +634,45 @@ async function looksPressed(page, locator) {
   return { controls, sentences: text.flatMap(t => t.split(/(?<=[.!?])\s+/)) };
 })()
 ```
+
+## Script J: user-facing text in the source (Node)
+
+```js
+// node script-j.mjs <path to web/src>: prints CT2 matches in string literals and JSX text only.
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+const terms = ["don't lose", "you'll lose", 'lose your', 'you missed', 'missed a day', 'hurry', 'last chance',
+  /only \d+ left/, "before it's too late", "don't give up", 'you failed', 'lazy', 'disappointed', 'we miss you',
+  'your streak will', 'one more', '!!'];
+const files = d => readdirSync(d).flatMap(f => { const p = join(d, f); return statSync(p).isDirectory() ? files(p) : [p]; })
+  .filter(p => /\.(tsx?|jsx?)$/.test(p) && !/\.test\.|__tests__/.test(p));
+const texts = src => {   // string and template literals, then JSX text, with comments removed
+  const out = []; let code = '', i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    if (c === '/' && src[i + 1] === '/') { while (i < src.length && src[i] !== '\n') i++; continue; }
+    if (c === '/' && src[i + 1] === '*') { const end = src.indexOf('*/', i + 2); i = end < 0 ? src.length : end + 2; continue; }
+    if ((c === '"' || c === "'" || c === '`') && !/[a-z0-9]/i.test(src[i - 1] || '')) {   // not an apostrophe in a word
+      let j = i + 1, s = '';
+      while (j < src.length && src[j] !== c) { if (src[j] === '\\') { s += src[j + 1]; j += 2; } else s += src[j++]; }
+      out.push(s); code += ' '; i = j + 1; continue;
+    }
+    code += c; i++;
+  }
+  for (const m of code.matchAll(/>((?:(?![<>{}]).)+)</gs)) if (/[a-z]/i.test(m[1])) out.push(m[1].trim());
+  return out;
+};
+for (const f of files(process.argv[2] || 'web/src')) for (const t of texts(readFileSync(f, 'utf8'))) {
+  const low = t.toLowerCase();
+  for (const term of terms) if (typeof term === 'string' ? low.includes(term) : term.test(low)) console.log(`${f}: ${term} :: ${t.slice(0, 80)}`);
+}
+```
+
+Script J reads JSX text as the text between a `>` and the next `<` outside braces and
+quotes. An apostrophe straight after a letter or digit (as in "don't") is text, not a
+quote. A comparison such as `a > b < c` in code can surface as a hit; the reviewer drops
+any hit that is not copy and says so in the note. Template literals are read whole,
+`${...}` included.
 
 ## axe-core
 
@@ -598,6 +702,24 @@ Scores are copied from the reviewer's signed audit comment on #54; the builder n
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Target (from this Decision, not a score) | | | | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
 | Baseline | 2026-11-18 | 8bb86c7 | [#54 audit](https://github.com/dandelion-love/goalie-goals/issues/54#issuecomment-6970879591) | 1 | 1 | 1 | 3 | 1 | 0 | 0 | 0 | 2 | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 3 | 3 | 0 | 3 | 1 | 3 | 2 | 3 | 0 | 3 | 2 | 0 | 1 |
+
+## Method changes
+
+**2026-11-18 (UTC).** Made after the baseline audit and before any re-audit, from the
+reviewer's method notes on #54. They do not change the baseline scores above.
+
+- Scripts D and F (LT1, TC2): a native input wrapped in a `<label>` is measured by the
+  label's box and colours.
+- LT3: anchor 0 also covers more than three elements out of view, so the anchors leave
+  no gap.
+- CT2: `web/src` is searched only in user-facing string literals and JSX text (Script
+  J), not operators or comments.
+- SO2: cues synthesised with Web Audio are rendered with an `OfflineAudioContext` through
+  the app's own cue code and read from the buffer (Script K), against the same anchors;
+  shipped files are still read with ffmpeg.
+- Rig: each audit records headed or headless, and a headless run measures the wake-lock
+  fallback notice like any other element; the Script C markers, the Script H selector
+  and the K4 and K5 definitions from the baseline are fixed for every audit.
 
 # Consequences
 
