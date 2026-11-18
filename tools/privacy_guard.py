@@ -96,7 +96,9 @@ RULES: list[tuple[str, re.Pattern[str], bool]] = [
         r"(?<![\w.])(?!127\.0\.0\.1(?![\w.])|0\.0\.0\.0(?![\w.]))\d{1,3}(?:\.\d{1,3}){3}"
         r"(?![\w.])"), True),
     ("long numeric id", re.compile(r"(?<![\w.#-])\d{9,}(?![\w.])"), True),
-    ("email address", re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"), True),
+    # The last domain label must hold a letter, so a package spec such as name@1.2.3
+    # is not an address; every real top-level domain has letters.
+    ("email address", re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[\w-]*[A-Za-z][\w-]*"), True),
     ("phone number", re.compile(
         r"(?<![\w.+-])(?:\+?1[ .-]?)?\(?[2-9]\d{2}\)?[ .-]\d{3}[ .-]\d{4}(?![\w.])"), True),
     ("postal code", re.compile(
