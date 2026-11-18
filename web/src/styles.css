@@ -283,6 +283,13 @@ button:disabled {
   color: var(--text);
 }
 
+.done-today .done-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent, var(--text));
+}
+
 /* Every button is at least 44 px; anything tapped mid-session is at least 56 px. */
 button {
   min-height: 44px;

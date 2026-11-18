@@ -64,7 +64,11 @@ export function todayWith(over: Partial<Today> = {}): Today {
 }
 
 /** A fake API for the keeper's home: /api/me, today's session and the approval screens. */
-export function keeperServer(today: Today | (() => Today)) {
+export function keeperServer(
+  today: Today | (() => Today),
+  /** Today's day kind from the progress summary, by the date the app asks for. */
+  dayKind: (date: string) => string | null = () => null,
+) {
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
   const urls: string[] = [];
   const fetchImpl = async (input: RequestInfo | URL) => {
@@ -74,6 +78,11 @@ export function keeperServer(today: Today | (() => Today)) {
     if (url.startsWith('/api/training/today')) return json(typeof today === 'function' ? today() : today);
     if (url === '/api/training/approved') return json({ items: [], waiting: 0 });
     if (url === '/api/audit') return json({ events: [] });
+    if (url.startsWith('/api/progress/summary')) {
+      const date = new URL(url, 'http://test').searchParams.get('date') ?? '';
+      const streak = { current: 0, best: 0 };
+      return json({ date, xp: { total: 0, today: 0 }, team: streak, keeper: streak, parent: streak, today: dayKind(date), runs: [] });
+    }
     return json({ error: 'not found' }, 404);
   };
   return { fetchImpl: fetchImpl as unknown as typeof fetch, urls };

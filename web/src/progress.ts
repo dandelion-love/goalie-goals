@@ -69,6 +69,14 @@ export async function recordSession(
   return { credit: body.credit, summary: body.summary };
 }
 
+/** Day kinds that mean today's session is over: trained (together or solo) or stopped for safety. */
+const DONE_KINDS = new Set(['together', 'solo', 'safety_stop']);
+
+/** True once today's session has been recorded, so the home offers nothing more to train. */
+export function isDoneForToday(summary: Pick<ProgressSummary, 'today'>): boolean {
+  return summary.today !== null && DONE_KINDS.has(summary.today);
+}
+
 export async function fetchProgress(fetchImpl: typeof fetch = fetch, now: Date = new Date()): Promise<ProgressSummary> {
   const res = await fetchImpl(`/api/progress/summary?date=${localDate(now)}`, {
     credentials: 'same-origin',

@@ -6,7 +6,7 @@ import { TodayPanel } from './LessonPath';
 import { SessionPlayer } from './SessionPlayer';
 import { ProgressPanel } from './ProgressPanel';
 import { PainReportForm, PausedPanel } from './PainScreens';
-import { recordSession, type FinishProgress } from './progress';
+import { fetchProgress, isDoneForToday, recordSession, type FinishProgress } from './progress';
 import { flushPause, LocalPauseStore, startPause, syncPause, type BodyArea, type LocalPause, type PauseStore } from './pain';
 import type { Session, SessionResult } from './training';
 import { createWakeLock, type WakeLockController } from './wakeLock';
@@ -23,9 +23,11 @@ export interface AppProps {
   onSessionFinish?: (result: SessionResult) => void;
   /** Where the device keeps the training pause; localStorage otherwise. */
   pauseStore?: PauseStore;
+  /** Injected in tests; the device clock otherwise. */
+  now?: () => Date;
 }
 
-export function App({ fetchImpl, onReconnect = () => reconnect(), wakeLock, onSessionFinish, pauseStore }: AppProps) {
+export function App({ fetchImpl, onReconnect = () => reconnect(), wakeLock, onSessionFinish, pauseStore, now }: AppProps) {
   const layout = useLayout();
   const wake = useMemo(() => wakeLock ?? createWakeLock(), [wakeLock]);
   const store = useMemo(() => pauseStore ?? new LocalPauseStore(), [pauseStore]);
@@ -55,6 +57,7 @@ export function App({ fetchImpl, onReconnect = () => reconnect(), wakeLock, onSe
           wakeLock={wake}
           onSessionFinish={onSessionFinish}
           pauseStore={store}
+          now={now}
         />
       </main>
     </div>
@@ -70,6 +73,7 @@ function Screen({
   wakeLock,
   onSessionFinish,
   pauseStore,
+  now,
 }: {
   view: View;
   layout: Layout;
@@ -79,6 +83,7 @@ function Screen({
   wakeLock: WakeLockController;
   onSessionFinish?: (result: SessionResult) => void;
   pauseStore: PauseStore;
+  now?: () => Date;
 }) {
   switch (view.kind) {
     case 'loading':
@@ -115,6 +120,7 @@ function Screen({
             wakeLock={wakeLock}
             onSessionFinish={onSessionFinish}
             pauseStore={pauseStore}
+            now={now}
           />
         );
       if (view.role === 'parent') return <ParentHome layout={layout} fetchImpl={fetchImpl} />;
@@ -175,19 +181,36 @@ function KeeperHome({
   wakeLock,
   onSessionFinish,
   pauseStore,
+  now = () => new Date(),
 }: {
   layout: Layout;
   fetchImpl?: typeof fetch;
   wakeLock: WakeLockController;
   onSessionFinish?: (result: SessionResult) => void;
   pauseStore: PauseStore;
+  now?: () => Date;
 }) {
   const [playing, setPlaying] = useState<Session | null>(null);
-  const [doneToday, setDoneToday] = useState(false);
+  const [finishedHere, setDoneToday] = useState(false);
+  const [recordedToday, setRecordedToday] = useState(false);
   const [progress, setProgress] = useState<FinishProgress | 'saving' | 'unsaved' | null>(null);
   const [recorded, setRecorded] = useState(0);
   const [reporting, setReporting] = useState(false);
   const { pause, start, send, flush } = usePause(pauseStore, fetchImpl);
+  const doneToday = finishedHere || recordedToday;
+
+  // A session already recorded today (on this device or another, before a reload) means
+  // today is done: the home offers nothing more to train until tomorrow.
+  useEffect(() => {
+    let live = true;
+    fetchProgress(fetchImpl, now())
+      .then((s) => live && setRecordedToday(isDoneForToday(s)))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchImpl, recorded]);
 
   const finish = useCallback(
     (result: SessionResult) => {
