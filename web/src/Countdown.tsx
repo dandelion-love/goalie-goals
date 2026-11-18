@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type MutableRefObject } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useCue } from './sound';
 
 /** With no wake lock, a running timer asks for a tap this often, which also keeps the screen awake. */
 export const KEEP_AWAKE_TAP_MS = 50_000;
@@ -13,6 +14,8 @@ export interface CountdownProps {
   needsTaps?: boolean;
   /** When the keeper last touched the screen; shared across timers so auto-advancing moves still ask. */
   lastTap?: MutableRefObject<number>;
+  /** Play a tick on each of the last three seconds, as the number on the face changes (rest). */
+  ticks?: boolean;
 }
 
 function mmss(ms: number): string {
@@ -27,7 +30,7 @@ function mmss(ms: number): string {
  * slow tick never stretches a rest. The face is a 56 px+ button: tapping it keeps the screen
  * awake in the fallback and resumes a timer that waited for a tap.
  */
-export function Countdown({ seconds, label, onDone, needsTaps = false, lastTap: sharedTap }: CountdownProps) {
+export function Countdown({ seconds, label, onDone, needsTaps = false, lastTap: sharedTap, ticks = false }: CountdownProps) {
   const [remaining, setRemaining] = useState(seconds * 1000);
   const [paused, setPaused] = useState(false);
   const [waitingForTap, setWaitingForTap] = useState(false);
@@ -39,6 +42,16 @@ export function Countdown({ seconds, label, onDone, needsTaps = false, lastTap: 
   onDoneRef.current = onDone;
   const holding = paused || waitingForTap;
   const labelId = useId();
+  const cue = useCue();
+  const shown = Math.ceil(remaining / 1000);
+  const ticked = useRef(shown);
+
+  // In the same commit as the face changing to 3, 2 and 1.
+  useLayoutEffect(() => {
+    if (shown === ticked.current) return;
+    ticked.current = shown;
+    if (ticks && shown >= 1 && shown <= 3) cue('tick');
+  }, [shown, ticks, cue]);
 
   useEffect(() => {
     lastTick.current = Date.now();
@@ -89,6 +102,7 @@ export function Countdown({ seconds, label, onDone, needsTaps = false, lastTap: 
       </div>
       <button type="button" className="secondary session-control" onClick={() => {
           tap();
+          if (!paused) cue('pause');
           setPaused((p) => !p);
         }}>
         {paused ? 'Resume' : 'Pause'}

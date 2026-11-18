@@ -4,6 +4,7 @@ import { useLayout, type Layout } from './layout';
 import { ApprovedTraining, History, ParentInbox } from './ApprovalScreens';
 import { TodayPanel } from './LessonPath';
 import { SessionPlayer } from './SessionPlayer';
+import { sound } from './sound';
 import { ProgressPanel } from './ProgressPanel';
 import { PainReportForm, PausedPanel } from './PainScreens';
 import { TrainingDays } from './TrainingDays';
@@ -326,6 +327,8 @@ function KeeperHome({
   // Paused: show the pause, and offer nothing to train.
   const tryStart = (session: Session) => {
     if (pauseStore.read()) return;
+    // The Start tap unlocks sound for the session (iPadOS plays audio only after a tap).
+    sound.unlock();
     setPlaying(session);
     // Tell the server, so the parent can no longer undo this approval. If the parent undid it
     // a moment ago, the server refuses: the session closes before the first set and today

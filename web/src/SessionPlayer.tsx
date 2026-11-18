@@ -7,6 +7,7 @@ import { useWakeLock, type WakeLockController } from './wakeLock';
 import { FinishProgressView } from './ProgressPanel';
 import { SEE_SOMEONE } from './PainScreens';
 import type { FinishProgress } from './progress';
+import { CueContext, usePlayerSound, useStateCues } from './sound';
 
 export interface SessionPlayerProps {
   session: Session;
@@ -36,6 +37,9 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
   const lastTap = useRef(Date.now());
   const wake = useWakeLock(state.outcome === null, wakeLock);
   const reported = useRef(false);
+  const { muted, setMuted, cue, unlock } = usePlayerSound();
+  useStateCues(state, cue);
+  const soundToggle = <SoundToggle muted={muted} onChange={setMuted} />;
 
   useEffect(() => {
     if (!state.outcome || reported.current) return;
@@ -59,6 +63,7 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
         praised={state.praised}
         progress={progress}
         hurtForm={hurtForm}
+        soundToggle={soundToggle}
         onExit={onExit}
       />
     );
@@ -68,13 +73,15 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
   const needsTaps = wake === 'fallback';
   const next = () => dispatch({ type: 'next' });
 
-  return (
+  const player = (
     <section
       className="player"
       data-layout={layout}
       aria-label="Session player"
       onPointerDown={() => {
         lastTap.current = Date.now();
+        // Any tap can bring sound back after the iPad suspended it (the app was hidden).
+        unlock();
       }}
     >
       <header className="player-bar">
@@ -85,6 +92,7 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
           <h1 className="player-title">{stepTitle(step)}</h1>
         </div>
         <div className="player-bar-actions">
+          {soundToggle}
           <button type="button" className="danger session-control" onClick={() => dispatch({ type: 'stop', outcome: 'hurt' })}>
             Something hurts
           </button>
@@ -120,6 +128,17 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
         />
       )}
     </section>
+  );
+  // The countdowns inside play the rest ticks and the pause through the same cue function.
+  return <CueContext.Provider value={cue}>{player}</CueContext.Provider>;
+}
+
+/** The sound on/off switch: a 56 px+ button; its state is shown in words and as pressed. */
+function SoundToggle({ muted, onChange }: { muted: boolean; onChange: (muted: boolean) => void }) {
+  return (
+    <button type="button" className="secondary session-control sound-toggle" aria-pressed={!muted} onClick={() => onChange(!muted)}>
+      Sound<span aria-hidden="true">: {muted ? 'off' : 'on'}</span>
+    </button>
   );
 }
 
@@ -265,6 +284,7 @@ function CardStep({
           key={`${state.step}-rest-${p.set}`}
           seconds={dose.rest_s}
           label="Rest"
+          ticks
           onDone={onNext}
           needsTaps={needsTaps}
           lastTap={lastTap}
@@ -346,12 +366,14 @@ function FinishScreen({
   praised,
   progress,
   hurtForm,
+  soundToggle,
   onExit,
 }: {
   outcome: Outcome;
   praised: string[];
   progress?: FinishProgress | 'saving' | 'unsaved' | null;
   hurtForm?: ReactNode;
+  soundToggle?: ReactNode;
   onExit: () => void;
 }) {
   const { title, body } = FINISH[outcome];
@@ -372,6 +394,7 @@ function FinishScreen({
         </>
       )}
       <FinishProgressView progress={progress} />
+      {soundToggle}
       <button type="button" className="primary session-control wide" onClick={onExit}>
         Done for today
       </button>
