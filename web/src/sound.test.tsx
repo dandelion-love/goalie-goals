@@ -766,3 +766,90 @@ describe('cue work never holds up a screen change (story 103 AC5)', () => {
     expect(r.value).toEqual(levels(data));
   });
 });
+
+describe('cue work where there is no scheduler.postTask (Safari on the iPad, story 103 AC5)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('both yields fall back to a new task, never scheduler.yield', async () => {
+    vi.useFakeTimers();
+    const yields = vi.fn(() => Promise.resolve());
+    vi.stubGlobal('scheduler', { yield: yields });
+    const { yieldToPage, yieldBriefly } = await import('./cues');
+    let done = 0;
+    void yieldToPage().then(() => (done += 1));
+    void yieldBriefly().then(() => (done += 1));
+    // Not a microtask: nothing resumes until a task runs.
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(done).toBe(0);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(done).toBe(2);
+    expect(yields).not.toHaveBeenCalled();
+  });
+
+  it('a quick Start’s cue set never runs more than one slice while the player’s render has a task waiting', async () => {
+    // The page's task queue, first in first out, run one task at a time by hand. Each task's
+    // microtasks run before the next task, as in the browser.
+    const realTimeout = globalThis.setTimeout;
+    const flush = () => new Promise((resolve) => realTimeout(resolve, 0));
+    const tasks: (() => void)[] = [];
+    vi.stubGlobal('setTimeout', (fn: () => void) => {
+      tasks.push(fn);
+      return tasks.length;
+    });
+    const yields = vi.fn(() => Promise.resolve());
+    vi.stubGlobal('scheduler', { yield: yields });
+    const { forgetCues, prepareCues, cueStats, SLICE_MS } = await import('./cues');
+    forgetCues(8000);
+    const before = cueStats.synthesised;
+    // A clock that moves with the work, so each slice ends on its 8 ms budget.
+    let t = 0;
+    const options = { clock: () => (t += 0.1) };
+    const engine = createSoundEngine(() => fakeAudio('suspended') as unknown as AudioContext, () => 0, () => prepareCues(8000, options), 8000);
+    // The Start tap: the context is made and the whole cue set starts.
+    engine.unlockForStart();
+
+    // The player's render, as React does it: a chain of tasks, each posting the next, then the
+    // commit and paint.
+    let waiting = false;
+    let chunks = 0;
+    const post = () => {
+      waiting = true;
+      tasks.push(() => {
+        waiting = false;
+        chunks += 1;
+        if (chunks < 6) post();
+      });
+    };
+    post();
+
+    let worst = 0;
+    let cueTasksBeforeCommit = 0;
+    for (let step = 0; step < 20_000 && (chunks < 6 || cueStats.synthesised < before + CUE_NAMES.length); step++) {
+      const task = tasks.shift();
+      if (!task) {
+        await flush();
+        continue;
+      }
+      const wasWaiting = waiting;
+      const t0 = t;
+      task();
+      await flush();
+      // Cue work done in this one task while a render task was already queued, in budget ms.
+      if (wasWaiting && waiting) worst = Math.max(worst, t - t0);
+      if (chunks < 6 && t > t0) cueTasksBeforeCommit += 1;
+    }
+    vi.unstubAllGlobals();
+    // The render reached its commit, taking turns with the cue work: at most one slice (its 8 ms
+    // budget plus the step that crosses it) ever ran ahead of a waiting render task.
+    expect(chunks).toBe(6);
+    expect(cueTasksBeforeCommit).toBeGreaterThanOrEqual(3);
+    expect(worst).toBeGreaterThan(0);
+    expect(worst).toBeLessThanOrEqual(SLICE_MS + 1);
+    expect(cueStats.synthesised).toBe(before + CUE_NAMES.length);
+    expect(yields).not.toHaveBeenCalled();
+    forgetCues(8000);
+  });
+});
