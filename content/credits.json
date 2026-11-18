@@ -18,6 +18,14 @@
       "checked": "2026-11-17"
     },
     {
+      "path": "content/exercises/broad-jump-stick.dossier.json",
+      "title": "Broad jump with stick landing dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-18"
+    },
+    {
       "path": "content/exercises/glute-bridge.json",
       "title": "Glute bridge exercise card",
       "author": "the goalie-goals contributors",
@@ -34,6 +42,14 @@
       "checked": "2026-11-17"
     },
     {
+      "path": "content/exercises/glute-bridge.dossier.json",
+      "title": "Glute bridge dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-18"
+    },
+    {
       "path": "content/exercises/lateral-shuffle.json",
       "title": "Lateral shuffle exercise card",
       "author": "the goalie-goals contributors",
@@ -48,6 +64,14 @@
       "licence": "CC-BY-SA-4.0",
       "source": "written for this repo",
       "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/lateral-shuffle.dossier.json",
+      "title": "Lateral shuffle dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-18"
     },
     {
       "path": "content/exercises/plank.json",
@@ -90,6 +114,14 @@
       "checked": "2026-11-17"
     },
     {
+      "path": "content/exercises/pogo-hops.dossier.json",
+      "title": "Low pogo hops dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-18"
+    },
+    {
       "path": "content/exercises/set-position.json",
       "title": "Set position exercise card",
       "author": "the goalie-goals contributors",
@@ -103,6 +135,14 @@
       "author": "the goalie-goals contributors",
       "licence": "CC-BY-SA-4.0",
       "source": "written for this repo",
+      "checked": "2026-11-18"
+    },
+    {
+      "path": "content/exercises/set-position.dossier.json",
+      "title": "Set position dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
       "checked": "2026-11-18"
     },
     {
@@ -122,6 +162,14 @@
       "checked": "2026-11-17"
     },
     {
+      "path": "content/exercises/side-plank.dossier.json",
+      "title": "Side plank dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-18"
+    },
+    {
       "path": "content/exercises/split-squat.json",
       "title": "Split squat exercise card",
       "author": "the goalie-goals contributors",
@@ -136,6 +184,14 @@
       "licence": "CC-BY-SA-4.0",
       "source": "written for this repo",
       "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/split-squat.dossier.json",
+      "title": "Split squat dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-18"
     },
     {
       "path": "content/exercises/squat-to-box.json",
@@ -154,6 +210,14 @@
       "checked": "2026-11-17"
     },
     {
+      "path": "content/exercises/squat-to-box.dossier.json",
+      "title": "Squat to box dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-18"
+    },
+    {
       "path": "content/exercises/wall-push-up.json",
       "title": "Wall push-up exercise card",
       "author": "the goalie-goals contributors",
@@ -168,6 +232,14 @@
       "licence": "CC-BY-SA-4.0",
       "source": "written for this repo",
       "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/wall-push-up.dossier.json",
+      "title": "Wall push-up dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-18"
     },
     {
       "path": "content/figures/broad-jump-stick.svg",

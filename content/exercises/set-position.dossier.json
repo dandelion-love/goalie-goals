@@ -1,0 +1,222 @@
+{
+  "id": "set-position",
+  "card": "content/exercises/set-position.json",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0",
+  "reviewed_at": "2026-11-18T00:00:00Z",
+  "stale_after": "2027-11-18T00:00:00Z",
+  "sources": [
+    {
+      "id": "dicks-2010",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/20942362/",
+      "title": "Dicks, Button, Davids. Availability of advance visual information constrains association-football goalkeeping performance during penalty kicks (Perception, 2010)",
+      "kind": "lab-study",
+      "population": "adult",
+      "band": "adults",
+      "year": 2010
+    },
+    {
+      "id": "spratford-2009",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/19891201/",
+      "title": "Spratford, Mellifont, Burkett. The influence of dive direction on the movement characteristics for elite football goalkeepers (Sports Biomech, 2009)",
+      "kind": "lab-study",
+      "population": "adult",
+      "band": "adults",
+      "year": 2009
+    },
+    {
+      "id": "chaalali-2016",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/28090138/",
+      "title": "Chaalali et al. Agility training in young elite soccer players: promising results compared to change of direction drills (Biol Sport, 2016)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "mid teens",
+      "year": 2016
+    },
+    {
+      "id": "meylan-2009",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/19910813/",
+      "title": "Meylan and Malatesta. Effects of in-season plyometric training within soccer practice on explosive actions of young players (J Strength Cond Res, 2009)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "early teens",
+      "year": 2009
+    },
+    {
+      "id": "nunes-2021",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/31453943/",
+      "title": "Nunes et al. Effects of integrative neuromuscular training and detraining on countermovement jump performance in youth volleyball players (J Strength Cond Res, 2021)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "early teens",
+      "year": 2021
+    },
+    {
+      "id": "ioc-2015",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/26084524/",
+      "title": "Bergeron et al. IOC consensus statement on youth athletic development (Br J Sports Med, 2015)",
+      "kind": "position-statement",
+      "population": "youth",
+      "band": "children and teens",
+      "year": 2015
+    },
+    {
+      "id": "slater-2017",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/26808843/",
+      "title": "Slater and Hart. Muscle activation patterns during different squat techniques (J Strength Cond Res, 2017)",
+      "kind": "lab-study",
+      "population": "adult",
+      "band": "adults",
+      "year": 2017
+    },
+    {
+      "id": "card",
+      "url": "content/exercises/set-position.json",
+      "title": "Set position exercise card",
+      "kind": "app",
+      "population": "app",
+      "band": "early teens",
+      "year": 2026
+    }
+  ],
+  "why": {
+    "headline": "A still, balanced set lets you push off either way.",
+    "claims": [
+      {
+        "action": "set-position",
+        "text": "In adult keepers, moving early let fake kicks fool them.",
+        "sources": [
+          "dicks-2010"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "action": "dive",
+        "text": "In elite adult keepers, too much early hip turning slowed weaker-side dives.",
+        "sources": [
+          "spratford-2009"
+        ],
+        "evidence": "adult"
+      }
+    ]
+  },
+  "expect": {
+    "claims": [
+      {
+        "text": "Young elite players did reaction drills twice a week. After 6 weeks, reaction runs were 7.7 to 9.4% faster.",
+        "sources": [
+          "chaalali-2016"
+        ],
+        "evidence": "youth",
+        "outcome": {
+          "measure": "reactive agility tests",
+          "change_pct": [
+            7.7,
+            9.4
+          ],
+          "weeks": [
+            6,
+            6
+          ],
+          "sessions_per_week": [
+            2,
+            2
+          ],
+          "band": "mid teens"
+        }
+      },
+      {
+        "text": "Early-teen players swapped some football drills for jumps and footwork. After 8 weeks, sprint and agility tests were 2.1 to 9.6% faster.",
+        "sources": [
+          "meylan-2009"
+        ],
+        "evidence": "youth",
+        "outcome": {
+          "measure": "10 m sprint and agility tests",
+          "change_pct": [
+            2.1,
+            9.6
+          ],
+          "weeks": [
+            8,
+            8
+          ],
+          "sessions_per_week": [
+            2,
+            2
+          ],
+          "band": "early teens"
+        }
+      }
+    ],
+    "keep_up": {
+      "text": "Keep training it every week to keep gains coming. In one youth study, jump gains lasted 8 weeks after training stopped. Everyone improves at their own pace.",
+      "sources": [
+        "nunes-2021",
+        "ioc-2015"
+      ],
+      "evidence": "youth"
+    }
+  },
+  "muscles": {
+    "map": [
+      {
+        "muscle": "quadriceps",
+        "plain": "The big muscles at the front of your thighs",
+        "role": "helping",
+        "basis": "measured",
+        "sources": [
+          "slater-2017"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "muscle": "calves",
+        "plain": "Your calf muscles, which hold your heels up",
+        "role": "helping",
+        "basis": "cued",
+        "sources": [
+          "card"
+        ],
+        "evidence": "app"
+      }
+    ],
+    "note": {
+      "text": "No study measured muscles in the ready stance. These come from adult squat studies and the card.",
+      "sources": [
+        "slater-2017",
+        "card"
+      ],
+      "evidence": "adult"
+    }
+  },
+  "clips": [],
+  "science": {
+    "claims": [
+      {
+        "text": "In a youth trial, drills with a signal improved reaction runs most. Plain turning drills improved plain turns most.",
+        "sources": [
+          "chaalali-2016"
+        ],
+        "evidence": "youth"
+      },
+      {
+        "text": "For adult keepers, the kicker's late cues were the useful ones. Staying set lets you use them.",
+        "sources": [
+          "dicks-2010"
+        ],
+        "evidence": "adult"
+      }
+    ],
+    "limits": [
+      {
+        "text": "No study has tested holding the ready stance as a drill. The youth trials trained jumps, sprints and footwork.",
+        "sources": [
+          "chaalali-2016",
+          "meylan-2009"
+        ],
+        "evidence": "youth"
+      }
+    ]
+  }
+}

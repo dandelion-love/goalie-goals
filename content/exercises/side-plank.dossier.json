@@ -1,0 +1,285 @@
+{
+  "id": "side-plank",
+  "card": "content/exercises/side-plank.json",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0",
+  "reviewed_at": "2026-11-18T00:00:00Z",
+  "stale_after": "2027-11-18T00:00:00Z",
+  "sources": [
+    {
+      "id": "dipaolo-2022",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/36236618/",
+      "title": "Di Paolo et al. On-field biomechanical assessment of high and low dive in competitive goalkeepers through wearable sensors and principal component analysis (Sensors, 2022)",
+      "kind": "observational",
+      "population": "youth",
+      "band": "youth academy",
+      "year": 2022
+    },
+    {
+      "id": "spratford-2009",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/19891201/",
+      "title": "Spratford, Mellifont, Burkett. The influence of dive direction on the movement characteristics for elite football goalkeepers (Sports Biomech, 2009)",
+      "kind": "lab-study",
+      "population": "adult",
+      "band": "adults",
+      "year": 2009
+    },
+    {
+      "id": "fifa-core-2025",
+      "url": "https://www.fifatrainingcentre.com/en/practice/training-perspectives/athleticism-for-young-players/athleticism-for-young-players-core-strength.php",
+      "title": "FIFA Training Centre. Athleticism for young players: core strength (2025)",
+      "kind": "guidance",
+      "population": "youth",
+      "band": "children and teens",
+      "year": 2025
+    },
+    {
+      "id": "granacher-2014",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/25584193/",
+      "title": "Granacher et al. Effects of core strength training using stable versus unstable surfaces on physical fitness in adolescents: a randomized controlled trial (BMC Sports Sci Med Rehabil, 2014)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "early teens",
+      "year": 2014
+    },
+    {
+      "id": "hoshikawa-2013",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/23442276/",
+      "title": "Hoshikawa et al. Effects of stabilization training on trunk muscularity and physical performances in youth soccer players (J Strength Cond Res, 2013)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "early teens",
+      "year": 2013
+    },
+    {
+      "id": "nunes-2021",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/31453943/",
+      "title": "Nunes et al. Effects of integrative neuromuscular training and detraining on countermovement jump performance in youth volleyball players (J Strength Cond Res, 2021)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "early teens",
+      "year": 2021
+    },
+    {
+      "id": "ioc-2015",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/26084524/",
+      "title": "Bergeron et al. IOC consensus statement on youth athletic development (Br J Sports Med, 2015)",
+      "kind": "position-statement",
+      "population": "youth",
+      "band": "children and teens",
+      "year": 2015
+    },
+    {
+      "id": "ekstrom-2007",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/18560185/",
+      "title": "Ekstrom, Donatelli, Carp. Electromyographic analysis of core trunk, hip, and thigh muscles during 9 rehabilitation exercises (J Orthop Sports Phys Ther, 2007)",
+      "kind": "lab-study",
+      "population": "adult",
+      "band": "adults",
+      "year": 2007
+    },
+    {
+      "id": "csep-2008",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/18461111/",
+      "title": "Behm et al. CSEP position paper: resistance training in children and adolescents (Appl Physiol Nutr Metab, 2008)",
+      "kind": "position-statement",
+      "population": "youth",
+      "band": "children and teens",
+      "year": 2008
+    },
+    {
+      "id": "ozmun-1994",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/8201908/",
+      "title": "Ozmun, Mikesky, Surburg. Neuromuscular adaptations following prepubescent strength training (Med Sci Sports Exerc, 1994)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "children",
+      "year": 1994
+    },
+    {
+      "id": "soligard-2008",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/19066253/",
+      "title": "Soligard et al. Comprehensive warm-up programme to prevent injuries in young female footballers: cluster randomised controlled trial (BMJ, 2008)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "teens",
+      "year": 2008
+    }
+  ],
+  "why": {
+    "headline": "Strong sides keep you long and steady when you land sideways.",
+    "claims": [
+      {
+        "action": "dive",
+        "text": "Dives go sideways, so your sides take the load. In academy keepers, weaker-side dives showed less trunk control.",
+        "sources": [
+          "dipaolo-2022"
+        ],
+        "evidence": "youth"
+      },
+      {
+        "action": "dive",
+        "text": "In elite adult keepers, extra hip and chest turning slowed weaker-side dives.",
+        "sources": [
+          "spratford-2009"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "action": "set-position",
+        "text": "In the ready stance you hold still, then push off. Coaches of young players train the middle to steady spine and hips.",
+        "sources": [
+          "fifa-core-2025"
+        ],
+        "evidence": "youth"
+      }
+    ]
+  },
+  "expect": {
+    "claims": [
+      {
+        "text": "Pupils in their early teens did trunk exercises twice a week. After 6 weeks, trunk tests were 8 to 22% better.",
+        "sources": [
+          "granacher-2014"
+        ],
+        "evidence": "youth",
+        "outcome": {
+          "measure": "trunk strength tests",
+          "change_pct": [
+            8,
+            22
+          ],
+          "weeks": [
+            6,
+            6
+          ],
+          "sessions_per_week": [
+            2,
+            2
+          ],
+          "band": "early teens"
+        }
+      },
+      {
+        "text": "Early-teen players added five moves, one a side plank, 4 times weekly. After 26 weeks, jumps were 5 to 6.8% higher.",
+        "sources": [
+          "hoshikawa-2013"
+        ],
+        "evidence": "youth",
+        "outcome": {
+          "measure": "jump height",
+          "change_pct": [
+            5,
+            6.8
+          ],
+          "weeks": [
+            26,
+            26
+          ],
+          "sessions_per_week": [
+            4,
+            4
+          ],
+          "band": "early teens"
+        }
+      }
+    ],
+    "keep_up": {
+      "text": "Keep training it every week to keep gains coming. In one youth study, jump gains lasted 8 weeks after training stopped. Everyone improves at their own pace.",
+      "sources": [
+        "nunes-2021",
+        "ioc-2015"
+      ],
+      "evidence": "youth"
+    }
+  },
+  "muscles": {
+    "map": [
+      {
+        "muscle": "external-oblique",
+        "plain": "The muscles on the sides of your tummy",
+        "role": "main",
+        "basis": "measured",
+        "sources": [
+          "ekstrom-2007"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "muscle": "gluteus-medius",
+        "plain": "The muscle on the side of your hip",
+        "role": "main",
+        "basis": "measured",
+        "sources": [
+          "ekstrom-2007"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "muscle": "rectus-abdominis",
+        "plain": "The long muscle down the front of your tummy",
+        "role": "helping",
+        "basis": "measured",
+        "sources": [
+          "ekstrom-2007"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "muscle": "erector-spinae",
+        "plain": "The muscles along your spine",
+        "role": "helping",
+        "basis": "measured",
+        "sources": [
+          "ekstrom-2007"
+        ],
+        "evidence": "adult"
+      }
+    ],
+    "note": {
+      "text": "Side plank studies measured these muscles in adults; none in teens.",
+      "sources": [
+        "ekstrom-2007"
+      ],
+      "evidence": "adult"
+    }
+  },
+  "clips": [],
+  "science": {
+    "claims": [
+      {
+        "text": "In adults, the side plank worked side tummy and hip muscles hard. That level suits building strength.",
+        "sources": [
+          "ekstrom-2007"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "text": "Studies in young people find strength rises far more than muscle size. Early gains are mostly your nerves learning to switch muscles on.",
+        "sources": [
+          "csep-2008",
+          "ozmun-1994"
+        ],
+        "evidence": "youth"
+      }
+    ],
+    "limits": [
+      {
+        "text": "No study has tested the side plank alone in goalkeepers. The youth trials used several trunk exercises.",
+        "sources": [
+          "granacher-2014",
+          "hoshikawa-2013"
+        ],
+        "evidence": "youth"
+      },
+      {
+        "text": "Side planks are part of the FIFA 11+ warm-up. A youth trial linked the whole warm-up to fewer injuries. No trial shows the side plank prevents injury alone.",
+        "sources": [
+          "soligard-2008"
+        ],
+        "evidence": "youth",
+        "negates": true
+      }
+    ]
+  }
+}

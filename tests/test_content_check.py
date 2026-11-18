@@ -498,6 +498,18 @@ class DossierCheck(unittest.TestCase):
         self.assertTrue(any("no-such-card.dossier.json: no entry in content/credits.json" in f
                             for f in found))
 
+    def test_every_card_has_a_clean_dossier(self) -> None:
+        # Story 115 AC4: with DOSSIER_REQUIRED on, every card carries its dossier, and none warns.
+        self.assertTrue(cc.DOSSIER_REQUIRED)
+        self.assertEqual(sorted(cc.load_dossiers(self.root)), sorted(cc.load_cards(self.root)))
+        self.assertEqual(cc.dossier_warnings(self.root, now="2026-11-18T00:00:00Z"), [])
+
+    def test_a_card_without_a_dossier_fails(self) -> None:
+        missing = self.root / "content" / "exercises" / "side-plank.dossier.json"
+        missing.unlink()
+        self.assertIn("content/exercises/side-plank.json: no dossier at "
+                      "content/exercises/side-plank.dossier.json", cc.check(self.root))
+
     def test_card_and_id_agree(self) -> None:
         self.assertFinding(self.edit(lambda d: d.update(card="content/exercises/side-plank.json")),
                            "card must be content/exercises/plank.json")

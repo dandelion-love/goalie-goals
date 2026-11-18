@@ -43,7 +43,9 @@ What the seed gives you:
   legs** and **Quick feet, strong arms**, each with its cards at their card doses, all
   approved as Sam.
 - Sam's **Training days**, picked so that today is always one (below).
-- Four requests waiting in Sam's inbox.
+- Fourteen requests waiting in Sam's inbox: the four demo requests (a plan, two cards and a
+  harder version), and the ten exercise dossiers, one per card, each with **Read it** to see
+  what the keeper would read.
 - Two weeks of history on the training days: five trained sessions and one safety stop (Stop
   pressed on a warning sign, which counts as a kept day), with planned rest days between.
   **Together so far** starts at a team streak of 6 training days and 94 XP.
@@ -92,10 +94,10 @@ In **Window A (Sam, phone)**:
    strong arms", "Thu: Strong middle", "Sat: Spring legs"). "Pick 3 days with a rest day
    between each": the server refuses two days back to back and says why. Leave the days as
    they are, so today stays the Strong middle day.
-4. Scroll to **Inbox**, with its badge of **4**. Each request shows what would change and
+4. Scroll to **Inbox**, with its badge of **14**. Each request shows what would change and
    when it lapses: "silence never approves".
 5. On **Squat to box** ("Bodyweight only, 2 sets of 10, 60 s rest"), tap **Approve**.
-6. The badge drops to **3**, and the newest **History** entry is "Parent approved Squat to
+6. The badge drops to **13**, and the newest **History** entry is "Parent approved Squat to
    box". (The entries below it are the seed approving the week's sessions and cards as Sam.)
 
 ![Parent home on a phone, Together so far and This week with today marked and 0 of 3 sessions](demo/00-parent-home-phone.png)

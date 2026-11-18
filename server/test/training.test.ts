@@ -26,6 +26,20 @@ import {
   type TrainingPlan,
 } from '../src/training.js';
 
+/** Every card's dossier request (story 115), in the order the content is read. */
+const DOSSIER_REQUESTS = [
+  'dossier-broad-jump-stick',
+  'dossier-glute-bridge',
+  'dossier-lateral-shuffle',
+  'dossier-plank',
+  'dossier-pogo-hops',
+  'dossier-set-position',
+  'dossier-side-plank',
+  'dossier-split-squat',
+  'dossier-squat-to-box',
+  'dossier-wall-push-up',
+];
+
 // Fixtures: the invented cast; content is the repo's own exercise cards.
 const AUDIENCE = '/test/audience/goalie-goals';
 const KAI = 'kai@example.com';
@@ -510,10 +524,10 @@ describe('training routes', () => {
     const kai = await app.inject({ method: 'GET', url: '/api/training/today?date=2026-01-05', headers: { cookie: 'dev_as=kai%40example.com' } });
     expect(kai.json().today.cards.map((c: { id: string }) => c.id)).toEqual(['plank', 'side-plank', 'glute-bridge']);
     const sam = await app.inject({ method: 'GET', url: '/api/approvals/pending', headers: { cookie: 'dev_as=sam%40example.com' } });
-    // The demo requests, and the plank's dossier (story 115), left for the parent to approve.
+    // The demo requests, and every card's dossier (story 115), left for the parent to approve.
     expect(sam.json().requests.map((r: { itemId: string }) => r.itemId)).toEqual([
       ...DEMO_REQUESTS.map((r) => r.itemId),
-      'dossier-plank',
+      ...DOSSIER_REQUESTS,
     ]);
   });
 
@@ -533,11 +547,11 @@ describe('training routes', () => {
       'session-strong-middle',
       'session-spring-legs',
       'session-quick-feet-strong-arms',
-      // Story 115: the plank's dossier waits for the parent too.
-      'dossier-plank',
+      // Story 115: every card's dossier waits for the parent too.
+      ...DOSSIER_REQUESTS,
     ]);
     const kai = await app.inject({ method: 'GET', url: '/api/training/today?date=2026-01-05', headers: as(KAI) });
-    expect(kai.json()).toMatchObject({ planned: true, today: null, lastApproved: null, waiting: 13 });
+    expect(kai.json()).toMatchObject({ planned: true, today: null, lastApproved: null, waiting: 12 + DOSSIER_REQUESTS.length });
   });
 });
 

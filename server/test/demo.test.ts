@@ -26,6 +26,20 @@ import {
   type DemoTarget,
 } from '../src/demo.js';
 
+/** Every card's dossier request (story 115), in the order the content is read. */
+const DOSSIER_REQUESTS = [
+  'dossier-broad-jump-stick',
+  'dossier-glute-bridge',
+  'dossier-lateral-shuffle',
+  'dossier-plank',
+  'dossier-pogo-hops',
+  'dossier-set-position',
+  'dossier-side-plank',
+  'dossier-split-squat',
+  'dossier-squat-to-box',
+  'dossier-wall-push-up',
+];
+
 // Fixtures: the invented cast (keeper Kai, parent Sam) at example.com. The outsider is an
 // obviously fake address at another reserved example domain: it is not a demo account.
 const KAI = 'kai@example.com';
@@ -112,10 +126,10 @@ describe('seed the demo household (AC1)', () => {
     expect(await t.roles.roleFor(KAI)).toBe('keeper');
     expect(await t.roles.roleFor(SAM)).toBe('parent');
 
-    // The inbox holds the demo requests: real cards at their spec doses (demoData.ts), and the
-    // plank's dossier (story 115), which the demo parent approves in the walk.
+    // The inbox holds the demo requests: real cards at their spec doses (demoData.ts), and every
+    // card's dossier (story 115), left waiting for the demo parent.
     const pending = await t.approvals.pending();
-    expect(pending.map((r) => r.itemId)).toEqual([...DEMO_REQUESTS.map((r) => r.itemId), 'dossier-plank']);
+    expect(pending.map((r) => r.itemId)).toEqual([...DEMO_REQUESTS.map((r) => r.itemId), ...DOSSIER_REQUESTS]);
 
     // The invented Tuesday is a training day carrying Strong middle, approved.
     expect(weekdayOf(TODAY)).toBe(2);
@@ -262,7 +276,7 @@ describe('reset the demo household (AC1)', () => {
 
     expect((await app.inject({ url: '/api/pain/status', headers: as(SAM) })).json().paused).toBe(false);
     const after = (await app.inject({ url: '/api/approvals/pending', headers: as(SAM) })).json();
-    expect((Array.isArray(after) ? after : after.requests).length).toBe(DEMO_REQUESTS.length + 1);
+    expect((Array.isArray(after) ? after : after.requests).length).toBe(DEMO_REQUESTS.length + DOSSIER_REQUESTS.length);
     expect((await app.inject({ url: `/api/progress/summary?date=${date}`, headers: as(SAM) })).json()).toEqual(before);
     expect((await app.inject({ url: `/api/training/days?date=${date}`, headers: as(SAM) })).json()).toEqual(daysBefore);
   });
@@ -363,6 +377,6 @@ describe('the reset refuses anything but the demo household (AC3)', () => {
     const before = await t.progress.summary(TODAY);
     await resetDemoHousehold(t, TODAY);
     expect(await t.progress.summary(TODAY)).toEqual(before);
-    expect((await t.approvals.pending()).length).toBe(DEMO_REQUESTS.length + 1);
+    expect((await t.approvals.pending()).length).toBe(DEMO_REQUESTS.length + DOSSIER_REQUESTS.length);
   });
 });

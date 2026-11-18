@@ -1,0 +1,273 @@
+{
+  "id": "wall-push-up",
+  "card": "content/exercises/wall-push-up.json",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0",
+  "reviewed_at": "2026-11-18T00:00:00Z",
+  "stale_after": "2027-11-18T00:00:00Z",
+  "sources": [
+    {
+      "id": "white-2018",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/30144021/",
+      "title": "White et al. Match-play and performance test responses of soccer goalkeepers: a review of current literature (Sports Med, 2018)",
+      "kind": "review",
+      "population": "adult",
+      "band": "adults",
+      "year": 2018
+    },
+    {
+      "id": "faigenbaum-2007",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/24149486/",
+      "title": "Faigenbaum et al. Effects of a short-term plyometric and resistance training program on fitness performance in boys (J Sports Sci Med, 2007)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "early teens",
+      "year": 2007
+    },
+    {
+      "id": "fifa-core-2025",
+      "url": "https://www.fifatrainingcentre.com/en/practice/training-perspectives/athleticism-for-young-players/athleticism-for-young-players-core-strength.php",
+      "title": "FIFA Training Centre. Athleticism for young players: core strength (2025)",
+      "kind": "guidance",
+      "population": "youth",
+      "band": "children and teens",
+      "year": 2025
+    },
+    {
+      "id": "faigenbaum-2001",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/11726257/",
+      "title": "Faigenbaum et al. Effects of different resistance training protocols on upper-body strength and endurance development in children (J Strength Cond Res, 2001)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "children",
+      "year": 2001
+    },
+    {
+      "id": "faigenbaum-2002",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/12495243/",
+      "title": "Faigenbaum et al. Comparison of 1 and 2 days per week of strength training in children (Res Q Exerc Sport, 2002)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "children",
+      "year": 2002
+    },
+    {
+      "id": "nunes-2021",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/31453943/",
+      "title": "Nunes et al. Effects of integrative neuromuscular training and detraining on countermovement jump performance in youth volleyball players (J Strength Cond Res, 2021)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "early teens",
+      "year": 2021
+    },
+    {
+      "id": "ioc-2015",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/26084524/",
+      "title": "Bergeron et al. IOC consensus statement on youth athletic development (Br J Sports Med, 2015)",
+      "kind": "position-statement",
+      "population": "youth",
+      "band": "children and teens",
+      "year": 2015
+    },
+    {
+      "id": "kowalski-2022",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/35599715/",
+      "title": "Kowalski et al. Shoulder electromyography activity during push-up variations: a scoping review (Shoulder Elbow, 2022)",
+      "kind": "review",
+      "population": "adult",
+      "band": "adults",
+      "year": 2022
+    },
+    {
+      "id": "ludewig-2004",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/14977678/",
+      "title": "Ludewig et al. Relative balance of serratus anterior and upper trapezius muscle activity during push-up exercises (Am J Sports Med, 2004)",
+      "kind": "lab-study",
+      "population": "adult",
+      "band": "adults",
+      "year": 2004
+    },
+    {
+      "id": "csep-2008",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/18461111/",
+      "title": "Behm et al. CSEP position paper: resistance training in children and adolescents (Appl Physiol Nutr Metab, 2008)",
+      "kind": "position-statement",
+      "population": "youth",
+      "band": "children and teens",
+      "year": 2008
+    },
+    {
+      "id": "ozmun-1994",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/8201908/",
+      "title": "Ozmun, Mikesky, Surburg. Neuromuscular adaptations following prepubescent strength training (Med Sci Sports Exerc, 1994)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "children",
+      "year": 1994
+    }
+  ],
+  "why": {
+    "headline": "A strong push helps you start attacks with the ball.",
+    "claims": [
+      {
+        "action": "distribution",
+        "text": "Keepers also start attacks for their team. In a youth trial, push and jump training made chest throws longer.",
+        "sources": [
+          "white-2018",
+          "faigenbaum-2007"
+        ],
+        "evidence": "mixed"
+      },
+      {
+        "action": "dive",
+        "text": "When you dive, your arms reach while your middle holds. Coaches of young players train the middle to link arms and legs.",
+        "sources": [
+          "fifa-core-2025"
+        ],
+        "evidence": "youth"
+      }
+    ]
+  },
+  "expect": {
+    "claims": [
+      {
+        "text": "In two trials, children trained twice a week on machines. After 8 weeks, chest press strength was 11.5 to 16.8% higher.",
+        "sources": [
+          "faigenbaum-2001",
+          "faigenbaum-2002"
+        ],
+        "evidence": "youth",
+        "outcome": {
+          "measure": "chest press strength",
+          "change_pct": [
+            11.5,
+            16.8
+          ],
+          "weeks": [
+            8,
+            8
+          ],
+          "sessions_per_week": [
+            2,
+            2
+          ],
+          "band": "children"
+        }
+      },
+      {
+        "text": "Boys in their early teens trained twice weekly. After 6 weeks, chest throws went 5.6 to 14.4% further.",
+        "sources": [
+          "faigenbaum-2007"
+        ],
+        "evidence": "youth",
+        "outcome": {
+          "measure": "seated chest throw",
+          "change_pct": [
+            5.6,
+            14.4
+          ],
+          "weeks": [
+            6,
+            6
+          ],
+          "sessions_per_week": [
+            2,
+            2
+          ],
+          "band": "early teens"
+        }
+      }
+    ],
+    "keep_up": {
+      "text": "Keep training it every week to keep gains coming. In one youth study, jump gains lasted 8 weeks after training stopped. Everyone improves at their own pace.",
+      "sources": [
+        "nunes-2021",
+        "ioc-2015"
+      ],
+      "evidence": "youth"
+    }
+  },
+  "muscles": {
+    "map": [
+      {
+        "muscle": "pectorals",
+        "plain": "Your chest muscles",
+        "role": "main",
+        "basis": "measured",
+        "sources": [
+          "kowalski-2022"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "muscle": "triceps",
+        "plain": "The muscles at the back of your upper arms",
+        "role": "main",
+        "basis": "measured",
+        "sources": [
+          "kowalski-2022"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "muscle": "serratus-anterior",
+        "plain": "The muscle along your ribs, under your arm",
+        "role": "main",
+        "basis": "measured",
+        "sources": [
+          "ludewig-2004",
+          "kowalski-2022"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "muscle": "trapezius",
+        "plain": "The muscles across your upper back",
+        "role": "helping",
+        "basis": "measured",
+        "sources": [
+          "ludewig-2004"
+        ],
+        "evidence": "adult"
+      }
+    ],
+    "note": {
+      "text": "Push-up studies measured these muscles in adults; none measured them in teens.",
+      "sources": [
+        "ludewig-2004",
+        "kowalski-2022"
+      ],
+      "evidence": "adult"
+    }
+  },
+  "clips": [],
+  "science": {
+    "claims": [
+      {
+        "text": "In studies with adults, floor push-ups worked a shoulder blade muscle hardest. The wall version is a gentler start.",
+        "sources": [
+          "ludewig-2004"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "text": "Studies in young people find strength rises far more than muscle size. Early gains are mostly your nerves learning to switch muscles on.",
+        "sources": [
+          "csep-2008",
+          "ozmun-1994"
+        ],
+        "evidence": "youth"
+      }
+    ],
+    "limits": [
+      {
+        "text": "No study has tested wall push-ups in goalkeepers. The youth trials used machines and medicine balls.",
+        "sources": [
+          "faigenbaum-2001",
+          "faigenbaum-2002"
+        ],
+        "evidence": "youth"
+      }
+    ]
+  }
+}

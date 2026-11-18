@@ -429,8 +429,8 @@ def check(root: Path) -> list[str]:
 # shape; the claim rules (docs/knowledge/dossiers/claim-rules.md) set what a claim may say.
 # A dossier is content/exercises/<id>.dossier.json beside its card. The pass fails a dossier
 # when:
-# 1. it has no card, or `id` and `card` disagree (a card with no dossier fails only once
-#    DOSSIER_REQUIRED is on: story 115 adds the plank first, the other cards follow);
+# 1. it has no card, or `id` and `card` disagree; and a card with no dossier fails while
+#    DOSSIER_REQUIRED is on (story 115 added every card's dossier);
 # 2. a field is missing, the wrong type, or outside the Decision's counts and lengths, or
 #    `approved` is not false (only the parent approves, in the app);
 # 3. a claim has no sources, a source id does not resolve, or a source is unused;
@@ -451,8 +451,9 @@ def check(root: Path) -> list[str]:
 # 2,000 characters, and when its reading-grade estimate is above grade 8.
 
 DOSSIER_SUFFIX = ".dossier.json"
-# Story 115 builds the dossiers in two PRs; the second turns this on with the last dossier.
-DOSSIER_REQUIRED = False
+# Story 115 built the dossiers in two PRs; the second turned this on with the last dossier,
+# so every new card needs its dossier before the check passes (exercise-dossier Decision).
+DOSSIER_REQUIRED = True
 ACTIONS = ("dive", "set-position", "jump", "distribution", "recovery")
 EVIDENCE = ("youth", "adult", "mixed", "app")
 SOURCE_KINDS = ("position-statement", "meta-analysis", "review", "trial", "observational",

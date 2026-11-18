@@ -18,6 +18,20 @@ import {
 import { InAppNotifier, type Notifier } from '../src/notifier.js';
 import { FakeFirestore } from './fakeFirestore.js';
 
+/** Every card's dossier request (story 115), in the order the content is read. */
+const DOSSIER_REQUESTS = [
+  'dossier-broad-jump-stick',
+  'dossier-glute-bridge',
+  'dossier-lateral-shuffle',
+  'dossier-plank',
+  'dossier-pogo-hops',
+  'dossier-set-position',
+  'dossier-side-plank',
+  'dossier-split-squat',
+  'dossier-squat-to-box',
+  'dossier-wall-push-up',
+];
+
 // Fixtures: the invented cast and invented training content only.
 const AUDIENCE = '/test/audience/goalie-goals';
 const KAI = 'kai@example.com';
@@ -416,6 +430,12 @@ describe('dev mock seed', () => {
   it('gives the parent demo requests to answer', async () => {
     app = await buildApp({ config: { ...config(), audience: '', devMockIdentity: true } });
     const res = await app.inject({ method: 'GET', url: '/api/approvals/pending', headers: { cookie: 'dev_as=sam%40example.com' } });
-    expect(res.json().requests.map((r: { kind: string }) => r.kind)).toEqual(['plan', 'exercise', 'exercise', 'harder_version', 'dossier']);
+    expect(res.json().requests.map((r: { kind: string }) => r.kind)).toEqual([
+      'plan',
+      'exercise',
+      'exercise',
+      'harder_version',
+      ...DOSSIER_REQUESTS.map(() => 'dossier'),
+    ]);
   });
 });

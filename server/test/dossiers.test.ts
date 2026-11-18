@@ -53,13 +53,16 @@ async function cardsApproved() {
   for (const r of await approvals.pending()) if (r.kind !== 'dossier') await approvals.approve(r.id, PARENT);
 }
 
-const dossierRequest = async () => (await approvals.pending()).find((r) => r.kind === 'dossier')!;
+/** The plank dossier's pending request; every card has a dossier, each with its own request. */
+const dossierRequest = async () =>
+  (await approvals.pending()).find((r) => r.kind === 'dossier' && r.itemId === dossierItemId('plank'))!;
 
 const plankCard = async () => (await training.today(DATE)).today!.cards.find((c) => c.id === 'plank')!;
 
 describe('content', () => {
   it('reads the plank dossier beside its card, without its static approved flag', () => {
-    expect([...CONTENT.dossiers!.keys()]).toEqual(['plank']);
+    // Every card has its dossier (story 115, second part).
+    expect([...CONTENT.dossiers!.keys()].sort()).toEqual([...CONTENT.cards.keys()].sort());
     expect(PLANK.dossier.card).toBe('content/exercises/plank.json');
     expect(PLANK.dossier).not.toHaveProperty('approved');
     expect(PLANK.contentHash).toMatch(/^[0-9a-f]{64}$/);
@@ -73,13 +76,18 @@ describe('the approval request (AC3)', () => {
     await training.dossiers.propose();
     await training.dossiers.propose();
     const pending = await approvals.pending();
-    expect(pending).toHaveLength(1);
-    const r = pending[0];
+    // One request per card's dossier, each asked once.
+    expect(pending).toHaveLength(CONTENT.cards.size);
+    expect(pending.map((r) => r.itemId).sort()).toEqual([...CONTENT.cards.keys()].map(dossierItemId).sort());
+    const r = pending.find((x) => x.itemId === dossierItemId('plank'))!;
     expect(r.kind).toBe('dossier');
-    expect(r.itemId).toBe(dossierItemId('plank'));
     expect(r.content.title).toBe('Front plank: why it matters');
-    expect(r.content.detail).not.toMatch(/content\/|\.json|sha256|[0-9a-f]{8}/i);
-    for (const s of r.content.detail.split(/(?<=[.!?])\s+/)) expect(s.split(/\s+/).length).toBeLessThanOrEqual(20);
+    for (const x of pending) {
+      expect(x.kind).toBe('dossier');
+      expect(x.content.title).toBe(`${CONTENT.cards.get(x.itemId.slice('dossier-'.length))!.card.name}: why it matters`);
+      expect(x.content.detail).not.toMatch(/content\/|\.json|sha256|[0-9a-f]{8}/i);
+      for (const s of x.content.detail.split(/(?<=[.!?])\s+/)) expect(s.split(/\s+/).length).toBeLessThanOrEqual(20);
+    }
   });
 
   it('asks again when the dossier changes', async () => {
@@ -87,7 +95,7 @@ describe('the approval request (AC3)', () => {
     const first = await dossierRequest();
     training.setContent(withHeadline(CONTENT, 'A firm middle helps you land in control.'));
     await training.dossiers.propose();
-    const pending = (await approvals.pending()).filter((r) => r.kind === 'dossier');
+    const pending = (await approvals.pending()).filter((r) => r.itemId === dossierItemId('plank'));
     expect(pending).toHaveLength(2);
     expect(pending[1].itemVersion).not.toBe(first.itemVersion);
   });
@@ -206,7 +214,7 @@ describe('dossier routes', () => {
     const { requests } = (await get(app, '/api/approvals/pending', SAM)).json() as {
       requests: { id: string; kind: string; itemId: string }[];
     };
-    const ask = requests.find((r) => r.kind === 'dossier')!;
+    const ask = requests.find((r) => r.kind === 'dossier' && r.itemId === 'dossier-plank')!;
     expect(ask.itemId).toBe('dossier-plank');
     // Stored with its kind, so the store reads it back.
     const store = new FirestoreApprovalStore(db);
@@ -221,7 +229,8 @@ describe('dossier routes', () => {
     // After the restart: nothing asked again, and the keeper still reads the approved dossier.
     expect((await get(app, '/api/approvals/pending', SAM)).json().requests).toEqual([]);
     const list = (await get(app, '/api/training/dossiers', KAI)).json() as { dossiers: ClientDossier[] };
-    expect(list.dossiers.map((d) => d.cardId)).toEqual(['plank']);
+    // Every request was approved, so every card's dossier shows.
+    expect(list.dossiers.map((d) => d.cardId).sort()).toEqual([...CONTENT.cards.keys()].sort());
     const today = (await get(app, `/api/training/today?date=${DATE}`, KAI)).json();
     expect(today.today.cards.find((c: { id: string }) => c.id === 'plank').dossier.headline).toBe(PLANK.dossier.why.headline);
     const version = (await store.get(ask.id))!.itemVersion;
