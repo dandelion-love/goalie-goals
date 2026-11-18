@@ -37,6 +37,10 @@ data at runtime, never in this repo.
 - Research that compares places (laws, regulators, currencies, regions) gives each the
   same depth and cites shared points to several of them. Leaning on one country's
   sources tells readers where the family lives, even if no sentence says so.
+- Public figures (professional players, coaches) may be named in content such as clip
+  links, but choose them by the move, spread across clubs, leagues and countries, and
+  never because of the keeper's own team, favourite club or local league: a pattern of
+  choices can say what no sentence does. Only adult professionals, never youth players.
 - Fixtures, seed data, screenshots and examples use the invented cast: keeper **Kai**,
   parent **Sam**, emails at `example.com`. Screenshots come from seeded demo data only.
 - Images are drawn or generated assets (PNG, SVG, WebP) with no camera metadata. Camera
