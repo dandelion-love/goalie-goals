@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Added**: CC0 sound research: Kenney, Freesound, OpenGameArt, and the rejected Sonniss and Pixabay licences, with a shortlist per app moment and the stored format for cues.
 * **Added**: CC0 media research for rewards and the path: Kenney, Open Peeps and related sets, Openclipart, OpenGameArt and the Glitch release, the non-CC0 near misses, a shortlist and a recommended style.
 * **Added**: usability research: lightweight methods for one household (task success, time on task, think-aloud, SUS and a plain-words youth form, five-second tests) and the ten-minute home check, with its privacy rules, the proxy check agents run between checks, and the replacement rule.
 * **Added**: motion research: open motion libraries and runtimes, animation file licences and motion principles, with the motion Decision.
