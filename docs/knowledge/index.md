@@ -17,6 +17,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 * [Progression and habit](/progression/index.md) - streaks, XP, levels, quests, badges, rewards and reminders, the science behind them, and the dark patterns refused
 
+* [Motion and celebration](/motion/index.md) - open motion libraries and runtimes, animation file licences, and the motion principles for sets, XP, streaks and the finish
+
 * [UX patterns](/ux/index.md) - the lesson path, short sessions, feedback, celebration, tone, sound, onboarding, notifications and visual language
 
 * [Parent approval](/parent-approval/index.md) - how a parent approves what the app asks of a teen, and the privacy rules for minors

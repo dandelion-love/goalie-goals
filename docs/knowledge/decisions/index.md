@@ -16,6 +16,10 @@
 
 * [UX patterns this app adopts](/decisions/ux-patterns.md) - Which game-like learning-app patterns the app adopts, how each is adapted to physical training done by a keeper and a parent together, and which it leaves out and why.
 
+## Motion and celebration
+
+* [Motion libraries and reduced-motion fallbacks](/decisions/motion-libraries.md) - CSS and the Web Animations API for most motion, Motion for React loaded lazily for the reward moments, canvas-confetti for the finish, no Lottie or Rive for now, only original or CC0 animation files, and a still fallback for every moment.
+
 ## Progression and habit
 
 * [Progression design for two people training together](/decisions/progression-design.md) - How the app's streaks, points, levels, quests and badges work for a keeper and a parent training together, with rest days that never break a streak, rewards for consistency and form over volume, the dark patterns refused, and no reward tied to finishing a session that should stop.
