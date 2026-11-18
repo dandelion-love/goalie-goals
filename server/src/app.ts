@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
-import { ConfigError, DEV_MOCK_FLAG, type Config } from './config.js';
+import { ConfigError, DEMO_SEED_FLAG, DEV_MOCK_FLAG, type Config } from './config.js';
 import { DEV_AUDIENCE, TestSigner } from './devIdentity.js';
 import {
   IDENTITY_HEADER,
@@ -15,6 +15,7 @@ import { MemoryRoleStore, type Role, type RoleStore } from './roles.js';
 import { ApprovalService, MemoryApprovalStore, MemoryAuditLog } from './approvals.js';
 import { hasBadge, registerApprovalRoutes } from './approvalRoutes.js';
 import { seedDemoRequests, seedDemoSession } from './demoData.js';
+import { DemoAuditLog, DemoPlan, DemoRefused, localDate, resetDemoHousehold, seedDemoHousehold, type DemoTarget } from './demo.js';
 import { loadContent } from './content.js';
 import { TrainingService, utcDate } from './training.js';
 import { registerTrainingRoutes } from './trainingRoutes.js';
@@ -76,6 +77,9 @@ export async function buildApp({
   if (config.devMockIdentity && config.production) {
     throw new ConfigError(`${DEV_MOCK_FLAG} is refused in production.`);
   }
+  if (config.demoSeed && (config.production || !config.devMockIdentity)) {
+    throw new ConfigError(`${DEMO_SEED_FLAG} needs ${DEV_MOCK_FLAG}=1 and is refused in production.`);
+  }
 
   // Never log the identity header or cookies. Request bodies are never logged, so a pain
   // report's content never reaches the log (tested in pain.test.ts).
@@ -93,26 +97,38 @@ export async function buildApp({
       verifier = new ProxyJwtVerifier(config.audience, proxyPublicKeys());
     }
   }
-  const roleStore = roles ?? MemoryRoleStore.fromSeed(config.roleSeed);
+  const ownRoles = roles ? undefined : MemoryRoleStore.fromSeed(config.roleSeed);
+  const roleStore: RoleStore = roles ?? ownRoles!;
   const verify = verifier;
-  let approvalService = approvals;
-  const ownApprovals = !approvalService;
-  if (!approvalService) {
-    approvalService = new ApprovalService({
-      store: new MemoryApprovalStore(),
-      audit: new MemoryAuditLog(),
-      notifier: new InAppNotifier(),
-    });
-    // Local development: give the parent's inbox something to show.
-    if (config.devMockIdentity) await seedDemoRequests(approvalService);
-  }
+  // The app's own in-memory stores, kept by name so the dev-only demo reset can reach them.
+  const own = approvals
+    ? undefined
+    : {
+        store: new MemoryApprovalStore(),
+        // The dev mock's log can start again on a demo reset; each log is append-only.
+        audit: config.devMockIdentity ? new DemoAuditLog() : new MemoryAuditLog(),
+        notifier: new InAppNotifier(),
+      };
+  const approvalService = approvals ?? new ApprovalService(own!);
+  // Local development plans a rest day for the demo week; otherwise every day has the session.
+  const demoPlan = config.devMockIdentity && !training ? new DemoPlan() : undefined;
   const trainingService =
-    training ?? new TrainingService({ approvals: approvalService, content: loadContent(config.contentRoot || undefined) });
-  if (ownApprovals) {
-    // The app asks the parent for today's session and its cards. Local development approves
-    // them as the demo parent so the player has something to run.
-    if (config.devMockIdentity) await seedDemoSession(trainingService, utcDate(new Date()));
-    else await trainingService.proposeFor(utcDate(new Date()));
+    training ??
+    new TrainingService({
+      approvals: approvalService,
+      content: loadContent(config.contentRoot || undefined),
+      ...(demoPlan ? { plan: demoPlan } : {}),
+    });
+  if (own && !config.demoSeed) {
+    // The app asks the parent for today's session and its cards. Local development gives the
+    // parent's inbox something to show and approves the session as the demo parent, so the
+    // player has something to run.
+    if (config.devMockIdentity) {
+      await seedDemoRequests(approvalService);
+      await seedDemoSession(trainingService, utcDate(new Date()));
+    } else {
+      await trainingService.proposeFor(utcDate(new Date()));
+    }
   }
 
   if (signer) {
@@ -163,21 +179,62 @@ export async function buildApp({
     badge: hasBadge(approvalService.notifier) ? approvalService.notifier : undefined,
   });
 
+  const ownPain = pain ? undefined : new MemoryPainStore();
   const painService =
-    pain ?? new PainService({ store: new MemoryPainStore(), audit: approvalService.audit, notifier: approvalService.notifier });
+    pain ?? new PainService({ store: ownPain!, audit: approvalService.audit, notifier: approvalService.notifier });
   registerPainRoutes(app, { pain: painService, roles: roleStore });
 
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused() });
 
+  const ownProgress = progress ? undefined : new MemoryProgressStore();
   const progressService =
     progress ??
     new ProgressService({
-      store: new MemoryProgressStore(),
+      store: ownProgress!,
       plan: trainingService.plan,
       plannedSets: (version) => trainingService.plannedSets(version),
       pauses: painService,
     });
   registerProgressRoutes(app, { progress: progressService, roles: roleStore });
+
+  // The demo household (src/demo.ts): only on the app's own in-memory stores, with the mock on.
+  const demo: DemoTarget | undefined =
+    config.devMockIdentity && own && own.audit instanceof DemoAuditLog && ownRoles && demoPlan && ownPain && ownProgress
+      ? {
+          production: config.production,
+          devMockIdentity: config.devMockIdentity,
+          roles: ownRoles,
+          approvalStore: own.store,
+          audit: own.audit,
+          notifier: own.notifier,
+          approvals: approvalService,
+          training: trainingService,
+          plan: demoPlan,
+          progressStore: ownProgress,
+          progress: progressService,
+          pain: ownPain,
+        }
+      : undefined;
+  if (config.demoSeed) {
+    if (!demo) throw new ConfigError(`${DEMO_SEED_FLAG} needs the app's own in-memory stores.`);
+    await seedDemoHousehold(demo, localDate());
+  }
+  if (demo) {
+    const target = demo;
+    // Dev only: restore the seeded demo household (npm run demo:reset --workspace server).
+    app.post('/api/dev/demo/reset', async (req, reply) => {
+      reply.header('cache-control', 'no-store');
+      try {
+        const today = localDate();
+        await resetDemoHousehold(target, today);
+        req.log.info('demo household reset');
+        return { ok: true, date: today };
+      } catch (e) {
+        if (e instanceof DemoRefused) return reply.code(409).send({ error: 'refused', reason: e.message });
+        throw e;
+      }
+    });
+  }
 
   const webRoot = config.webRoot ? resolve(config.webRoot) : '';
   if (webRoot && existsSync(join(webRoot, 'index.html'))) {

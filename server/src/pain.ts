@@ -89,6 +89,11 @@ export class MemoryPainStore implements PainStore {
     return [...this.reports.values()].sort((a, b) => a.at.getTime() - b.at.getTime()).map(copy);
   }
 
+  /** Dev-only demo reset (src/demo.ts); a parent clears a pause with `clearOpen`, never this. */
+  clear(): void {
+    this.reports.clear();
+  }
+
   async clearOpen(at: Date, on: string): Promise<PainReport[]> {
     const cleared: PainReport[] = [];
     for (const r of this.reports.values()) {

@@ -34,6 +34,11 @@ export class InAppNotifier implements Notifier {
     this.unread.delete(ref);
   }
 
+  /** Dev-only demo reset (src/demo.ts). */
+  clear(): void {
+    this.unread.clear();
+  }
+
   /** The badge number for a role. */
   async unreadCount(to: Role): Promise<number> {
     let n = 0;

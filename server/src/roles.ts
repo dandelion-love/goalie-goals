@@ -51,6 +51,20 @@ export class MemoryRoleStore implements RoleStore {
   async roleFor(account: string): Promise<Role | null> {
     return this.roles.get(normaliseAccount(account)) ?? null;
   }
+
+  /** Every account that holds a role; the demo seed checks them before it touches anything. */
+  accounts(): string[] {
+    return [...this.roles.keys()];
+  }
+
+  set(account: string, role: Role): void {
+    this.roles.set(normaliseAccount(account), role);
+  }
+
+  /** Dev-only demo reset (src/demo.ts): the in-memory household starts again. */
+  clear(): void {
+    this.roles.clear();
+  }
 }
 
 /**

@@ -18,11 +18,17 @@ export interface Config {
   /** The `content` folder (exercise cards, figures, credits); empty means the one in the repo. */
   contentRoot?: string;
   production: boolean;
+  /**
+   * Local development only: start with the demo household (src/demo.ts). Needs the mock
+   * identity; refused with NODE_ENV=production.
+   */
+  demoSeed?: boolean;
 }
 
 export class ConfigError extends Error {}
 
 export const DEV_MOCK_FLAG = 'GOALIE_DEV_MOCK_IDENTITY';
+export const DEMO_SEED_FLAG = 'GOALIE_DEMO_SEED';
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const production = env.NODE_ENV === 'production';
@@ -31,6 +37,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new ConfigError(
       `${DEV_MOCK_FLAG} is set while NODE_ENV=production: the mock identity is for local development only.`,
     );
+  }
+  const demoSeed = env[DEMO_SEED_FLAG] === '1';
+  if (demoSeed && production) {
+    throw new ConfigError(`${DEMO_SEED_FLAG} is set while NODE_ENV=production: the demo household is for local development only.`);
+  }
+  if (demoSeed && !devMockIdentity) {
+    throw new ConfigError(`${DEMO_SEED_FLAG} needs ${DEV_MOCK_FLAG}=1: the demo household runs with the mock identity only.`);
   }
   const audience = (env.IAP_AUDIENCE ?? '').trim();
   if (!audience && !devMockIdentity) {
@@ -54,5 +67,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     webRoot: env.WEB_ROOT ?? '',
     contentRoot: env.CONTENT_ROOT ?? '',
     production,
+    demoSeed,
   };
 }

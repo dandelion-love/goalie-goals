@@ -97,6 +97,7 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
 | `GOALIE_DEV_MOCK_IDENTITY` | `1` turns on the mock identity (below). Refused with `NODE_ENV=production`. |
 | `GOALIE_DEV_AS` | Account the mock signs in as by default. |
 | `CONTENT_ROOT` | The `content` folder; unset means the one two levels above `src`/`dist`. |
+| `GOALIE_DEMO_SEED` | `1` seeds the demo household at startup (below). Needs the mock identity; refused with `NODE_ENV=production`. |
 
 Roles sit behind a `RoleStore` interface. `MemoryRoleStore` serves the walking skeleton;
 `FirestoreRoleStore` reads `members/{account}.role` through a minimal interface the
@@ -128,6 +129,30 @@ version) for the parent's inbox, and approves today's session and its cards as t
 parent so the keeper's player has something to run. The key is
 never written to disk, and the flag stops the server from starting when
 `NODE_ENV=production`.
+
+## The demo household
+
+`src/demo.ts` seeds the household that [`docs/demo.md`](../docs/demo.md) scripts: keeper Kai
+(`kai@example.com`) and parent Sam (`sam@example.com`); today's starter session and its cards
+approved as the demo parent; the demo requests from `src/demoData.ts` waiting in the parent's
+inbox (real cards at their spec doses); and the week before today as history: five trained
+days, one planned rest day (`DemoPlan`) and one safety stop, so the team streak starts at 6.
+Dates are the machine's local date, as the web app's are.
+
+```bash
+npm run demo          # from the repo root: build the web app, then npm run demo:seed
+npm run demo:seed --workspace server   # start on :8080 with the mock identity and the seed
+npm run demo:reset --workspace server  # restore the seeded state on the running server
+```
+
+The stores are in memory, so the seed runs inside the server: at startup with
+`GOALIE_DEMO_SEED=1`, or through `POST /api/dev/demo/reset`, a dev-only route that exists
+only with the mock identity on the app's own in-memory stores. The reset wipes those stores
+and seeds again; the dev mock's audit log is a `DemoAuditLog`, which starts a new append-only
+log rather than deleting events. Both the seed and the reset refuse (`DemoRefused`; the
+route answers `409`) in production, without the mock identity, or when the data holds any
+account outside `@example.com`: in the roles, as the decider of a request, or in the audit
+log. A refused seed stops the server from starting. Refusals never name the account.
 
 ## Tests
 

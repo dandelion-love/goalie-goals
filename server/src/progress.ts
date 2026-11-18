@@ -56,6 +56,11 @@ export class MemoryProgressStore implements ProgressStore {
   async list(): Promise<SessionRecord[]> {
     return this.records.map((r) => structuredClone(r));
   }
+
+  /** Dev-only demo reset (src/demo.ts). */
+  clear(): void {
+    this.records.length = 0;
+  }
 }
 
 /** Dates on which training was paused for the keeper (both ends included; `to` null: still paused). */

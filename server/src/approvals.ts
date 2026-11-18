@@ -135,6 +135,11 @@ export class MemoryApprovalStore implements ApprovalStore {
     }
     return null;
   }
+
+  /** Dev-only demo reset (src/demo.ts). `ApprovalStore` itself has no delete. */
+  clear(): void {
+    this.requests.clear();
+  }
 }
 
 export class MemoryAuditLog implements AuditLog {
