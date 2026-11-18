@@ -69,6 +69,23 @@ An empty `allowed_members` fails the plan and names the variable, never its valu
 runtime starts on a public placeholder image until the app's own image exists; only the
 sign-in proxy may invoke it, and only the allowed accounts get through the proxy.
 
+## Sign-in proxy
+
+A project with no organisation can't get an OAuth client for the sign-in proxy from any
+API, and the Terraform provider can't set one. The owner makes it once in the cloud console:
+
+1. Google Auth Platform: configure the app (External; Testing mode), and add each person who
+   may sign in as a test user.
+2. Clients: create a Web application client, and add the proxy's redirect URI that the
+   console's IAP documentation gives for that client.
+3. Secret Manager, in the app's project: store the client secret as
+   `iap-oauth-client-secret`. Run the command yourself; an agent never handles the secret.
+4. Put the client id in `~/.config/goalie-goals/app.tfvars` as `iap_oauth_client_id`
+   (or export `GOALIE_IAP_CLIENT_ID`), then run `scripts/iap-oauth.sh`.
+
+The script reads the secret into a private temporary file only, never onto a command line,
+deletes it on exit, and prints no values.
+
 ## Cost
 
 The budget alerts at 50%, 90% and 100% of actual spend and at 100% of forecast. It does
