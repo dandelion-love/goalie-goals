@@ -160,11 +160,12 @@ failures, and no AAA failures on K2 to K5. 2: no AA failures. 1: 1 to 3 AA failu
 
 **TC2 Control contrast.** Measure: for each button look from VC4 and each form control,
 the contrast of its fill, or else its border, against the background behind it (Script
-F). A native input wrapped in a `<label>` is measured by the label's fill and border,
-since the label is what the user sees and taps. This app's own threshold, stricter than WCAG 1.4.11, because controls are found at a
-glance from the floor. 3: every control at least 3:1. 2: one control below 3:1, not a
-primary or safety control. 1: two or three below. 0: a primary or safety control below
-3:1, or more than three below. **Target 3.**[^wcag]
+F). A radio or checkbox wrapped in a `<label>` is measured by the label's fill and border,
+since the label is what the user sees and taps; a wrapped text field, textarea or select
+is measured by its own border. This app's own threshold, stricter than WCAG 1.4.11,
+because controls are found at a glance from the floor. 3: every control at least 3:1.
+2: one control below 3:1, not a primary or safety control. 1: two or three below.
+0: a primary or safety control below 3:1, or more than three below. **Target 3.**[^wcag]
 
 **TC3 Type scale.** Measure: distinct font sizes, weights and families of text from
 Script A. 3: 4 to 6 sizes, each at least 1.2 times the next smaller, 2 or 3 weights,
@@ -187,9 +188,9 @@ per screen. 3: at least 16 CSS px everywhere and at least 20 px on K2 to K5. 2: 
 56 px on the in-session controls of K2 to K5 (start, end or done, next, skip rest, the
 form cues, Something hurts, Stop). A native input wrapped in a `<label>` is measured by
 the label's box, since the label is what the user taps. Links inside running text are
-exempt. 3: everything
-at least 44 by 44 and the in-session controls at least 56 by 56. 2: everything at least
-44 by 44. 1: everything at least 24 by 24. 0: anything below 24. **Target 3.**[^touch]
+exempt. 3: everything at least 44 by 44 and the in-session controls at least 56 by 56.
+2: everything at least 44 by 44. 1: everything at least 24 by 24. 0: anything below 24.
+**Target 3.**[^touch]
 
 **LT2 Target spacing.** Measure: the closest gap between two separate targets on each
 screen, from Script D. 3: at least 8 px everywhere. 2: at least 4 px. 1: more than 0 px.
@@ -257,9 +258,12 @@ cue file the app ships is read with
 section).[^ffmpeg-astats] A cue the app synthesises in the browser with Web Audio is
 rendered with an `OfflineAudioContext` through the app's own cue code and read from the
 rendered buffer (Script K). Both give peak and RMS in dBFS, scored together against the
-same anchors. 3: every peak at most -1.0 dB, and RMS levels within 3 dB of each other. 2: within 6 dB.
-1: within 10 dB. 0: a peak above -0.1 dB (clipping), a wider spread, or no files.
-**Target 3.**[^sound]
+same anchors. Each cue's tier and target RMS are those of the
+[sound format](/cc0-media/sound-format.md): functional -16, celebration -18, calm -22
+dBFS. The tiers are a design choice, so calm cues are meant to be quieter.
+3: each cue's RMS within 1.5 dB of its tier's target, every peak at most -1.0 dB.
+2: each within 3 dB. 1: each within 5 dB. 0: a peak above -0.1 dB (clipping), a cue
+further off, or no files. **Target 3.**[^sound]
 
 **SO3 Sync.** Measure: for each cue in Script E's log, its time minus the time of the
 screen change for the same moment (Script E's mutation log); negative means early.
@@ -291,6 +295,8 @@ Script B's `lcpMs`. 3: at most 1.0 s. 2: at most 2.5 s. 1: at most 4.0 s. 0: ove
 **Target 3.**[^latency]
 
 **FL4 Layout stability.** Measure: Script B's `cls` over the core loop and the reload.
+Every tap in the core loop is a trusted Playwright click (Script C), which the browser
+counts as input like a real tap, so only shifts a user would see as unexpected count.
 3: at most 0.05. 2: at most 0.1. 1: at most 0.25. 0: over 0.25. **Target 3.**[^latency]
 
 **FL5 Slow server.** Measure: with every `/api/` response delayed by 2 s through
@@ -316,9 +322,9 @@ elsewhere at most 20. Share of strings that meet their rule. 3: 100%. 2: at leas
 lose", "lose your", "you missed", "missed a day", "hurry", "last chance", "only N left",
 "before it's too late", "don't give up", "you failed", "lazy", "disappointed", "we miss
 you", "your streak will", "one more", "!!". In `web/src` only string literals and JSX
-text count (Script J), never operators such as `!!` or comments. 3: none. 2: one, on a parent-only screen.
-1: one or two anywhere else. 0: three or more, or any on K7, K8 or a stop screen.
-**Target 3.**[^copy]
+text count (Script J), never operators such as `!!` or comments. 3: none. 2: one, on a
+parent-only screen. 1: one or two anywhere else. 0: three or more, or any on K7, K8 or a
+stop screen. **Target 3.**[^copy]
 
 **CT3 Feedback names the cue.** Measure: the strings shown after a form-cue rating (K3,
 K4) and on K6. Each either names a cue, an exercise or an action, or grades the person
@@ -381,9 +387,9 @@ date. Scores and answers stay in the owner's private notes (usability check, AC3
 
 # Computation
 
-The scripts are run by the reviewer, in a scratch folder outside the repo. Scripts A, C,
-D, F, H and I are pasted into the page (DevTools console or Playwright `page.evaluate`);
-B and E are added before the first navigation with `context.addInitScript`; G is
+The scripts are run by the reviewer, in a scratch folder outside the repo. Scripts A, D,
+F, H and I are pasted into the page (DevTools console or Playwright `page.evaluate`);
+B and E are added before the first navigation with `context.addInitScript`; C and G are
 Playwright code; K runs with `page.evaluate` once the app has loaded.
 
 ## Setup
@@ -457,26 +463,38 @@ await page.goto('http://localhost:8080/');
 Read the result with `page.evaluate(() => window.__audit.summary())` at the end of the
 run. Interactions under 16 ms are not recorded, which only hides fast ones.
 
-## Script C: tap to next screen
+## Script C: tap to next screen (Playwright)
 
 ```js
-async ([label, marker, timeoutMs = 10000]) => {
-  const el = [...document.querySelectorAll('button, a, [role="button"]')]
-    .find(e => e.textContent.trim() === label || e.getAttribute('aria-label') === label);
-  if (!el) return { label, error: 'control not found' };
-  if (document.body.innerText.includes(marker)) return { label, error: 'marker already on screen' };
-  const t0 = performance.now();
-  el.click();
-  return new Promise(done => {
-    const tick = () => {
-      if (document.body.innerText.includes(marker)) return requestAnimationFrame(() => done({ label, ms: Math.round(performance.now() - t0) }));
-      if (performance.now() - t0 > timeoutMs) return done({ label, ms: Infinity });
-      requestAnimationFrame(tick);
-    };
-    tick();
-  });
+async function tapToScreen(page, label, marker, timeoutMs = 10000) {
+  const controls = 'button, a, [role="button"]';
+  const exact = new RegExp(`^\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`);
+  const control = page.locator(controls).filter({ hasText: exact })
+    .or(page.locator(`:is(${controls})[aria-label="${label}"]`)).first();
+  if (!(await control.count())) return { label, error: 'control not found' };
+  const armed = await page.evaluate(([marker, timeoutMs]) => {
+    if (document.body.innerText.includes(marker)) return false;
+    window.__tap = new Promise(done => addEventListener('pointerdown', e => {
+      const t0 = e.timeStamp;   // the tap itself, not Playwright's round trip
+      const tick = () => {
+        if (document.body.innerText.includes(marker)) return requestAnimationFrame(() => done(Math.round(performance.now() - t0)));
+        if (performance.now() - t0 > timeoutMs) return done(Infinity);
+        requestAnimationFrame(tick);
+      };
+      tick();
+    }, { capture: true, once: true }));
+    return true;
+  }, [marker, timeoutMs]);
+  if (!armed) return { label, error: 'marker already on screen' };
+  await control.click();   // a trusted click: the browser counts it as input, like a real tap
+  return { label, ms: await page.evaluate(() => window.__tap) };
 }
 ```
+
+Script C clicks with Playwright's `locator.click()`, never the page's `element.click()`.
+A trusted click marks the layout shifts right after it as caused by input, as a real tap
+does, so FL4 counts only the shifts a user would see as unexpected. The time runs from
+the click's `pointerdown` to the frame after the marker text appears.
 
 ## Script D: targets, spacing and sideways scroll
 
@@ -543,7 +561,7 @@ a latency pass.
   const ratio = (p, q) => { const [x, y] = [lum(p), lum(q)].sort((m, n) => n - m); return +((x + 0.05) / (y + 0.05)).toFixed(2); };
   const clear = c => c === 'transparent' || /rgba\(.*,\s*0\)$/.test(c);
   const behind = e => { for (let n = e.parentElement; n; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (!clear(c)) return c; } return 'rgb(255, 255, 255)'; };
-  const hit = e => (e.matches('input, select, textarea') && e.closest('label')) || e;   // a wrapped native input is its label
+  const hit = e => (e.matches('input[type="radio"], input[type="checkbox"]') && e.closest('label')) || e;   // a wrapped radio or checkbox is its label; a field, textarea or select is itself
   return [...new Set([...document.querySelectorAll('button, [role="button"], input, select, textarea')].map(hit))].map(e => {
     const s = getComputedStyle(e), bg = behind(e);
     const fill = clear(s.backgroundColor) ? 1 : ratio(s.backgroundColor, bg);
@@ -702,6 +720,11 @@ Scores are copied from the reviewer's signed audit comment on #54; the builder n
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Target (from this Decision, not a score) | | | | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
 | Baseline | 2026-11-18 | 8bb86c7 | [#54 audit](https://github.com/dandelion-love/goalie-goals/issues/54#issuecomment-6970879591) | 1 | 1 | 1 | 3 | 1 | 0 | 0 | 0 | 2 | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 3 | 3 | 0 | 3 | 1 | 3 | 2 | 3 | 0 | 3 | 2 | 0 | 1 |
+| Re-audit | 2026-11-18 | e735b71 | [#54 re-audit](https://github.com/dandelion-love/goalie-goals/issues/54#issuecomment-6977002578) | 3 | 2 | 3 | 1 | 3 | 3 | 2 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3* | 3 | 3 | 2 | 2 | 3 | 2 | 3 | 3 | 3 | 3 | 3 | 2 | 3 | 3 | 3 | 3 |
+
+\* The reviewer scored SO2 by its tier ruling, which the SO2 rule now states (method
+changes below). The re-audit totals 103 of 111, with 30 of 37 items at target, per the
+reviewer's correction on #54.
 
 ## Method changes
 
@@ -720,6 +743,19 @@ reviewer's method notes on #54. They do not change the baseline scores above.
 - Rig: each audit records headed or headless, and a headless run measures the wake-lock
   fallback notice like any other element; the Script C markers, the Script H selector
   and the K4 and K5 definitions from the baseline are fixed for every audit.
+
+**2026-11-18 (UTC), after the e735b71 re-audit.** Made after the full re-audit at
+e735b71 and before the next audit, from the reviewer's method notes and SO2 ruling on
+#54. They do not change any score above.
+
+- Script C (FL2, FL4) dispatches trusted clicks (Playwright `locator.click()`, not
+  `element.click()`), so FL4 counts only shifts users would see.
+- Script F (TC2) measures a wrapped textarea or select by its own border, not its
+  label's; the label rule stays for radios and checkboxes.
+- SO2: each cue's RMS within 1.5 dB of its tier's target in sound-format.md (functional
+  -16, celebration -18, calm -22 dBFS), every peak at most -1.0 dB. The 2, 1 and 0
+  anchors widen the tolerance to 3 dB, 5 dB and more. This replaces the "within 3 dB of
+  each other" rule, per the judge's ruling.
 
 # Consequences
 
