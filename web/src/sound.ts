@@ -20,7 +20,7 @@
 // render failed, is skipped: the screen still shows the moment, and the next cue plays as normal.
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { CUE_NAMES, CUE_RATE, bufferOf, prepareCue, prepareCues, schedule, yieldToPage, type CueName } from './cues';
+import { CUE_NAMES, CUE_RATE, bufferOf, prepareCue, prepareCues, schedule, yieldBriefly, yieldToPage, type CueName } from './cues';
 import type { PlayerState } from './player';
 import { afterPaint } from './defer';
 
@@ -85,8 +85,11 @@ export interface SoundEngine {
 /** Each cue's samples, as a promise per cue (`prepareCues`); called more than once, it returns the same promises. */
 export type CuePreparer = () => Record<CueName, Promise<Float32Array>>;
 
-/** The start cue's samples alone (`prepareCue`); shares its work with the `CuePreparer`. */
-export type StartCuePreparer = () => Promise<Float32Array>;
+/**
+ * The start cue's samples alone (`prepareCue`), yielding with `pause` between slices; shares its
+ * work with the `CuePreparer`.
+ */
+export type StartCuePreparer = (pause: () => Promise<void>) => Promise<Float32Array>;
 
 type AudioContextClass = new () => AudioContext;
 
@@ -106,7 +109,7 @@ export function createSoundEngine(
   now: () => number = () => Date.now(),
   prepare: CuePreparer = () => prepareCues(CUE_RATE),
   rate: number = CUE_RATE,
-  prepareStart: StartCuePreparer = () => prepareCue('start', CUE_RATE),
+  prepareStart: StartCuePreparer = (pause) => prepareCue('start', CUE_RATE, { pause }),
 ): SoundEngine {
   let ctx: AudioContext | null = null;
   let unlockedAt: number | null = null;
@@ -116,6 +119,8 @@ export function createSoundEngine(
   let wanted = false;
   // When the start cue was due but its buffer was not ready yet (a quick Start).
   let startDueAt: number | null = null;
+  // Set by the Start tap: from then on cue work never competes with the player's render.
+  let started = false;
   // Samples already computed, so the unlocking tap can make their buffers at once.
   const settled = new Map<CueName, Float32Array>();
   let watching = false;
@@ -198,7 +203,9 @@ export function createSoundEngine(
       prepared();
     },
     warmStart() {
-      prepareStart().then(
+      // On the home, the start cue's slices take their turn with the page's own tasks, so it is
+      // ready for a quick Start; once Start is tapped, they wait behind the player's render.
+      prepareStart(() => (started ? yieldToPage() : yieldBriefly())).then(
         (data) => {
           if (!settled.has('start')) settled.set('start', data);
         },
@@ -212,6 +219,7 @@ export function createSoundEngine(
     },
     unlock,
     unlockForStart() {
+      started = true;
       if (!ctx || ctx.state === 'closed') open();
       unlock();
     },

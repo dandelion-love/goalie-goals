@@ -690,3 +690,79 @@ describe('making the audio context before the Start tap (story 103)', () => {
     expect(calls).toEqual(['warm', 'prime']);
   });
 });
+
+describe('cue work never holds up a screen change (story 103 AC5)', () => {
+  /** A stand-in `scheduler.postTask` that queues each callback with its priority, run by hand. */
+  function postTaskQueue() {
+    const queue: { priority: string; run: () => void }[] = [];
+    const yields = vi.fn();
+    vi.stubGlobal('scheduler', {
+      yield: yields,
+      postTask: (cb: () => void, opts: { priority: string }) =>
+        new Promise<void>((resolve) => queue.push({ priority: opts.priority, run: () => (cb(), resolve()) })),
+    });
+    return { queue, yields };
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('yields with a background task, never scheduler.yield (whose continuation runs ahead of the page)', async () => {
+    const { queue, yields } = postTaskQueue();
+    const { yieldToPage, yieldBriefly } = await import('./cues');
+    void yieldToPage();
+    void yieldBriefly();
+    expect(queue.map((q) => q.priority)).toEqual(['background', 'user-visible']);
+    expect(yields).not.toHaveBeenCalled();
+  });
+
+  it('the Start tap computes no cue: all cue work waits for background tasks', async () => {
+    const { queue } = postTaskQueue();
+    const { forgetCues, prepareCues, cueStats } = await import('./cues');
+    forgetCues(8000);
+    const before = cueStats.synthesised;
+    const engine = createSoundEngine(() => fakeAudio('suspended') as unknown as AudioContext, () => 0, () => prepareCues(8000), 8000);
+    engine.unlockForStart();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    // Nothing computed in the tap or its microtasks; what is queued waits behind the page's work.
+    expect(cueStats.synthesised).toBe(before);
+    expect(queue.length).toBeGreaterThan(0);
+    expect(queue.every((q) => q.priority === 'background')).toBe(true);
+    // Run by hand, the work completes.
+    while (cueStats.synthesised < before + CUE_NAMES.length) {
+      const next = queue.shift();
+      if (next) next.run();
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    forgetCues(8000);
+  });
+
+  it('computes the start cue at the page’s own priority on the home, and behind the page once Start is tapped', async () => {
+    const pauses: (() => Promise<void>)[] = [];
+    const prepareStart = vi.fn((pause: () => Promise<void>) => {
+      pauses.push(pause);
+      return new Promise<Float32Array>(() => {});
+    });
+    const engine = createSoundEngine(() => fakeAudio('suspended') as unknown as AudioContext, () => 0, readyCues(), 48000, prepareStart);
+    const { queue } = postTaskQueue();
+    engine.warmStart();
+    void pauses[0]();
+    engine.unlockForStart();
+    void pauses[0]();
+    expect(queue.map((q) => q.priority)).toEqual(['user-visible', 'background']);
+  });
+
+  it('measures a long cue in short steps too, with the same result, so no step of its work is one long task', async () => {
+    const { levels, measuring } = await import('./cues');
+    const data = Float32Array.from({ length: 110_400 }, (_, i) => 0.5 * Math.sin(i / 7));
+    const steps = measuring(data);
+    let yields = 0;
+    let r = steps.next();
+    while (!r.done) {
+      yields += 1;
+      r = steps.next();
+    }
+    // One step per 8192 samples, not the whole cue at once.
+    expect(yields).toBeGreaterThanOrEqual(Math.floor(110_400 / 8192) - 1);
+    expect(r.value).toEqual(levels(data));
+  });
+});

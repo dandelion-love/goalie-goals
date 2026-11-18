@@ -180,7 +180,17 @@ function* synthesising(spec: CueSpec, rate: number): Generator<void, Float32Arra
 }
 
 /** Script K's measure: peak and RMS over the cue with samples below -60 dBFS trimmed from both ends. */
-export function levels(data: ArrayLike<number> | SampleReader, floor = 0.001): { peak: number; rms: number; first: number; last: number } {
+export function levels(data: ArrayLike<number> | SampleReader, floor = 0.001): Levels {
+  const steps = measuring(data, floor);
+  let r = steps.next();
+  while (!r.done) r = steps.next();
+  return r.value;
+}
+
+type Levels = { peak: number; rms: number; first: number; last: number };
+
+/** `levels`, yielding every 8 * STEP samples so a long cue's measure never runs as one long task (story 103 AC5). */
+export function* measuring(data: ArrayLike<number> | SampleReader, floor = 0.001): Generator<void, Levels> {
   const at = 'get' in data && typeof data.get === 'function' ? (i: number) => (data as SampleReader).get(i) : (i: number) => (data as ArrayLike<number>)[i];
   let first = 0;
   let last = data.length - 1;
@@ -193,6 +203,7 @@ export function levels(data: ArrayLike<number> | SampleReader, floor = 0.001): {
     const a = Math.abs(v);
     if (a > peak) peak = a;
     sum += v * v;
+    if ((i - first) % (8 * STEP) === 8 * STEP - 1) yield;
   }
   const n = last - first + 1;
   return { peak, rms: n > 0 ? Math.sqrt(sum / n) : 0, first, last };
@@ -215,11 +226,11 @@ function* computing(name: CueName, rate: number): Generator<void, Float32Array> 
   let scale = 1;
   for (let round = 0; round < 4; round++) {
     const s = scale;
-    const { rms } = levels({ length: raw.length, get: (i) => Math.fround(raw[i] * s) });
+    const { rms } = yield* measuring({ length: raw.length, get: (i) => Math.fround(raw[i] * s) }, 0.001);
     if (rms > 0) scale *= fromDb(TIER_RMS_DB[spec.tier]) / rms;
     yield;
   }
-  const peak = levels(raw).peak * scale;
+  const peak = (yield* measuring(raw, 0.001)).peak * scale;
   if (peak > fromDb(PEAK_CEILING_DB)) scale *= fromDb(PEAK_CEILING_DB) / peak;
   yield;
   const out = new Float32Array(raw.length);
@@ -265,10 +276,29 @@ export interface PrepareOptions {
   clock?: () => number;
 }
 
-/** Yield to the page: `scheduler.yield()` where there is one (input goes first), else a new task. */
+type PostTask = (callback: () => void, options: { priority: 'background' | 'user-visible' }) => Promise<unknown>;
+
+/**
+ * Yield to the page for a moment: the page's tasks and frames already due go first, then the
+ * work comes back in turn with them (a user-visible task where `scheduler.postTask` exists, else
+ * a new task). For the start cue on the keeper's home only, before any Start tap (story 103).
+ */
+export function yieldBriefly(): Promise<void> {
+  const s = (globalThis as { scheduler?: { postTask?: PostTask } }).scheduler;
+  if (typeof s?.postTask === 'function') return s.postTask(() => {}, { priority: 'user-visible' }).then(() => {});
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Yield to the page, and come back only once the page has nothing more urgent (story 103 AC5):
+ * a background-priority task where `scheduler.postTask` exists, else a new task. Never
+ * `scheduler.yield()`: its continuation runs ahead of the page's own tasks, so back-to-back
+ * slices of cue work held off React's render of the next screen, and the frames that paint it,
+ * for over a second on a busy page.
+ */
 export function yieldToPage(): Promise<void> {
-  const s = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
-  if (s?.yield) return s.yield();
+  const s = (globalThis as { scheduler?: { postTask?: PostTask } }).scheduler;
+  if (typeof s?.postTask === 'function') return s.postTask(() => {}, { priority: 'background' }).then(() => {});
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
