@@ -2,6 +2,8 @@
 
 ## 2026-11-18
 
+* **Added**: government and health-body research for exercise figures: licences side by side (US federal works, UK, Canadian, Australian and New Zealand open licences, WHO), the publications checked per country, health organisations and physio sheets, and a coverage table for every card and goalkeeper move; the media Decision and the credits check gain public-domain US federal works and OGL v3.0.
+
 * **Added**: CC0 media research: Openclipart, Wikimedia Commons, Public Domain Vectors and FreeSVG, Openverse, CC0 icon and character sets and open pose data, with a coverage table per exercise; the exercise-media Decision gains the CC0 sources that pass and new never-used entries.
 * **Added**: quality research (usability heuristics, usability measures, SUS and child-adapted versions, WCAG 2.2 thresholds, platform guidelines, legibility at a distance, visual consistency, game feel, motion, sound, copy, response times) with the quality-rubric Decision and an empty baseline table.
 * **Added**: CC0 media research: CC0 rigged characters and animation sets with a per-pack licence table, open tools to pose and render them, and a feasibility note with one rendered sample pose and a comparison with the parametric vector figure.

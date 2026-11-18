@@ -25,6 +25,10 @@ sources:
   - { id: cc0-sets, resource: /cc0-media/cc0-icon-and-character-sets.md, title: CC0 icon and character sets }
   - { id: cc0-pose-data, resource: /cc0-media/pose-data.md, title: Open 3D animation and motion data as pose references }
   - { id: cc0-coverage, resource: /cc0-media/coverage.md, title: CC0 figure coverage per exercise }
+  - { id: gov-licences, resource: /cc0-media/government-licences.md, title: Government works and open government licences side by side }
+  - { id: gov-publications, resource: /cc0-media/government-exercise-publications.md, title: Government exercise publications checked for figures }
+  - { id: health-bodies, resource: /cc0-media/health-organisation-sources.md, title: Health organisations and physio exercise sheets }
+  - { id: gov-coverage, resource: /cc0-media/government-coverage.md, title: Government and health-body figures for each exercise }
 ---
 
 # Context
@@ -39,6 +43,8 @@ The keeper should see a clear picture or short animation and a short explanation
 |---|---|---|---|
 | Exercise figures for general moves | Everkinetic line drawings, recoloured and restyled to match[^everkinetic-licence] | CC BY-SA 4.0 | Files of stated origin only; adapted files released under CC BY-SA 4.0.[^cc-by-sa-4] |
 | Exercise figures for general moves, second choice | wger images with style line, 3D, low-poly or other; licence CC0, CC BY 4 or CC BY-SA 3 or 4; a named author; not flagged as AI-generated[^wger-api-image] | As recorded per file | Snapshot at build time with licence fields kept. |
+| Pose references for general moves, redrawn in the app's style | US federal works with no other party credited for the figure: today the line drawings in chapter 7 and Table 8-2 of the 1997 Navy SEAL Physical Fitness Guide, and FM 21-20 (1992) figures a person has confirmed are drawings[^gov-publications][^gov-coverage] | Public domain by statute (`PD-USGov`)[^gov-licences] | Drawing only: no dose, programme, uniform or insignia. Credit line anyway, naming the publication and agency, because the statute is US law only. |
+| Figures under an open government licence | A figure whose own page puts it under the UK OGL v3.0, or CC BY 4.0 in Australia or New Zealand, and does not exclude it as an image, logo, crest, insignia or third-party material[^gov-licences] | `OGL-UK-3.0` or `CC-BY-4.0` | Credit line required, with the publisher's attribution statement. None has passed yet.[^gov-coverage] |
 | Goalkeeper and all other exercises | The app's own parametric vector figure and set-up diagrams[^figures] | Own work | The main source; also used to redraw general moves when a borrowed drawing clashes with the style. |
 | Interface icons | Tabler Icons[^tabler] | MIT | Notice kept in the repo credits. |
 | Playful glyphs (ball, goal net, gloves, stopwatch, fire, trophy) for rewards and streaks | OpenMoji[^openmoji] | CC BY-SA 4.0 | Credit line on the credits page, as the project asks.[^openmoji] |
@@ -53,6 +59,7 @@ The keeper should see a clear picture or short animation and a short explanation
 - The exercise card shows a small credit line (author and licence, linked) under any borrowed or adapted figure; the app's own drawings show none.
 - A credits page in the app and a credits file in the repo list every entry, generated from the manifest.
 - An asset whose licence needs attribution in a form or place the app cannot provide is not used.
+- Government figures: a public-domain US federal figure gets a credit line for provenance (publication, agency, figure or page); an OGL v3.0 or CC BY 4.0 figure gets the credit line its licence requires.[^gov-licences]
 
 ## Stored format
 
@@ -87,6 +94,12 @@ In order:
 | Files whose rights statements conflict, such as the CDC "Growing Stronger" animations | Tagged public domain, but a reported copyright notice allows only unaltered copies; held until a person reads the booklet's copyright page.[^cc0-commons] |
 | Motion-capture data that is not CC0, such as the CMU database | Not CC0, and its terms could not be read at the source.[^cc0-pose-data] |
 | Any asset with a missing, unclear or forbidding licence, or no named author where attribution is required | The licence gate. |
+| Non-commercial or no-derivatives material, including WHO publications (CC BY-NC-SA 3.0 IGO) | Cannot flow into CC BY-SA 4.0 content.[^health-bodies] |
+| Material under a licence with no stated path into CC BY-SA 4.0, including the Open Government Licence - Canada 2.0, and Canada.ca's non-commercial terms | The publisher states no compatibility.[^gov-licences] |
+| NHS website exercise images | On the NHS list of images not licensed for re-use.[^gov-publications] |
+| Crests, coats of arms, logos, service marks and military insignia, and any figure a publication credits to someone else | Excluded by the open licences and outside the US statute.[^gov-licences] |
+| Physiotherapy sheets made with commercial exercise software, and anything offered only as "free to download" or "for personal use" | The drawings belong to the vendor; free access is not a licence.[^health-bodies] |
+| Doses, programmes and test standards from adult or military guides | Not youth guidance; the training-rules Decision sets every dose. |
 
 # Consequences
 
@@ -114,3 +127,7 @@ In order:
 [^cc0-sets]: CC0 icon and character sets
 [^cc0-pose-data]: Open 3D animation and motion data as pose references
 [^cc0-coverage]: CC0 figure coverage per exercise
+[^gov-licences]: Government works and open government licences side by side
+[^gov-publications]: Government exercise publications checked for figures
+[^health-bodies]: Health organisations and physio exercise sheets
+[^gov-coverage]: Government and health-body figures for each exercise

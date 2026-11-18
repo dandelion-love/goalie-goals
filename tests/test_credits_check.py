@@ -49,6 +49,15 @@ class Credits(unittest.TestCase):
         found = self.write([{**GOOD, "licence": "see website"}], (GOOD["path"],))
         self.assertTrue(any("not compatible" in f for f in found), found)
 
+    def test_government_licences(self) -> None:
+        for lic in ("OGL-UK-3.0", "PD-USGov"):
+            entry = {**GOOD, "licence": lic, "author": "A government department",
+                     "source": "https://example.com/publication"}
+            self.assertEqual(self.write([entry], (GOOD["path"],)), [], lic)
+        for lic in ("OGL-Canada-2.0", "CC-BY-NC-SA-3.0-IGO", "OGL-UK-2.0"):
+            found = self.write([{**GOOD, "licence": lic}], (GOOD["path"],))
+            self.assertTrue(any("not compatible" in f for f in found), (lic, found))
+
     def test_share_alike_outside_content(self) -> None:
         stray = {**GOOD, "path": "web/public/icons/glove.svg"}
         found = self.write([stray])
