@@ -17,6 +17,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 * [Safe training for U15 athletes](/training/index.md) - youth resistance training, plyometrics, speed, goalkeeper power, recovery, sleep and nutrition
 
+* [Progression library](/progression-library/index.md) - habit from stable cues, themed-day rotations, youth periodisation and the football year, a proposed themed week and a four-week block with a lighter week
+
 * [Progression and habit](/progression/index.md) - streaks, XP, levels, quests, badges, rewards and reminders, the science behind them, and the dark patterns refused
 
 * [Motion and celebration](/motion/index.md) - open motion libraries and runtimes, animation file licences, and the motion principles for sets, XP, streaks and the finish
