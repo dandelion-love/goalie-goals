@@ -5,7 +5,7 @@ description: How a standalone web app fills the iPad screen, keeps content clear
 tags: [platform, ipados, layout, safe-area, orientation]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: webdev-manifest, resource: https://web.dev/learn/pwa/web-app-manifest, title: "web.dev Learn PWA: Web app manifest" }
   - { id: mdn-env, resource: https://developer.mozilla.org/en-US/docs/Web/CSS/env, title: "MDN: CSS env() and safe-area-inset-*" }

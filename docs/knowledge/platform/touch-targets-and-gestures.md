@@ -5,7 +5,7 @@ description: Minimum hit sizes, removing tap delay, one input model for finger a
 tags: [platform, ipados, touch, accessibility]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: hig-buttons, resource: https://developer.apple.com/design/human-interface-guidelines/buttons, title: "Apple Human Interface Guidelines: Buttons" }
   - { id: wcag-target, resource: https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html, title: "W3C Understanding WCAG 2.2: Target Size (Minimum)" }

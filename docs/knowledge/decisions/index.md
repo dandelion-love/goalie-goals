@@ -27,3 +27,7 @@
 ## Equipment at home
 
 * [Equipment model](/decisions/equipment-model.md) - How the app records each household's equipment, how every exercise declares what it needs, how substitutes are chosen, the generic default profile, and the rule that an exercise with no safe substitute is left out.
+
+## How training apps explain exercises
+
+* [Reuse of exercise content](/decisions/exercise-content-reuse.md) - What the app reuses as-is, adapts, and builds to explain exercises, with each licence named and checked for a public repo and hosted app, and what it rejects.

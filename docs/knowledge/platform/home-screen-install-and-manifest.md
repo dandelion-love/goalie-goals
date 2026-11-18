@@ -5,7 +5,7 @@ description: How a site becomes a Home Screen web app on iPadOS, what Safari rea
 tags: [platform, ipados, safari, pwa, manifest]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: webkit-26, resource: https://webkit.org/blog/17333/webkit-features-in-safari-26-0/, title: "WebKit Features in Safari 26.0" }
   - { id: webkit-164, resource: https://webkit.org/blog/13966/webkit-features-in-safari-16-4/, title: "WebKit Features in Safari 16.4" }

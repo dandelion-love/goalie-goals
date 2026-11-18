@@ -5,7 +5,7 @@ description: Screen Wake Lock works in Safari from 16.4 but only in Home Screen 
 tags: [platform, ipados, wake-lock]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: caniuse-wakelock, resource: https://caniuse.com/wake-lock, title: "Can I use: Screen Wake Lock API" }
   - { id: webkit-184, resource: https://webkit.org/blog/16574/webkit-features-in-safari-18-4/, title: "WebKit Features in Safari 18.4" }

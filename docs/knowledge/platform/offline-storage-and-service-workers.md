@@ -5,7 +5,7 @@ description: How much a Home Screen web app may store, when WebKit evicts it, an
 tags: [platform, ipados, service-worker, offline, storage]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: webkit-storage, resource: https://webkit.org/blog/14403/updates-to-storage-policy/, title: "WebKit: Updates to Storage Policy" }
   - { id: mdn-storage, resource: https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria, title: "MDN: Storage quotas and eviction criteria" }

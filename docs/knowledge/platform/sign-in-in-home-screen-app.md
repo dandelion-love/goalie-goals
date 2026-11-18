@@ -5,7 +5,7 @@ description: How the identity-aware proxy's session cookie, redirects and 401s b
 tags: [platform, ipados, sign-in, proxy, cookies]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: iap-sessions, resource: https://docs.cloud.google.com/iap/docs/sessions-howto, title: "Identity-Aware Proxy: Managing sessions" }
   - { id: iap-signed, resource: https://docs.cloud.google.com/iap/docs/signed-headers-howto, title: "Identity-Aware Proxy: Securing your app with signed headers" }
