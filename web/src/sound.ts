@@ -3,9 +3,15 @@
 //
 // Sound is never the only signal: every cue fires on a change the screen also shows, and if
 // the iPad blocks audio the session runs exactly the same without it.
+//
+// No cue is synthesised as it plays (story #97). `warm()` (at app start, and again in the
+// unlocking tap) computes every cue's samples once, in short slices that yield to the page.
+// Once a context exists, each cue becomes an AudioBuffer as soon as its samples are ready, and
+// playing a cue only starts a buffer source on it. A cue whose buffer is not ready yet, or whose
+// render failed, is skipped: the screen still shows the moment, and the next cue plays as normal.
 
 import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from 'react';
-import { render, type CueName } from './cues';
+import { CUE_NAMES, CUE_RATE, bufferOf, prepareCues, schedule, yieldToPage, type CueName } from './cues';
 import type { PlayerState } from './player';
 
 export const MUTE_KEY = 'goalie-goals.sound-muted';
@@ -30,12 +36,19 @@ export function writeMuted(muted: boolean): void {
 const RESUME_GRACE_MS = 1000;
 
 export interface SoundEngine {
+  /** Start computing the cues, in slices (safe to call any time, and more than once). */
+  warm(): void;
   /** Call from a tap handler only: creates or resumes the context, which unlocks sound on the iPad. */
   unlock(): void;
-  /** Play a cue now. False when sound is not unlocked, is blocked, or failed: the screen carries on alone. */
+  /** Play a cue now. False when sound is not unlocked, is blocked, the cue is not ready, or failed: the screen carries on alone. */
   play(name: CueName): boolean;
   readonly unlocked: boolean;
+  /** Whether the cue's buffer is ready to play on the current context. */
+  ready(name: CueName): boolean;
 }
+
+/** Each cue's samples, as a promise per cue (`prepareCues`); called more than once, it returns the same promises. */
+export type CuePreparer = () => Record<CueName, Promise<Float32Array>>;
 
 type AudioContextClass = new () => AudioContext;
 
@@ -50,9 +63,63 @@ function defaultContext(): AudioContext | null {
   }
 }
 
-export function createSoundEngine(make: () => AudioContext | null = defaultContext, now: () => number = () => Date.now()): SoundEngine {
+export function createSoundEngine(
+  make: () => AudioContext | null = defaultContext,
+  now: () => number = () => Date.now(),
+  prepare: CuePreparer = () => prepareCues(CUE_RATE),
+  rate: number = CUE_RATE,
+): SoundEngine {
   let ctx: AudioContext | null = null;
   let unlockedAt: number | null = null;
+  // Samples already computed, so the unlocking tap can make their buffers at once.
+  const settled = new Map<CueName, Float32Array>();
+  let watching = false;
+  const prepared = () => {
+    const pending = prepare();
+    if (!watching) {
+      watching = true;
+      for (const name of CUE_NAMES) pending[name].then((data) => settled.set(name, data), () => {});
+    }
+    return pending;
+  };
+  // The buffers made on the current context: one per cue, made once.
+  let buffers = new Map<CueName, AudioBuffer>();
+  const load = (c: AudioContext) => {
+    const own = new Map<CueName, AudioBuffer>();
+    buffers = own;
+    const make = (name: CueName, data: Float32Array) => {
+      // A context made since (the old one was closed) loads its own.
+      if (ctx !== c || own.has(name)) return;
+      try {
+        own.set(name, bufferOf(c, data, rate));
+      } catch {
+        // No buffer: this cue is skipped.
+      }
+    };
+    const pending = prepared();
+    // In the tap, only the cue it plays: the other ready ones follow, one small task each.
+    const later: CueName[] = [];
+    for (const name of CUE_NAMES) {
+      const ready = settled.get(name);
+      if (ready) {
+        if (name === 'start') make(name, ready);
+        else later.push(name);
+        continue;
+      }
+      pending[name].then(
+        (data) => make(name, data),
+        () => {
+          // The render failed: this cue is skipped; the rest play.
+        },
+      );
+    }
+    void (async () => {
+      for (const name of later) {
+        await yieldToPage();
+        make(name, settled.get(name)!);
+      }
+    })();
+  };
   const resume = (c: AudioContext) => {
     try {
       void c.resume().catch(() => {});
@@ -64,8 +131,18 @@ export function createSoundEngine(make: () => AudioContext | null = defaultConte
     get unlocked() {
       return unlockedAt !== null;
     },
+    ready(name) {
+      return buffers.has(name);
+    },
+    warm() {
+      prepared();
+    },
     unlock() {
-      if (!ctx || ctx.state === 'closed') ctx = make();
+      if (!ctx || ctx.state === 'closed') {
+        ctx = make();
+        // Assigned first: `load` checks its buffers belong to the current context.
+        if (ctx) load(ctx);
+      }
       if (!ctx) return;
       unlockedAt = now();
       if (ctx.state !== 'running') resume(ctx);
@@ -87,8 +164,11 @@ export function createSoundEngine(make: () => AudioContext | null = defaultConte
         // hidden): skip the cue rather than play it late, out of step with the screen.
         if (now() - unlockedAt > RESUME_GRACE_MS) return false;
       }
+      const buffer = buffers.get(name);
+      // Not ready yet (or its render failed): skip it rather than compute it now.
+      if (!buffer) return false;
       try {
-        render(ctx, name);
+        schedule(ctx, buffer);
         return true;
       } catch {
         return false;

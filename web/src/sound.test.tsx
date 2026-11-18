@@ -4,7 +4,7 @@ import { App } from './App';
 import { SessionPlayer } from './SessionPlayer';
 import { STOP_UNDO_MS, initialState, reduce, stepsOf, type Action, type PlayerState } from './player';
 import { MUTE_KEY, createSoundEngine, cueForChange, sound } from './sound';
-import { RUBRIC_MOMENTS, type CueName } from './cues';
+import { CUE_NAMES, RUBRIC_MOMENTS, type CueName } from './cues';
 import type { WakeLockController } from './wakeLock';
 import { PLANK, demoSession, keeperServer, todayWith } from './session.fixture';
 
@@ -21,7 +21,11 @@ function fakeAudio(state: AudioContextState = 'running') {
       fake.resumes += 1;
       return Promise.resolve();
     },
-    createBuffer: (_c: number, length: number) => ({ length, getChannelData: () => new Float32Array(length) }),
+    buffers: 0,
+    createBuffer: (_c: number, length: number) => {
+      fake.buffers += 1;
+      return { length, getChannelData: () => new Float32Array(length) };
+    },
     createBufferSource() {
       const src = {
         buffer: null as { length: number } | null,
@@ -35,6 +39,22 @@ function fakeAudio(state: AudioContextState = 'running') {
   };
   return fake;
 }
+
+/** Every cue's samples already computed: a stand-in for `prepareCues`, counting its calls. */
+function readyCues(overrides: Partial<Record<CueName, Promise<Float32Array>>> = {}) {
+  const promises = Object.fromEntries(CUE_NAMES.map((n) => [n, overrides[n] ?? Promise.resolve(new Float32Array(100 + CUE_NAMES.indexOf(n)))])) as Record<
+    CueName,
+    Promise<Float32Array>
+  >;
+  for (const p of Object.values(promises)) p.catch(() => {});
+  const prepare = vi.fn(() => promises);
+  return prepare;
+}
+
+/** Let settled cue promises make their buffers (one task each, after the tap's own). */
+const settle = async () => {
+  for (let i = 0; i <= CUE_NAMES.length; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+};
 
 const wake: WakeLockController = {
   status: 'active',
@@ -52,11 +72,11 @@ afterEach(() => {
 });
 
 describe('the sound engine', () => {
-  it('plays nothing before the unlocking tap, then plays cues on the context it made', () => {
+  it('plays nothing before the unlocking tap, then plays cues on the context it made', async () => {
     const audio = fakeAudio('suspended');
     const make = vi.fn(() => audio as unknown as AudioContext);
     let now = 0;
-    const engine = createSoundEngine(make, () => now);
+    const engine = createSoundEngine(make, () => now, readyCues());
 
     expect(engine.play('start')).toBe(false);
     expect(make).not.toHaveBeenCalled();
@@ -66,6 +86,7 @@ describe('the sound engine', () => {
     expect(make).toHaveBeenCalledTimes(1);
     expect(audio.resumes).toBe(1);
     expect(audio.started).toEqual([expect.objectContaining({ length: 1 })]); // the silent unlock buffer
+    await settle();
 
     // The resume asked for in the tap may still be settling: the first cue still plays.
     expect(engine.play('start')).toBe(true);
@@ -77,15 +98,109 @@ describe('the sound engine', () => {
     expect(audio.started).toHaveLength(3);
   });
 
-  it('skips a cue when audio stays blocked, rather than playing it late', () => {
+  it('skips a cue when audio stays blocked, rather than playing it late', async () => {
     const audio = fakeAudio('suspended');
     let now = 0;
-    const engine = createSoundEngine(() => audio as unknown as AudioContext, () => now);
+    const engine = createSoundEngine(() => audio as unknown as AudioContext, () => now, readyCues());
     engine.unlock();
+    await settle();
+    expect(engine.ready('rest')).toBe(true);
     now = 5_000;
     expect(engine.play('rest')).toBe(false);
     expect(audio.started).toHaveLength(1);
     expect(audio.resumes).toBeGreaterThan(1);
+  });
+
+  it('makes each cue’s buffer once, after the unlock, and a play only starts a source on it (story #97 AC1)', async () => {
+    const audio = fakeAudio();
+    const prepare = readyCues();
+    const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, prepare);
+    engine.warm();
+    expect(audio.buffers).toBe(0);
+    engine.unlock();
+    await settle();
+    // The silent unlock buffer, then one buffer per cue.
+    expect(audio.buffers).toBe(1 + CUE_NAMES.length);
+    for (const name of CUE_NAMES) {
+      expect(engine.play(name), name).toBe(true);
+      expect(engine.play(name), name).toBe(true);
+    }
+    expect(audio.buffers).toBe(1 + CUE_NAMES.length);
+    // Two plays of a cue start two sources on the same buffer.
+    const played = audio.started.slice(1);
+    for (let i = 0; i < CUE_NAMES.length; i++) {
+      expect(played[2 * i]).toBe(played[2 * i + 1]);
+      expect(played[2 * i].length).toBe(100 + i);
+    }
+    // Another tap reuses the context and its buffers: nothing is prepared or made again.
+    engine.unlock();
+    await settle();
+    expect(audio.buffers).toBe(1 + CUE_NAMES.length + 1);
+    expect(prepare).toHaveBeenCalledTimes(2); // warm() and the first unlock; prepare returns the same work
+  });
+
+  it('plays the start cue in the unlocking tap itself once the cues were warmed before it', async () => {
+    const audio = fakeAudio();
+    const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, readyCues());
+    engine.warm();
+    await settle();
+    // The tap: unlock and the first cue, with no wait between them. Only the start cue's
+    // buffer is made in the tap; the rest follow in their own tasks.
+    engine.unlock();
+    expect(engine.ready('start')).toBe(true);
+    expect(engine.play('start')).toBe(true);
+    expect(audio.started).toHaveLength(2);
+    expect(audio.buffers).toBe(2);
+    expect(engine.ready('done')).toBe(false);
+    await settle();
+    expect(audio.buffers).toBe(1 + CUE_NAMES.length);
+    expect(engine.play('done')).toBe(true);
+  });
+
+  it('skips a cue whose buffer is not ready, silently, and plays the next as normal (story #97 AC2)', async () => {
+    const audio = fakeAudio();
+    let finish!: (d: Float32Array) => void;
+    const slow = new Promise<Float32Array>((resolve) => (finish = resolve));
+    const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, readyCues({ done: slow }));
+    engine.unlock();
+    await settle();
+    expect(engine.ready('done')).toBe(false);
+    expect(() => engine.play('done')).not.toThrow();
+    expect(engine.play('done')).toBe(false);
+    expect(audio.started).toHaveLength(1);
+    expect(engine.play('start')).toBe(true);
+    expect(audio.started).toHaveLength(2);
+    // Once ready, it plays.
+    finish(new Float32Array(10));
+    await settle();
+    expect(engine.play('done')).toBe(true);
+    expect(audio.started).toHaveLength(3);
+  });
+
+  it('skips a cue whose render failed, silently, and plays the next as normal (story #97 AC2)', async () => {
+    const audio = fakeAudio();
+    const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, readyCues({ setDone: Promise.reject(new Error('render failed')) }));
+    engine.unlock();
+    await settle();
+    expect(engine.ready('setDone')).toBe(false);
+    expect(() => engine.play('setDone')).not.toThrow();
+    expect(engine.play('setDone')).toBe(false);
+    expect(engine.play('rest')).toBe(true);
+    expect(audio.started).toHaveLength(2);
+  });
+
+  it('skips a cue whose buffer could not be made, and plays the rest', async () => {
+    const audio = fakeAudio();
+    const make = audio.createBuffer;
+    audio.createBuffer = (c: number, length: number) => {
+      if (length === 100 + CUE_NAMES.indexOf('go')) throw new Error('no buffer');
+      return make(c, length);
+    };
+    const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, readyCues());
+    engine.unlock();
+    await settle();
+    expect(engine.play('go')).toBe(false);
+    expect(engine.play('tick')).toBe(true);
   });
 
   it('does nothing where there is no Web Audio at all', () => {

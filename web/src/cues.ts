@@ -3,10 +3,16 @@
 //
 // Each cue is a few sine partials under an attack-and-decay envelope, computed into an
 // AudioBuffer and played as an AudioBufferSourceNode. `render(ctx, name)` does that on any
-// BaseAudioContext: the live AudioContext the player uses and the OfflineAudioContext the
-// quality rubric's Script K measures with run the same code, so what is measured is what plays.
+// BaseAudioContext: it is the quality rubric's Script K entry, and it schedules the same
+// samples, through the same `schedule()`, that the app plays, so what is measured is what plays.
 // A buffer source (rather than OscillatorNodes) is also what the rubric's sound probe
 // (Script E) logs, so SO1 and SO3 can see every cue.
+//
+// Synthesis is a JS loop (about 0.45 s for "done" on a fast machine), so the app never runs it
+// in one go (story #97): `prepareCues()` computes every cue once, in slices of a few
+// milliseconds that yield to the page between them, and caches the samples. The sound engine
+// turns each into an AudioBuffer once, after the unlocking tap, and a cue then only starts a
+// buffer source. The sliced and the one-go paths run the same steps, so the samples are equal.
 //
 // Every tone here is original and generic (a beep, a blip, a rising major third, a soft
 // low strike). None copies or imitates another app's sounds or jingles.
@@ -144,8 +150,14 @@ export function seconds(name: CueName): number {
 
 const FADE_IN = 0.002;
 const FADE_OUT = 0.03;
+/** Samples of one note between checks of the slice's time budget. */
+const STEP = 1024;
 
-function synthesise(spec: CueSpec, rate: number): Float32Array {
+/**
+ * Synthesise the cue, yielding every STEP samples of a note so a caller can spread the work
+ * over several tasks. Run to the end in one go, it is the plain synthesis loop.
+ */
+function* synthesising(spec: CueSpec, rate: number): Generator<void, Float32Array> {
   const length = Math.ceil(Math.max(...spec.notes.map((n) => n.at + n.len)) * rate);
   const out = new Float32Array(length);
   for (const n of spec.notes) {
@@ -160,23 +172,27 @@ function synthesise(spec: CueSpec, rate: number): Float32Array {
       let v = 0;
       for (const [m, a] of n.partials) v += a * Math.sin(2 * Math.PI * n.hz * m * t);
       out[first + i] += gain * rise * Math.max(0, edge) * v;
+      if (i % STEP === STEP - 1) yield;
     }
+    yield;
   }
   return out;
 }
 
 /** Script K's measure: peak and RMS over the cue with samples below -60 dBFS trimmed from both ends. */
-export function levels(data: ArrayLike<number>, floor = 0.001): { peak: number; rms: number; first: number; last: number } {
+export function levels(data: ArrayLike<number> | SampleReader, floor = 0.001): { peak: number; rms: number; first: number; last: number } {
+  const at = 'get' in data && typeof data.get === 'function' ? (i: number) => (data as SampleReader).get(i) : (i: number) => (data as ArrayLike<number>)[i];
   let first = 0;
   let last = data.length - 1;
-  while (first < data.length && Math.abs(data[first]) < floor) first++;
-  while (last > first && Math.abs(data[last]) < floor) last--;
+  while (first < data.length && Math.abs(at(first)) < floor) first++;
+  while (last > first && Math.abs(at(last)) < floor) last--;
   let peak = 0;
   let sum = 0;
   for (let i = first; i <= last; i++) {
-    const a = Math.abs(data[i]);
+    const v = at(i);
+    const a = Math.abs(v);
     if (a > peak) peak = a;
-    sum += data[i] * data[i];
+    sum += v * v;
   }
   const n = last - first + 1;
   return { peak, rms: n > 0 ? Math.sqrt(sum / n) : 0, first, last };
@@ -187,40 +203,152 @@ const fromDb = (db: number) => 10 ** (db / 20);
 
 const cache = new Map<string, Float32Array>();
 
-/** The cue's samples at `rate`, scaled to its tier's RMS and kept under the peak ceiling. */
-export function samples(name: CueName, rate: number): Float32Array {
-  const key = `${name}@${rate}`;
-  const hit = cache.get(key);
-  if (hit) return hit;
+/** How many times a cue has been synthesised, across rates: each cue at a rate is synthesised once. */
+export const cueStats = { synthesised: 0 };
+
+/** The cue's samples at `rate`, scaled to its tier's RMS and kept under the peak ceiling, yielding between steps. */
+function* computing(name: CueName, rate: number): Generator<void, Float32Array> {
   const spec = CUES[name];
-  const raw = synthesise(spec, rate);
-  // The trimmed span depends on the scale, so settle it in a few rounds.
+  const raw = yield* synthesising(spec, rate);
+  // The trimmed span depends on the scale, so settle it in a few rounds. Each round measures the
+  // samples as scaled and stored (float32), without making a scaled copy.
   let scale = 1;
   for (let round = 0; round < 4; round++) {
-    const scaled = raw.map((v) => v * scale);
-    const { rms } = levels(scaled);
+    const s = scale;
+    const { rms } = levels({ length: raw.length, get: (i) => Math.fround(raw[i] * s) });
     if (rms > 0) scale *= fromDb(TIER_RMS_DB[spec.tier]) / rms;
+    yield;
   }
   const peak = levels(raw).peak * scale;
   if (peak > fromDb(PEAK_CEILING_DB)) scale *= fromDb(PEAK_CEILING_DB) / peak;
-  const out = raw.map((v) => v * scale);
-  cache.set(key, out);
+  yield;
+  const out = new Float32Array(raw.length);
+  for (let i = 0; i < raw.length; i++) {
+    out[i] = raw[i] * scale;
+    if (i % (8 * STEP) === 8 * STEP - 1) yield;
+  }
+  cueStats.synthesised += 1;
   return out;
 }
 
+/** Samples read through a function: lets `levels` measure scaled samples without a copy. */
+interface SampleReader {
+  readonly length: number;
+  get(i: number): number;
+}
+
+const key = (name: CueName, rate: number) => `${name}@${rate}`;
+
+/** The cue's samples at `rate`, computed in one go if not cached (the audit's path; the app uses `prepareCues`). */
+export function samples(name: CueName, rate: number): Float32Array {
+  const hit = cache.get(key(name, rate));
+  if (hit) return hit;
+  const steps = computing(name, rate);
+  let r = steps.next();
+  while (!r.done) r = steps.next();
+  cache.set(key(name, rate), r.value);
+  return r.value;
+}
+
+/** The rate the app's cue buffers are made at. Web Audio resamples a buffer to any context's rate. */
+export const CUE_RATE = 48000;
+/** Prepare order: the cues a session needs first come first; "done" (the longest) comes last. */
+export const PREPARE_ORDER: readonly CueName[] = ['start', 'go', 'tick', 'switch', 'setDone', 'rest', 'pause', 'safety', 'done'];
+/** Longest run of cue work before yielding, ms: well under the 50 ms long-task line, even on a slow device. */
+export const SLICE_MS = 8;
+
+export interface PrepareOptions {
+  /** Time budget per slice, ms. */
+  sliceMs?: number;
+  /** Hands the main thread back to the page between slices. */
+  pause?: () => Promise<void>;
+  clock?: () => number;
+}
+
+/** Yield to the page: `scheduler.yield()` where there is one (input goes first), else a new task. */
+export function yieldToPage(): Promise<void> {
+  const s = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  if (s?.yield) return s.yield();
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+async function computeSliced(name: CueName, rate: number, o: Required<PrepareOptions>): Promise<Float32Array> {
+  const hit = cache.get(key(name, rate));
+  if (hit) return hit;
+  // Each cue starts a fresh slice: the end of one cue and the start of the next never share one.
+  await o.pause();
+  const steps = computing(name, rate);
+  for (;;) {
+    const end = o.clock() + o.sliceMs;
+    let r = steps.next();
+    while (!r.done && o.clock() < end) r = steps.next();
+    if (r.done) {
+      // The audit may have computed it in one go meanwhile: keep one copy.
+      const kept = cache.get(key(name, rate)) ?? r.value;
+      cache.set(key(name, rate), kept);
+      return kept;
+    }
+    await o.pause();
+  }
+}
+
+const jobs = new Map<number, Record<CueName, Promise<Float32Array>>>();
+
 /**
- * Schedule the named cue at the context's time 0 (for a live AudioContext: now) on
- * `ctx.destination`. The same function plays every cue in the app and renders it in the audit.
+ * Compute every cue at `rate` once, in slices of at most `sliceMs` of work, one cue after
+ * another in PREPARE_ORDER. Returns a promise per cue, which settles when that cue is ready; a
+ * cue that fails rejects its own promise and the rest carry on. Calling it again returns the
+ * same promises, so the work is done once.
  */
-export function render(ctx: BaseAudioContext, name: CueName): AudioBufferSourceNode {
-  const data = samples(name, ctx.sampleRate);
-  const buffer = ctx.createBuffer(1, data.length, ctx.sampleRate);
+export function prepareCues(rate: number = CUE_RATE, options: PrepareOptions = {}): Record<CueName, Promise<Float32Array>> {
+  const hit = jobs.get(rate);
+  if (hit) return hit;
+  const o: Required<PrepareOptions> = {
+    sliceMs: options.sliceMs ?? SLICE_MS,
+    pause: options.pause ?? yieldToPage,
+    clock: options.clock ?? (() => performance.now()),
+  };
+  const out = {} as Record<CueName, Promise<Float32Array>>;
+  let chain: Promise<unknown> = Promise.resolve();
+  for (const name of PREPARE_ORDER) {
+    const p = chain.then(() => computeSliced(name, rate, o));
+    // Each caller handles its own cue's failure; this keeps a failure from going unhandled.
+    p.catch(() => {});
+    out[name] = p;
+    chain = p.catch(() => {});
+  }
+  jobs.set(rate, out);
+  return out;
+}
+
+/** Drop the cached samples and prepare job at `rate` (tests only: the app keeps them for the visit). */
+export function forgetCues(rate: number): void {
+  jobs.delete(rate);
+  for (const name of CUE_NAMES) cache.delete(key(name, rate));
+}
+
+/** An AudioBuffer of the cue's samples, made on `ctx`. */
+export function bufferOf(ctx: BaseAudioContext, data: Float32Array, rate: number): AudioBuffer {
+  const buffer = ctx.createBuffer(1, data.length, rate);
   buffer.getChannelData(0).set(data);
+  return buffer;
+}
+
+/** Start `buffer` at the context's time 0 (for a live AudioContext: now) on `ctx.destination`. */
+export function schedule(ctx: BaseAudioContext, buffer: AudioBuffer): AudioBufferSourceNode {
   const source = ctx.createBufferSource();
   source.buffer = buffer;
   source.connect(ctx.destination);
   source.start(0);
   return source;
+}
+
+/**
+ * Schedule the named cue at the context's time 0 on `ctx.destination`, at the context's rate:
+ * the rubric's Script K entry. The app plays the same samples through the same `schedule()`.
+ */
+export function render(ctx: BaseAudioContext, name: CueName): AudioBufferSourceNode {
+  return schedule(ctx, bufferOf(ctx, samples(name, ctx.sampleRate), ctx.sampleRate));
 }
 
 /** The rubric's audit hook (Script K): cue names, the app's own render function, and lengths. */

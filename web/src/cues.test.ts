@@ -4,9 +4,13 @@ import {
   CUE_NAMES,
   MAX_SECONDS,
   PEAK_CEILING_DB,
+  PREPARE_ORDER,
   RUBRIC_MOMENTS,
   TIER_RMS_DB,
   cueHookEnabled,
+  cueStats,
+  forgetCues,
+  prepareCues,
   installCueHook,
   levels,
   render,
@@ -249,5 +253,71 @@ describe('the audit hook (AC4)', () => {
     const target: { __cues?: CueHook } = {};
     installCueHook(target, false);
     expect(target).toEqual({});
+  });
+});
+
+describe('preparing the cues (story #97)', () => {
+  it('lists every cue once in the prepare order, the session’s first cue first', () => {
+    expect([...PREPARE_ORDER].sort()).toEqual([...CUE_NAMES].sort());
+    expect(PREPARE_ORDER[0]).toBe('start');
+    expect(PREPARE_ORDER.at(-1)).toBe('done');
+  });
+
+  it('renders each cue once, in slices that yield, to the same samples as the one-go path', async () => {
+    // A rate no other test uses, so nothing is cached yet.
+    const rate = 16000;
+    let clock = 0;
+    let pauses = 0;
+    const before = cueStats.synthesised;
+    // Each step of work moves the fake clock 1 ms; a 4 ms budget forces many slices.
+    const jobs = prepareCues(rate, { sliceMs: 4, clock: () => clock++, pause: async () => void pauses++ });
+    expect(prepareCues(rate)).toBe(jobs);
+    const ready = await Promise.all(CUE_NAMES.map((n) => jobs[n]));
+    expect(cueStats.synthesised - before).toBe(CUE_NAMES.length);
+    // The work was split: far more pauses than cues.
+    expect(pauses).toBeGreaterThan(CUE_NAMES.length * 3);
+    // The one-go path now reuses the prepared samples: nothing is rendered again.
+    CUE_NAMES.forEach((n, i) => expect(samples(n, rate)).toBe(ready[i]));
+    expect(cueStats.synthesised - before).toBe(CUE_NAMES.length);
+    // The sliced samples hold the same levels the one-go path is pinned to (SO2).
+    CUE_NAMES.forEach((n, i) => {
+      const l = levels(ready[i]);
+      expect(toDb(l.peak), n).toBeLessThanOrEqual(PEAK_CEILING_DB + 0.01);
+      expect(Math.abs(toDb(l.rms) - TIER_RMS_DB[CUES[n].tier]), n).toBeLessThanOrEqual(SO2_RMS_TOLERANCE_DB);
+    });
+  });
+
+  it('gives the same samples sliced as in one go, sample for sample', async () => {
+    const rate = 11025;
+    const once = CUE_NAMES.map((n) => Float32Array.from(samples(n, rate)));
+    forgetCues(rate);
+    let clock = 0;
+    const jobs = prepareCues(rate, { sliceMs: 1, clock: () => clock++, pause: async () => {} });
+    for (let i = 0; i < CUE_NAMES.length; i++) {
+      const sliced = await jobs[CUE_NAMES[i]];
+      expect(sliced, CUE_NAMES[i]).not.toBe(once[i]);
+      expect(sliced, CUE_NAMES[i]).toEqual(once[i]);
+    }
+  });
+
+  it('keeps every cue to a slice of work between pauses', async () => {
+    const rate = 8000;
+    let clock = 0;
+    let steps = 0;
+    let longest = 0;
+    const jobs = prepareCues(rate, {
+      sliceMs: 3,
+      clock: () => {
+        steps++;
+        return clock++;
+      },
+      pause: async () => {
+        longest = Math.max(longest, steps);
+        steps = 0;
+      },
+    });
+    await Promise.all(CUE_NAMES.map((n) => jobs[n]));
+    // Each slice reads the clock once to set its end and once per step, up to the budget.
+    expect(longest).toBeLessThanOrEqual(3 + 2);
   });
 });
