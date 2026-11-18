@@ -61,6 +61,23 @@ class Credits(unittest.TestCase):
         found = self.write([adapted], (GOOD["path"],))
         self.assertTrue(any("say what changed" in f for f in found), found)
 
+    def test_uncredited_asset_outside_content(self) -> None:
+        found = self.write([GOOD], (GOOD["path"], "web/public/icons/glove.svg"))
+        self.assertTrue(any(f.startswith("web/public/icons/glove.svg: asset with no entry")
+                            for f in found), found)
+        found = self.write([GOOD], ("assets/badge.svg", "public/x/.gitkeep"))
+        self.assertIn("assets/badge.svg: asset with no entry in content/credits.json", found)
+        self.assertFalse(any(".gitkeep" in f for f in found), found)
+
+    def test_credited_asset_outside_content(self) -> None:
+        icon = {**GOOD, "path": "web/public/icons/timer.svg", "licence": "MIT",
+                "author": "Icon set authors", "source": "https://example.com/icons"}
+        self.assertEqual(self.write([GOOD, icon], (GOOD["path"], icon["path"])), [])
+
+    def test_entry_for_missing_file(self) -> None:
+        found = self.write([GOOD])
+        self.assertTrue(any("no such file" in f for f in found), found)
+
     def test_repo_is_clean(self) -> None:
         self.assertEqual(cc.check(ROOT), [])
 

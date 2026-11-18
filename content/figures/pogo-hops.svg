@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Low pogo hops: small quick hops from the ankles with quiet landings</title>
+  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <g fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="300" y1="176" x2="300" y2="150"/><polyline points="292,158 300,150 308,158"/><line x1="320" y1="150" x2="320" y2="176"/><polyline points="312,168 320,176 328,168"/></g>
+  <g fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="150" y1="100" x2="196" y2="100"/><polyline points="186,90 196,100 186,110"/></g>
+  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="86" cy="42" r="11"/>
+    <line x1="86" y1="58" x2="86" y2="112"/>
+    <polyline points="86,112 88,148 86,184"/>
+    <polyline points="86,112 84,148 82,184"/>
+    <polyline points="86,58 78,86 82,110"/>
+    <polyline points="86,58 94,86 90,110"/>
+    <circle cx="262" cy="30" r="11"/>
+    <line x1="262" y1="46" x2="262" y2="100"/>
+    <polyline points="262,100 264,136 264,170"/>
+    <polyline points="262,100 260,136 258,170"/>
+    <polyline points="262,46 254,74 258,98"/>
+    <polyline points="262,46 270,74 266,98"/>
+  </g>
+</svg>

@@ -1,0 +1,93 @@
+{
+  "id": "lateral-shuffle",
+  "name": "Lateral shuffle",
+  "aliases": [
+    "side shuffle"
+  ],
+  "category": "footwork",
+  "why": "Shuffling sideways while staying low keeps you square to the ball as you move across the goal.",
+  "goal": [
+    "lateral-footwork",
+    "leg-strength"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only"
+    ],
+    "any": []
+  },
+  "space_m": [
+    2,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "A strip of floor about 2 m wide. Pick two spots on the floor 2 m apart.",
+    "equipment": "None. Wear trainers.",
+    "parent": "Stand in front like a shooter and point left or right to start each effort."
+  },
+  "steps": [
+    "Start in a ready stance: feet wider than the hips, knees bent, hands up in front.",
+    "Shuffle sideways to one spot without crossing or clicking the feet together.",
+    "Reach the spot with the outside foot, then shuffle back to the start.",
+    "Walk around and rest for the full time before the next effort."
+  ],
+  "cues": [
+    "Stay low",
+    "Feet never touch",
+    "Hands ready"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Standing up tall while moving",
+      "fix": "Keep the same low height the whole way."
+    },
+    {
+      "mistake": "Crossing or clicking the feet",
+      "fix": "Push off the trailing foot and keep a gap between the feet."
+    },
+    {
+      "mistake": "Looking down at the feet",
+      "fix": "Watch the parent's hand instead."
+    }
+  ],
+  "parent_check": [
+    "Head stays level, no bobbing up",
+    "Feet never cross",
+    "Hands stay up and ready"
+  ],
+  "stop_if": [
+    "Pain in an ankle, knee, hip or groin, or pain that changes how you move",
+    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Slipping on the floor (fix footwear or surface before going on)"
+  ],
+  "easier": {
+    "variant": "Step-together side steps at walking pace.",
+    "use_when": "The feet cross or the stance rises."
+  },
+  "harder": {
+    "variant": "Shuffle on the parent's point and change direction once in the middle.",
+    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+  },
+  "dose": {
+    "kind": "efforts",
+    "sets": 2,
+    "reps": 3,
+    "distance_m": 4,
+    "per_side": false,
+    "rest_s": 90,
+    "tempo": "quick feet, low and steady"
+  },
+  "timer": "interval",
+  "substitutes": [
+    "split-squat",
+    "squat-to-box"
+  ],
+  "media": {
+    "figure": "content/figures/lateral-shuffle.svg"
+  },
+  "spec": "content/exercises/lateral-shuffle.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

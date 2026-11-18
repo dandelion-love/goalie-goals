@@ -9,6 +9,10 @@ Rules (see docs/knowledge/decisions/exercise-media.md):
 - The licence is one that CC BY-SA 4.0 content can include: CC0-1.0, CC-BY-4.0,
   CC-BY-SA-4.0, CC-BY-SA-3.0, MIT or Apache-2.0. Anything else, or unknown, fails.
 - Share-alike material (CC-BY-SA-*) lives only under content/.
+- The app's asset folders (web/public/, public/, assets/, whichever exist) are scanned too:
+  every file there also needs an entry, so an uncredited third-party or share-alike file
+  is refused wherever it sits.
+- Every entry points at a file that exists.
 
 Usage: python3 tools/credits_check.py [--root DIR]
 Exit 0 clean, 1 findings. Standard library only.
@@ -24,6 +28,8 @@ COMPATIBLE = {"CC0-1.0", "CC-BY-4.0", "CC-BY-SA-3.0", "CC-BY-SA-4.0", "MIT", "Ap
 SHARE_ALIKE = re.compile(r"^CC-BY-SA-")
 REQUIRED = ("path", "author", "licence", "source", "checked")
 EXEMPT = {"README.md", "LICENSE", "credits.json"}
+ASSET_DIRS = ("web/public", "public", "assets")
+ASSET_EXEMPT = {".gitkeep"}
 DATE = re.compile(r"^\d{4}-\d\d-\d\d$")
 
 
@@ -60,6 +66,16 @@ def check(root: Path) -> list[str]:
         rel = f.relative_to(root).as_posix()
         if rel not in by_path:
             found.append(f"{rel}: no entry in content/credits.json")
+    for d in ASSET_DIRS:
+        for f in sorted((root / d).rglob("*")) if (root / d).is_dir() else ():
+            if not f.is_file() or f.name in ASSET_EXEMPT:
+                continue
+            rel = f.relative_to(root).as_posix()
+            if rel not in by_path:
+                found.append(f"{rel}: asset with no entry in content/credits.json")
+    for path in sorted(by_path):
+        if not (root / path).is_file():
+            found.append(f"credits.json ({path}): no such file")
     return found
 
 

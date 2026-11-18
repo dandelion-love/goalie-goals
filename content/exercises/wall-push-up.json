@@ -1,0 +1,92 @@
+{
+  "id": "wall-push-up",
+  "name": "Wall push-up",
+  "aliases": [
+    "incline push-up"
+  ],
+  "category": "strength",
+  "why": "Pushing strength helps you punch the ball clear and get up fast after a dive.",
+  "goal": [
+    "upper-body-push",
+    "trunk-stability"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only",
+      "other:wall"
+    ],
+    "any": []
+  },
+  "space_m": [
+    2,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "Floor in front of a solid wall, about an arm and a half away.",
+    "equipment": "A solid wall.",
+    "parent": "Stand side-on, about 2 m away."
+  },
+  "steps": [
+    "Face the wall and put your hands on it at shoulder height, a little wider than your shoulders.",
+    "Walk your feet back until your body leans in one straight line.",
+    "Bend the elbows to bring your chest toward the wall, elbows angled back.",
+    "Push the wall away until your arms are straight."
+  ],
+  "cues": [
+    "Body in one line",
+    "Elbows back",
+    "Chest to the wall"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Hips sticking out",
+      "fix": "Squeeze the bottom so the body stays straight."
+    },
+    {
+      "mistake": "Elbows flared straight out",
+      "fix": "Angle the elbows back, about halfway between the body and straight out."
+    },
+    {
+      "mistake": "Head poking forward",
+      "fix": "Tuck the chin a little and let the chest lead."
+    }
+  ],
+  "parent_check": [
+    "Straight line from head to heels",
+    "Elbows angle back",
+    "Full push to straight arms"
+  ],
+  "stop_if": [
+    "Pain in the shoulder, elbow or wrist, or pain that changes how you move",
+    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Feet slipping on the floor (fix the footing before going on)"
+  ],
+  "easier": {
+    "variant": "Stand closer to the wall.",
+    "use_when": "The body sags or the reps slow down."
+  },
+  "harder": {
+    "variant": "Hands on a stable step or the bottom stair, feet further back.",
+    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+  },
+  "dose": {
+    "kind": "reps",
+    "sets": 2,
+    "reps": 10,
+    "per_side": false,
+    "rest_s": 60,
+    "tempo": "down for two, push away smoothly"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "plank"
+  ],
+  "media": {
+    "figure": "content/figures/wall-push-up.svg"
+  },
+  "spec": "content/exercises/wall-push-up.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

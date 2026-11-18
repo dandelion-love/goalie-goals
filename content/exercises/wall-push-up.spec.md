@@ -1,0 +1,41 @@
+# Acceptance spec: Wall push-up (`wall-push-up`)
+
+Card: [wall-push-up.json](wall-push-up.json). Figure: `content/figures/wall-push-up.svg`.
+Status: demo content. The owner approves this exercise, and each harder version, before
+any real use ([training rules](/decisions/training-rules.md), rule 1).
+
+## Dose
+
+From [training rules](/decisions/training-rules.md), progression limits. Technique before load: a new exercise starts at 1 to 2 sets of 10 to 15 repetitions with no added load (rule 2), inside the strength limit of 1 to 3 sets of 6 to 15. No
+added load, no maximal effort, no set taken to failure (rule 3).
+
+- kind: reps
+- sets: 2
+- reps: 10
+- per_side: no
+- rest_s: 60
+
+Tempo: down for two, push away smoothly.
+
+## Progression limit
+
+From [training rules](/decisions/training-rules.md): move to the harder version
+(hands on a stable step or the bottom stair, feet further back) only when every rep was clean in two
+sessions in a row and the owner approves it. One variant step at a time, never more. Hold
+all progressions during fast growth or new knee or heel pain, and after a week or more off
+restart one step below the last level.
+
+## Stop signs
+
+From [training rules](/decisions/training-rules.md), warning signs that stop a session.
+Stop at once and record why if any of these appears:
+
+- Pain in the shoulder, elbow or wrist, or pain that changes how you move
+- Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath
+- Feet slipping on the floor (fix the footing before going on)
+
+## Acceptance
+
+- The card's dose matches the Dose list above exactly, and stays inside the limits it cites.
+- The card's `stop_if` list matches the Stop signs above.
+- The card names at least one substitute, and its figure and credits entries exist.

@@ -1,4 +1,221 @@
 {
   "version": 1,
-  "entries": []
+  "entries": [
+    {
+      "path": "content/exercises/broad-jump-stick.json",
+      "title": "Broad jump with stick landing exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/broad-jump-stick.spec.md",
+      "title": "Broad jump with stick landing acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/glute-bridge.json",
+      "title": "Glute bridge exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/glute-bridge.spec.md",
+      "title": "Glute bridge acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/lateral-shuffle.json",
+      "title": "Lateral shuffle exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/lateral-shuffle.spec.md",
+      "title": "Lateral shuffle acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/plank.json",
+      "title": "Front plank exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/plank.spec.md",
+      "title": "Front plank acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/pogo-hops.json",
+      "title": "Low pogo hops exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/pogo-hops.spec.md",
+      "title": "Low pogo hops acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/side-plank.json",
+      "title": "Side plank exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/side-plank.spec.md",
+      "title": "Side plank acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/split-squat.json",
+      "title": "Split squat exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/split-squat.spec.md",
+      "title": "Split squat acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/squat-to-box.json",
+      "title": "Squat to box exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/squat-to-box.spec.md",
+      "title": "Squat to box acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/wall-push-up.json",
+      "title": "Wall push-up exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/exercises/wall-push-up.spec.md",
+      "title": "Wall push-up acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/broad-jump-stick.svg",
+      "title": "Broad jump with stick landing figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/glute-bridge.svg",
+      "title": "Glute bridge figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/lateral-shuffle.svg",
+      "title": "Lateral shuffle figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/plank.svg",
+      "title": "Front plank figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/pogo-hops.svg",
+      "title": "Low pogo hops figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/side-plank.svg",
+      "title": "Side plank figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/split-squat.svg",
+      "title": "Split squat figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/squat-to-box.svg",
+      "title": "Squat to box figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/wall-push-up.svg",
+      "title": "Wall push-up figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-17"
+    }
+  ]
 }

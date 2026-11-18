@@ -1,0 +1,92 @@
+{
+  "id": "pogo-hops",
+  "name": "Low pogo hops",
+  "aliases": [
+    "ankle hops"
+  ],
+  "category": "power",
+  "why": "Quick, springy ankles help you bounce into your set position and leave the ground fast.",
+  "goal": [
+    "reactive-ankle",
+    "landing"
+  ],
+  "risk": "medium",
+  "needs": {
+    "all": [
+      "body only"
+    ],
+    "any": []
+  },
+  "space_m": [
+    1,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "About 1 m by 1 m.",
+    "equipment": "None. Wear trainers.",
+    "surface_note": "A wooden floor, carpet over a firm floor, a thick mat or grass. Never on concrete or tiles laid on concrete.",
+    "parent": "Stand in front, about 2 m away, and listen to the landings."
+  },
+  "steps": [
+    "Stand tall, feet hip width, arms relaxed.",
+    "Make small quick hops, only a few centimetres high, mostly from the ankles.",
+    "Land softly on the balls of the feet with the knees a little bent.",
+    "Count each landing, stop at the set's number and rest."
+  ],
+  "cues": [
+    "Small and quick",
+    "Quiet feet",
+    "Tall body"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Hopping too high",
+      "fix": "Keep the hops low; quick matters, not high."
+    },
+    {
+      "mistake": "Landing flat-footed and loud",
+      "fix": "Stay on the balls of the feet and land quietly."
+    },
+    {
+      "mistake": "Knees caving in",
+      "fix": "Keep the knees over the toes and slow down."
+    }
+  ],
+  "parent_check": [
+    "Landings are quiet",
+    "Knees stay over the toes",
+    "Hops stay low and even"
+  ],
+  "stop_if": [
+    "Pain in the heel, shin, ankle or below the kneecap",
+    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Landings turn loud or the knees cave in (end the set)"
+  ],
+  "easier": {
+    "variant": "Heel raises: rise onto the toes and lower slowly, no hop.",
+    "use_when": "Landings are loud or uneven."
+  },
+  "harder": {
+    "variant": "Small hops forward and back over a line on the floor.",
+    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+  },
+  "dose": {
+    "kind": "contacts",
+    "sets": 3,
+    "reps": 6,
+    "per_side": false,
+    "rest_s": 60,
+    "tempo": "quick and light, like the floor is hot"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "broad-jump-stick"
+  ],
+  "media": {
+    "figure": "content/figures/pogo-hops.svg"
+  },
+  "spec": "content/exercises/pogo-hops.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

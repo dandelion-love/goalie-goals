@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Squat to box: stand tall, then sit back until the hips lightly touch the box</title>
+  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <g fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="150" y1="100" x2="196" y2="100"/><polyline points="186,90 196,100 186,110"/></g>
+  <rect x="30" y="146" width="30" height="40" fill="#e5e7eb" stroke="#1f2937" stroke-width="3"/>
+  <rect x="190" y="146" width="30" height="40" fill="#e5e7eb" stroke="#1f2937" stroke-width="3"/>
+  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="72" cy="40" r="11"/>
+    <line x1="72" y1="56" x2="72" y2="112"/>
+    <polyline points="72,112 74,149 72,184"/>
+    <polyline points="72,112 70,149 68,184"/>
+    <polyline points="72,56 90,80 104,92"/>
+    <circle cx="258" cy="72" r="11"/>
+    <line x1="250" y1="88" x2="226" y2="138"/>
+    <polyline points="226,138 262,140 258,184"/>
+    <polyline points="226,138 258,142 252,184"/>
+    <polyline points="250,88 276,96 300,98"/>
+  </g>
+</svg>

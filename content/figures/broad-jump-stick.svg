@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Broad jump with stick landing: swing and load, jump a comfortable distance, land soft and freeze</title>
+  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 124 64 Q 182 6 236 64" fill="none" stroke="#2563eb" stroke-width="4" stroke-dasharray="8 8" stroke-linecap="round"/>
+  <polyline points="224,58 236,64 236,50" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="112" cy="66" r="11"/>
+    <line x1="102" y1="80" x2="78" y2="124"/>
+    <polyline points="78,124 100,152 86,184"/>
+    <polyline points="102,80 86,100 66,112"/>
+    <circle cx="282" cy="68" r="11"/>
+    <line x1="270" y1="84" x2="248" y2="128"/>
+    <polyline points="248,128 272,154 258,184"/>
+    <polyline points="270,84 290,98 312,102"/>
+  </g>
+</svg>
