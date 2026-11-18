@@ -63,6 +63,11 @@ export class MemoryProgressStore implements ProgressStore {
   clear(): void {
     this.records.length = 0;
   }
+
+  /** Delete every record with the household, or when the parent starts fresh (story 121). */
+  async deleteAll(): Promise<void> {
+    this.records.length = 0;
+  }
 }
 
 /** Day results in Firestore (story 118): `progressRecords/{id}`, one per finished session. */

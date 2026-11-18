@@ -16,6 +16,8 @@ export interface OfflineStore {
   /** Today's approved session as last sent by the server, only for the keeper's `date`. */
   readToday(date: string): Today | null;
   writeToday(today: Today): void;
+  /** Forget today's session: the parent started fresh (story 121). */
+  clearToday(): void;
 }
 
 export const ROLE_KEY = 'goalie-goals.role';
@@ -85,6 +87,15 @@ export class LocalOfflineStore implements OfflineStore {
       // The in-memory copy holds for this session.
     }
   }
+
+  clearToday(): void {
+    this.today = null;
+    try {
+      this.storage?.removeItem(TODAY_KEY);
+    } catch {
+      // Nothing more to do.
+    }
+  }
 }
 
 export class MemoryOfflineStore implements OfflineStore {
@@ -103,6 +114,9 @@ export class MemoryOfflineStore implements OfflineStore {
   }
   writeToday(today: Today) {
     this.today = today;
+  }
+  clearToday() {
+    this.today = null;
   }
 }
 

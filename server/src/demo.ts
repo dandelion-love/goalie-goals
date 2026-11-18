@@ -9,13 +9,7 @@
 // an account.
 
 import { ConfigError } from './config.js';
-import {
-  MemoryApprovalStore,
-  MemoryAuditLog,
-  type ApprovalService,
-  type AuditEvent,
-  type AuditLog,
-} from './approvals.js';
+import { MemoryApprovalStore, RenewableAuditLog, type ApprovalService } from './approvals.js';
 import { DEMO_PARENT, seedDemoRequests, seedDemoSession } from './demoData.js';
 import type { InAppNotifier } from './notifier.js';
 import type { MemoryPainStore } from './pain.js';
@@ -40,25 +34,10 @@ export function isDemoAccount(account: string): boolean {
 }
 
 /**
- * The dev-mock audit log. Each log it holds is a `MemoryAuditLog`, append-only as ever; a demo
- * reset drops the whole log and starts a new one, it never edits or deletes an event.
+ * The dev-mock audit log: a `RenewableAuditLog`, so a demo reset drops the whole log and starts a
+ * new one; it never edits or deletes an event.
  */
-export class DemoAuditLog implements AuditLog {
-  #log = new MemoryAuditLog();
-
-  append(event: Omit<AuditEvent, 'id'>): Promise<AuditEvent> {
-    return this.#log.append(event);
-  }
-
-  list(): Promise<readonly AuditEvent[]> {
-    return this.#log.list();
-  }
-
-  /** Dev-only demo reset: begin a new, empty log for the new household. */
-  restart(): void {
-    this.#log = new MemoryAuditLog();
-  }
-}
+export class DemoAuditLog extends RenewableAuditLog {}
 
 /** The seed or the reset would touch data that is not the demo household. */
 export class DemoRefused extends ConfigError {}

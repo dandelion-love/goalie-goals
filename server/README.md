@@ -133,6 +133,7 @@ tested against a fake in memory (`test/fakeFirestore.ts`).
 | Training days | `FirestoreScheduleStore` | `schedules/household` |
 | Session history | `FirestoreHistoryStore` | `sessionHistory/{id}` |
 | Write order | | `householdCounters/{collection}`: the next sequence number, so requests, events and results list in the order they were written |
+| Reset generation | `FirestoreGenerationStore` | `householdMeta/generation`: `{ value }`, raised by one in a transaction on each fresh start; not household data, so deleting the household keeps it |
 
 The started marker is stored, rather than inferred from a day result, because a history
 record (story 113) can arrive before the finish, or after a stop that records nothing, and
@@ -152,7 +153,35 @@ the household's data (`painReports/household`) until the household is deleted; b
 keeper's device gets report ids only.
 
 Deleting the household (`app.household.deleteAll()`, also run by the dev-only demo reset)
-deletes every document above, the typed notes included. Roles are config, not data, and stay.
+deletes every document above but the generation, the typed notes included. Roles are config,
+not data, and stay.
+
+**Start fresh (story 121).** `POST /api/household/reset` with `{"confirm": "RESET", "date"}`
+lets the parent reset the household's training data (`src/householdReset.ts`). It deletes
+approvals and requests, the audit log, day results (XP and streaks), the session history, pain
+reports and pauses (typed notes included) and the started marker; it keeps roles and the
+parent's training days (`app.household.deleteTraining()`). Then the reset is the first event of
+the new audit log (`action: reset`, `kind: household`, the parent's role and the time, never
+the account in a client), and the app asks the parent for the pack and the dossiers again, as
+on first start. The keeper, or an account with no role, gets `403`; a body without `RESET`
+typed exactly gets `400` and nothing is deleted. Refusals are logged by role and reason only.
+
+| Route | Roles | What it does |
+| --- | --- | --- |
+| `POST /api/household/reset` | parent | Clears the training data, keeps roles and training days, and proposes the plan again. Answers `{ok, generation}`. |
+
+The reset generation keeps devices from bringing old data back. Every `/api` response carries
+`x-household-generation`; the web app keeps the last one it saw and sends it on every request.
+A reset raises the generation before it deletes anything. A write (any method but `GET` and
+`HEAD`, outside `/api/dev/`) that names another generation is refused with `409
+{"error":"stale_generation"}`; a request with no header counts as generation 0, as a device that
+has never seen a reset. A device drops its cached session and its outbox of session events
+only when an answer names a new generation, never on its own, so an event queued before the
+reset is never sent into the new history. A pain report the device has not sent yet is the one
+exception: it is new information, never dropped, and the device sends it again under the new
+generation, which the server takes as a fresh report. The device keeps its local pause until
+the server has that report and answers `paused: true`; a pause whose report the server already
+had goes with the old household. The dev-only demo reset raises the generation too.
 
 Infrastructure needs no change for these stores: the runtime account's `roles/datastore.user`
 (`infra/app/main.tf`) covers their reads, writes, transactions and deletes, and every query

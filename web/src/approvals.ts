@@ -43,13 +43,15 @@ export interface AuditEntry {
     | 'changed'
     | 'undone'
     /** A start queued on the keeper's device that reached the server after an undo (story #94). */
-    | 'started';
+    | 'started'
+    /** The parent started fresh: the first event of the new history (story 121). */
+    | 'reset';
   actorRole: 'keeper' | 'parent' | 'system';
   /**
    * `pause`: a pain report or its clear; the title names the body area only.
-   * `schedule`: the parent's choice of training days.
+   * `schedule`: the parent's choice of training days. `household`: the parent started fresh.
    */
-  kind: RequestKind | 'pause' | 'schedule';
+  kind: RequestKind | 'pause' | 'schedule' | 'household';
   /** What the event is about; `training-pause-mistake` for a mistake note (story 104). */
   itemId?: string;
   title: string;

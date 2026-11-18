@@ -109,6 +109,11 @@ export class MemoryPainStore implements PainStore {
     this.reports.clear();
   }
 
+  /** Delete every report with the household, or when the parent starts fresh (story 121). */
+  async deleteAll(): Promise<void> {
+    this.reports.clear();
+  }
+
   async clearOpen(at: Date, on: string): Promise<PainReport[]> {
     const cleared: PainReport[] = [];
     for (const r of this.reports.values()) {

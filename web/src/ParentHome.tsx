@@ -5,6 +5,7 @@ import { ProgressPanel as ProgressPanelBody } from './ProgressPanel';
 import { SessionHistory as SessionHistoryPanel } from './SessionHistory';
 import { TrainingDays as TrainingDaysPanel } from './TrainingDays';
 import { WeekPanel as WeekPanelBody } from './WeekPanel';
+import { StartFresh } from './StartFresh';
 import { Reveal } from './Loading';
 import { useMoment } from './motion';
 
@@ -71,6 +72,10 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
             <History fetchImpl={fetchImpl} refresh={answered + epoch} onChange={changed} />
           </Reveal>
         </div>
+      </Reveal>
+      {/* Story 121: at the very bottom, far from Approve and Clear the pause. */}
+      <Reveal open={historyOpen}>
+        <StartFresh fetchImpl={fetchImpl} onDone={changed} />
       </Reveal>
     </section>
   );

@@ -118,7 +118,9 @@ export type AuditAction =
    * A session start queued on the keeper's device reached the server after the parent undid
    * an approval it uses: recorded with `LATE_START_REASON` (story #94).
    */
-  | 'started';
+  | 'started'
+  /** The parent started fresh: the first event of the new history (story 121). */
+  | 'reset';
 
 export interface AuditEvent {
   id: string;
@@ -132,8 +134,11 @@ export interface AuditEvent {
    * `schedule` events the change.
    */
   requestId: string;
-  /** `schedule`: the parent's choice of training days (src/schedule.ts). */
-  kind: RequestKind | 'pause' | 'schedule';
+  /**
+   * `schedule`: the parent's choice of training days (src/schedule.ts). `household`: the parent
+   * started fresh (story 121).
+   */
+  kind: RequestKind | 'pause' | 'schedule' | 'household';
   itemId: string;
   itemVersion: string;
   title: string;
@@ -216,6 +221,11 @@ export class MemoryApprovalStore implements ApprovalStore {
   clear(): void {
     this.requests.clear();
   }
+
+  /** Delete every request: the household is deleted, or starts fresh (story 121). */
+  async deleteAll(): Promise<void> {
+    this.requests.clear();
+  }
 }
 
 export class MemoryAuditLog implements AuditLog {
@@ -229,6 +239,32 @@ export class MemoryAuditLog implements AuditLog {
 
   async list(): Promise<readonly AuditEvent[]> {
     return Object.freeze([...this.#events]);
+  }
+}
+
+/**
+ * The app's own audit log in memory. Each log it holds is a `MemoryAuditLog`, append-only as
+ * ever; deleting the household, or starting fresh (story 121), drops the whole log and begins a
+ * new one. It never edits or deletes an event.
+ */
+export class RenewableAuditLog implements AuditLog {
+  #log = new MemoryAuditLog();
+
+  append(event: Omit<AuditEvent, 'id'>): Promise<AuditEvent> {
+    return this.#log.append(event);
+  }
+
+  list(): Promise<readonly AuditEvent[]> {
+    return this.#log.list();
+  }
+
+  /** Begin a new, empty log. */
+  restart(): void {
+    this.#log = new MemoryAuditLog();
+  }
+
+  async deleteAll(): Promise<void> {
+    this.restart();
   }
 }
 
@@ -376,8 +412,9 @@ const AUDIT_ACTIONS: readonly AuditAction[] = [
   'changed',
   'undone',
   'started',
+  'reset',
 ];
-const AUDIT_KINDS: readonly AuditEvent['kind'][] = [...REQUEST_KINDS, 'pause', 'schedule'];
+const AUDIT_KINDS: readonly AuditEvent['kind'][] = [...REQUEST_KINDS, 'pause', 'schedule', 'household'];
 const AUDIT_TEXT = ['actor', 'requestId', 'itemId', 'itemVersion', 'title'] as const;
 
 function readEvent(id: string, value: unknown): AuditEvent | null {
