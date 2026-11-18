@@ -1,0 +1,80 @@
+// Demo session for tests, shaped like the server's response. Card text follows the repo's
+// exercise cards; doses are the cards' own.
+
+import type { Card, Session, Today } from './training';
+
+export const PLANK: Card = {
+  id: 'plank',
+  itemVersion: 'sha256:plank1',
+  name: 'Front plank',
+  why: 'A strong, stiff middle lets you dive and land without the body folding.',
+  setup: { space: 'A strip of floor about 2 m long.', equipment: 'None.', parent: 'Kneel side-on at hip level.' },
+  steps: [
+    'Lie face down with your forearms under your shoulders.',
+    'Tuck your toes and lift so you rest on forearms and toes.',
+    'Make a straight line from head to heels by squeezing your bottom and tummy.',
+  ],
+  cues: ['Straight like a board', 'Keep breathing', 'Squeeze your bottom'],
+  mistakes: [{ mistake: 'Hips sagging toward the floor', fix: 'Squeeze the bottom and tuck the hips a little.' }],
+  stopIf: ['Pain in the lower back or shoulders, or pain that changes how you move'],
+  easier: { variant: 'Plank from the knees.', useWhen: 'The hips sag before the time is up.' },
+  dose: { kind: 'hold', sets: 2, seconds: 20, per_side: false, rest_s: 45, tempo: 'still and steady' },
+  doseText: '2 sets of 20 s hold, rest 45 s',
+  timer: 'interval',
+  figureUrl: '/api/training/cards/plank/figure.svg?v=sha256%3Aplank1',
+  credit: 'Figure: the goalie-goals contributors, CC BY-SA 4.0, drawn for this repo.',
+};
+
+export const BRIDGE: Card = {
+  id: 'glute-bridge',
+  itemVersion: 'sha256:bridge1',
+  name: 'Glute bridge',
+  why: 'Strong hips drive every push and dive.',
+  setup: { space: 'A mat.', equipment: 'None.', parent: 'Kneel beside the hips.' },
+  steps: ['Lie on your back, knees bent.', 'Squeeze, then lift the hips.', 'Lower slowly.'],
+  cues: ['Squeeze, then lift', 'Ribs down', 'Push through the heels'],
+  mistakes: [{ mistake: 'Arching the lower back', fix: 'Keep the ribs down.' }],
+  stopIf: ['Pain in the lower back'],
+  easier: { variant: 'Smaller lift.', useWhen: 'The back arches.' },
+  dose: { kind: 'reps', sets: 2, reps: 12, per_side: false, rest_s: 45, tempo: 'up in one second, hold one, down for three' },
+  doseText: '2 sets of 12 reps, rest 45 s',
+  timer: 'reps',
+  figureUrl: '/api/training/cards/glute-bridge/figure.svg?v=sha256%3Abridge1',
+  credit: 'Figure: the goalie-goals contributors, CC BY-SA 4.0, drawn for this repo.',
+};
+
+export function demoSession(over: Partial<Session> = {}): Session {
+  return {
+    itemId: 'session-starter',
+    itemVersion: 'sha256:session2',
+    title: 'Strong middle',
+    minutes: 10,
+    warmUp: [
+      { name: 'March on the spot', seconds: 60, cue: 'Knees up, arms swing' },
+      { name: 'Arm circles', seconds: 45, cue: 'Small circles, then big' },
+    ],
+    cards: [PLANK, BRIDGE],
+    coolDown: [{ name: 'Easy walk and slow breaths', seconds: 60, cue: 'Breathe out slowly' }],
+    ...over,
+  };
+}
+
+export function todayWith(over: Partial<Today> = {}): Today {
+  return { date: '2026-01-05', planned: true, today: demoSession(), lastApproved: null, waiting: 0, ...over };
+}
+
+/** A fake API for the keeper's home: /api/me, today's session and the approval screens. */
+export function keeperServer(today: Today | (() => Today)) {
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+  const urls: string[] = [];
+  const fetchImpl = async (input: RequestInfo | URL) => {
+    const url = String(input);
+    urls.push(url);
+    if (url === '/api/me') return json({ role: 'keeper' });
+    if (url.startsWith('/api/training/today')) return json(typeof today === 'function' ? today() : today);
+    if (url === '/api/training/approved') return json({ items: [], waiting: 0 });
+    if (url === '/api/audit') return json({ events: [] });
+    return json({ error: 'not found' }, 404);
+  };
+  return { fetchImpl: fetchImpl as unknown as typeof fetch, urls };
+}

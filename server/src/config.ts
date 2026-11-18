@@ -15,6 +15,8 @@ export interface Config {
   port: number;
   /** Folder holding the built web app; empty means the API only. */
   webRoot: string;
+  /** The `content` folder (exercise cards, figures, credits); empty means the one in the repo. */
+  contentRoot?: string;
   production: boolean;
 }
 
@@ -50,6 +52,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     roleStore,
     port,
     webRoot: env.WEB_ROOT ?? '',
+    contentRoot: env.CONTENT_ROOT ?? '',
     production,
   };
 }

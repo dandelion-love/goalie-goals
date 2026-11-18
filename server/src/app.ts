@@ -14,7 +14,10 @@ import {
 import { MemoryRoleStore, type Role, type RoleStore } from './roles.js';
 import { ApprovalService, MemoryApprovalStore, MemoryAuditLog } from './approvals.js';
 import { hasBadge, registerApprovalRoutes } from './approvalRoutes.js';
-import { seedDemoRequests } from './demoData.js';
+import { seedDemoRequests, seedDemoSession } from './demoData.js';
+import { loadContent } from './content.js';
+import { TrainingService, utcDate } from './training.js';
+import { registerTrainingRoutes } from './trainingRoutes.js';
 import { InAppNotifier } from './notifier.js';
 
 declare module 'fastify' {
@@ -29,6 +32,8 @@ export interface AppDeps {
   roles?: RoleStore;
   /** Parent approval; in memory with the in-app notifier unless given. */
   approvals?: ApprovalService;
+  /** Today's session and the card library; built from `content/` unless given. */
+  training?: TrainingService;
   logger?: boolean;
 }
 
@@ -47,7 +52,7 @@ function cookie(header: string | undefined, name: string): string | undefined {
   return undefined;
 }
 
-export async function buildApp({ config, verifier, roles, approvals, logger = false }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ config, verifier, roles, approvals, training, logger = false }: AppDeps): Promise<FastifyInstance> {
   if (config.devMockIdentity && config.production) {
     throw new ConfigError(`${DEV_MOCK_FLAG} is refused in production.`);
   }
@@ -71,6 +76,7 @@ export async function buildApp({ config, verifier, roles, approvals, logger = fa
   const roleStore = roles ?? MemoryRoleStore.fromSeed(config.roleSeed);
   const verify = verifier;
   let approvalService = approvals;
+  const ownApprovals = !approvalService;
   if (!approvalService) {
     approvalService = new ApprovalService({
       store: new MemoryApprovalStore(),
@@ -79,6 +85,14 @@ export async function buildApp({ config, verifier, roles, approvals, logger = fa
     });
     // Local development: give the parent's inbox something to show.
     if (config.devMockIdentity) await seedDemoRequests(approvalService);
+  }
+  const trainingService =
+    training ?? new TrainingService({ approvals: approvalService, content: loadContent(config.contentRoot || undefined) });
+  if (ownApprovals) {
+    // The app asks the parent for today's session and its cards. Local development approves
+    // them as the demo parent so the player has something to run.
+    if (config.devMockIdentity) await seedDemoSession(trainingService, utcDate(new Date()));
+    else await trainingService.proposeFor(utcDate(new Date()));
   }
 
   if (signer) {
@@ -128,6 +142,8 @@ export async function buildApp({ config, verifier, roles, approvals, logger = fa
     roles: roleStore,
     badge: hasBadge(approvalService.notifier) ? approvalService.notifier : undefined,
   });
+
+  registerTrainingRoutes(app, { training: trainingService, roles: roleStore });
 
   const webRoot = config.webRoot ? resolve(config.webRoot) : '';
   if (webRoot && existsSync(join(webRoot, 'index.html'))) {

@@ -23,11 +23,25 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
   | `GET /api/training/approved` | keeper, parent | Approved item versions only, plus a `waiting` count without content. |
   | `GET /api/audit` | keeper, parent | The append-only audit log: requested, approved, declined, expired, refused. Roles, never accounts. |
   | `GET /api/notifications/badge` | keeper, parent | Unread count for the in-app badge. |
+  | `GET /api/training/today?date=YYYY-MM-DD` | keeper, parent | Today's session with its cards, only when the session version and every card version in it are approved. Otherwise `lastApproved` (the newest approved earlier version whose cards are all approved) or neither, which means rest. |
+  | `GET /api/training/cards` | keeper, parent | The card library: the latest approved version of each card. |
+  | `GET /api/training/cards/:id/figure.svg?v=` | keeper, parent | A card's figure, for an approved card version only (`404` otherwise), served with `default-src 'none'`. |
 
   An approval is bound to the item's content hash (`itemVersion`): an edit is a new version
   and needs a new request, and the keeper keeps the last approved version meanwhile. A
   request unanswered for 7 days becomes `expired`; silence never approves. A decided request
   never changes again (`409`).
+- Exercise cards and figures (`src/content.ts`, `src/training.ts`). The server reads
+  `content/` at startup (`CONTENT_ROOT`, default the repo's `content/`; the container copies
+  it to `/app/content`). Each card is an approval item `card-<id>` (kind `exercise`) bound to
+  a hash of the card and its figure; each session is `session-<id>` (kind `plan`) bound to
+  its warm-up, its cards' doses and the exact card versions. At startup the app proposes
+  today's session and its cards to the parent. The card's credit line comes from the
+  figure's entry in `content/credits.json`, built as `tools/content_check.py` builds it. The
+  `approved` flag in a card file is ignored: approval lives in the approvals service.
+  Versions are kept in memory next to the in-memory approval store (`MemorySnapshotStore`).
+  `SingleSessionPlan` offers the starter session every day until weekly plans arrive; the
+  fallback's "approved maintenance session" rung is not built yet, so rest is offered.
 - Every other path that is not `/api/...` gets the web app (`WEB_ROOT`), with
   `index.html` for app routes. Hashed assets are cached for a year; the shell, manifest and
   service worker never.
@@ -43,6 +57,7 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
 | `PORT` | Default 8080. |
 | `GOALIE_DEV_MOCK_IDENTITY` | `1` turns on the mock identity (below). Refused with `NODE_ENV=production`. |
 | `GOALIE_DEV_AS` | Account the mock signs in as by default. |
+| `CONTENT_ROOT` | The `content` folder; unset means the one two levels above `src`/`dist`. |
 
 Roles sit behind a `RoleStore` interface. `MemoryRoleStore` serves the walking skeleton;
 `FirestoreRoleStore` reads `members/{account}.role` through a minimal interface the
@@ -70,7 +85,8 @@ shaped like the proxy's for each `/api` request that lacks one, then verifies it
 the same code path as production. Switch accounts with `/api/dev/as?account=sam@example.com`;
 `account=none` sends no header, so the app shows the expired-session state. With the mock
 on, the server also seeds three demo requests (a starter plan, an exercise and a harder
-version) for the parent's inbox. The key is
+version) for the parent's inbox, and approves today's session and its cards as the demo
+parent so the keeper's player has something to run. The key is
 never written to disk, and the flag stops the server from starting when
 `NODE_ENV=production`.
 

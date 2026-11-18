@@ -7,7 +7,7 @@
 .gtd
 .githooks
 docs
-content
+content/exercises/*.spec.md
 infra
 tests
 tools

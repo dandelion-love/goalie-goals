@@ -9,8 +9,25 @@ The installable web app: TypeScript, React, Vite and
 - **Keeper home** and **Parent home**, chosen by the role from `/api/me`.
   - Parent home: the **Inbox** of pending requests, each with **Approve** and **Decline**,
     and a badge with the pending count (the in-app stand-in for push); then **History**.
-  - Keeper home: **Your training** shows approved items only, and a count of changes
-    waiting for the parent without their content; then the same **History**.
+  - Keeper home: **Today** at the top, then **Your training** (approved items only, and a
+    count of changes waiting for the parent without their content), then the same
+    **History**.
+- **Today** (`src/LessonPath.tsx`): today's approved session as a path of steps (warm-up,
+  each card, cool-down, finish) with **Start session**. When today's session is not
+  approved it offers **Do the last approved version** (if the server sent one) or **Rest
+  today**, never an unapproved session. A planned rest day says so.
+- **Session player** (`src/SessionPlayer.tsx`, flow in `src/player.ts`): about 10 minutes.
+  Warm-up moves on a countdown, then each card with its figure and credit line, steps, cues,
+  common mistakes and stop signs; a countdown for holds and rests and a rep counter for
+  counted work; after each set the parent taps a cue that looked good and the app says
+  "<cue>: nice" (the cue, never the person). **Something hurts** and **Stop** are always on
+  screen. Every ending has a positive finish screen with no "one more?" prompt. The
+  `onSessionFinish` prop on `App` receives the result: XP and streaks hook in there later.
+  The pain report form and the training pause come in a later story.
+- **Wake lock** (`src/wakeLock.ts`): requested on Start, re-requested when the page is
+  visible again, released at the end. Without it (a Home Screen app below iPadOS 18.4, or a
+  refused request) the player shows "Screen may dim: tap the timer to keep it awake" and a
+  running timer waits for a tap once 50 s pass without one.
 - **Not set up**: a signed-in account with no role. It shows no data.
 - **Session expired**: `/api/me` returned `401`. **Reconnect** navigates the app window to
   the start URL, so the sign-in proxy's redirect runs inside the installed app.
@@ -23,7 +40,10 @@ proxy answers an expired session with `401`, not a redirect.
 
 Width-based, from `layoutFor(width)` in `src/layout.ts`: **compact** below 600 px (phone),
 **medium** 600 to 899 px (iPad portrait), **expanded** 900 px and up (iPad landscape, two
-panes). A container query drops the two panes to one column in a narrow window.
+panes). A container query drops the two panes to one column in a narrow window. In the
+player, medium puts the figure above the controls; expanded puts the figure and timer left
+and the steps, cues and set log right. Buttons are at least 44 px; in-session controls
+(`.session-control`) at least 56 px.
 
 ## Installable app
 

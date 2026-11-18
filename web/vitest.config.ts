@@ -6,5 +6,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
+    // Process the stylesheet so a test can read it (`?raw`) and check the touch-target sizes.
+    css: { include: [/styles\.css/] },
   },
 });

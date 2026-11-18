@@ -219,3 +219,295 @@ button:disabled {
   display: grid;
   gap: 6px;
 }
+
+/* Today and the lesson path. */
+.home {
+  display: grid;
+  gap: 16px;
+}
+
+.lesson-title {
+  margin: 2px 0;
+  font-size: 1.4rem;
+}
+
+.path {
+  list-style: none;
+  margin: 12px 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.path-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  font-weight: 600;
+}
+
+/* The line joining the steps of the path. */
+.path-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 38px;
+  bottom: -14px;
+  width: 4px;
+  border-radius: 2px;
+  background: rgb(47 158 91 / 35%);
+}
+
+.path-node {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: inset 0 -4px 0 rgb(0 0 0 / 18%);
+}
+
+.finish-node .path-node {
+  background: #e0a526;
+}
+
+.fallback .actions,
+.today .actions {
+  margin-top: 14px;
+}
+
+.done-today {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Every button is at least 44 px; anything tapped mid-session is at least 56 px. */
+button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.session-control {
+  min-height: 56px;
+  min-width: 56px;
+  font-size: 1.1rem;
+}
+
+button.wide {
+  width: 100%;
+  margin-top: 12px;
+}
+
+button.danger {
+  min-height: 56px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #b42318;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* The session player: designed for the floor, read from a few metres. */
+.player {
+  display: grid;
+  gap: 16px;
+}
+
+.player-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.player-title {
+  margin: 2px 0 0;
+  font-size: 1.8rem;
+}
+
+.player-bar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.wake-notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgb(224 165 38 / 18%);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.feedback {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* medium (iPad portrait): one wide column, drill above the controls. */
+.player-stack {
+  display: grid;
+  gap: 16px;
+}
+
+/* expanded (iPad landscape): drill and timer left, steps and set log right. */
+.player-panes {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@container (max-width: 700px) {
+  .player-panes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.player-main,
+.player-side {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+
+.player-side h2 {
+  margin-top: 12px;
+}
+
+.player-side ol,
+.player-side ul {
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+
+.drill-figure {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.drill-figure img {
+  width: 100%;
+  max-height: 38vh;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 12px;
+}
+
+.credit {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.dose {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.move-name {
+  font-size: 2rem;
+  margin: 0;
+}
+
+.cue-line {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.move-list .done {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.move-list [aria-current='step'] {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.countdown {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.timer-face {
+  display: grid;
+  justify-items: center;
+  padding: 12px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+}
+
+.timer-label {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Readable from a few metres. */
+.timer-time {
+  font-size: clamp(4rem, 12vw, 7rem);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-hint {
+  font-weight: 700;
+  color: #ffd166;
+}
+
+.counter {
+  display: grid;
+  justify-items: center;
+  margin: 8px 0;
+  color: var(--text);
+}
+
+.counter-value {
+  font-size: clamp(4rem, 12vw, 7rem);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.counter-label {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cue-buttons {
+  display: grid;
+  gap: 10px;
+}
+
+.finish {
+  display: grid;
+  gap: 8px;
+}
+
+.praised {
+  list-style: none;
+  padding: 0;
+  font-weight: 700;
+  color: var(--accent);
+}

@@ -3,6 +3,7 @@
 // demo never proposes anything without an acceptance spec (training-rules Decision).
 
 import type { ApprovalService, ProposeInput } from './approvals.js';
+import type { TrainingService } from './training.js';
 
 export const DEMO_REQUESTS: readonly ProposeInput[] = [
   {
@@ -43,4 +44,20 @@ export const DEMO_REQUESTS: readonly ProposeInput[] = [
 
 export async function seedDemoRequests(service: ApprovalService): Promise<void> {
   for (const input of DEMO_REQUESTS) await service.propose(input);
+}
+
+/** The demo parent of the invented cast; used only to approve demo content in local development. */
+export const DEMO_PARENT = { account: 'sam@example.com', role: 'parent' as const };
+
+/**
+ * Local development only: propose today's session and its cards, then approve them as the demo
+ * parent, so the keeper's player has an approved session to run.
+ */
+export async function seedDemoSession(training: TrainingService, date: string): Promise<void> {
+  await training.proposeFor(date);
+  for (const r of await training.approvals.pending()) {
+    if (r.itemId.startsWith('card-') || r.itemId.startsWith('session-')) {
+      await training.approvals.approve(r.id, DEMO_PARENT);
+    }
+  }
 }
