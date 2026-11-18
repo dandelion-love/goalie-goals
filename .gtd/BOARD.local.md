@@ -82,3 +82,41 @@ issue on the board with `project_add_item`.
 
 Until the owner changes this line: only items the owner points an agent at. No unpointed
 pickup while the product is being shaped.
+
+## Procedure differences: the builder and reviewer loop
+
+The owner runs two standing sessions on this board: a **builder** and a **reviewer**. The
+reviewer also owns the clean-room check (no private data, no copied text or assets).
+
+1. The builder triages every new and `agent-proposed` item, adds `agent-review`, and
+   notifies the reviewer.
+2. The reviewer reviews it with `board-review`. If it is ready, the reviewer removes
+   `agent-review`, adds `agent-ready`, sets Status Ready, and notifies the builder. Here this
+   overrides `board-review`'s "never add agent-ready". If it is not ready, the reviewer
+   comments its findings and notifies the builder, who fixes it and sends it back.
+3. The builder claims and builds `agent-ready` items, with `project: dandelion-love/11` on
+   every board call.
+4. Before every push, the builder sends the reviewer the branch. Before every merge, the
+   builder sends the PR. The reviewer replies `clean-room: pass` or `clean-room: fail`
+   and, on a PR, posts one comment with the verdict. Nothing is pushed or merged on a fail.
+5. Each new kind of finding is codified (a guard rule with a test, a line in the privacy
+   skill, or a rule here), never by writing the private value into the repo.
+6. The reviewer never reviews its own work, and the builder never passes its own.
+7. Both notify each other at every hand-off. If one session is offline, the other leaves
+   the hand-off on the issue (label plus comment) and does not act in its place.
+
+## Merge grants
+
+### merge: pre-release
+
+- paths: every file in a PR, until the first release
+- granted_by: hobpond (the owner)
+- date: 2026-11-17
+- link: the owner's own session, in his words: "There are no users atm and we do not have
+  users. Take this as explicit permission to merge. The grant will be removed when we have
+  first release."
+- also: only after the reviewer's `clean-room: pass` on that PR and green checks. The
+  reviewer never merges its own PRs; the builder merges them after its own read. This is
+  the owner's explicit override, for the pre-release period only, of the kit's default
+  that a grant names exact files and never covers `.gtd/` or `.github/`. It is removed in
+  the PR that cuts the first release.
