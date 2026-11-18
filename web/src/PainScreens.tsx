@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { BODY_AREAS, bodyAreaLabel, clearPause, fetchPauseStatus, type BodyArea, type PauseStatus } from './pain';
+import { SAVING, SavingAnnouncer, savingProps, useOneAtATime } from './Saving';
 
 /**
  * Where it hurts as large toggles (each at least 56 px) with radio-group semantics: one tap
@@ -62,6 +63,7 @@ export function PainReportForm({ onSend }: { onSend: (area: BodyArea, note: stri
   const [area, setArea] = useState<BodyArea | null>(null);
   const [note, setNote] = useState('');
   const [state, setState] = useState<'editing' | 'sending' | 'sent' | 'saved'>('editing');
+  const once = useOneAtATime();
 
   if (state === 'sent') return <p className="pain-sent" role="status">Your parent has been told. Training is paused until they clear it.</p>;
   if (state === 'saved') {
@@ -79,10 +81,14 @@ export function PainReportForm({ onSend }: { onSend: (area: BodyArea, note: stri
       onSubmit={(e) => {
         e.preventDefault();
         if (!area) return;
-        setState('sending');
-        void onSend(area, note.trim()).then((ok) => setState(ok ? 'sent' : 'saved'));
+        void once(async () => {
+          setState('sending');
+          const ok = await onSend(area, note.trim());
+          setState(ok ? 'sent' : 'saved');
+        });
       }}
     >
+      <SavingAnnouncer pending={state === 'sending'} />
       <BodyAreaChoice value={area} onChange={setArea} />
       <label className="pain-note">
         Anything else? (optional)
@@ -91,10 +97,11 @@ export function PainReportForm({ onSend }: { onSend: (area: BodyArea, note: stri
       <button
         type="submit"
         className="primary session-control wide"
-        disabled={!area || state === 'sending'}
+        disabled={!area}
+        {...savingProps(state === 'sending')}
         aria-describedby={area ? undefined : 'pain-hint'}
       >
-        Tell my parent
+        {state === 'sending' ? SAVING : 'Tell my parent'}
       </button>
       {!area && (
         <p id="pain-hint" className="meta">
@@ -147,6 +154,7 @@ export function PauseInboxItem({
   const status = controlled ? given : own;
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const once = useOneAtATime();
 
   const load = useCallback(async () => {
     if (controlled) {
@@ -167,18 +175,19 @@ export function PauseInboxItem({
 
   if (!status?.paused) return null;
 
-  async function clear() {
-    setBusy(true);
-    setFailed(false);
-    try {
-      await clearPause(fetchImpl);
-    } catch {
-      setFailed(true);
-    }
-    await load();
-    setBusy(false);
-    onChange?.();
-  }
+  const clear = () =>
+    once(async () => {
+      setBusy(true);
+      setFailed(false);
+      try {
+        await clearPause(fetchImpl);
+      } catch {
+        setFailed(true);
+      }
+      await load();
+      setBusy(false);
+      onChange?.();
+    });
 
   return (
     <article className="card urgent" aria-labelledby="pause-title">
@@ -195,8 +204,9 @@ export function PauseInboxItem({
       </ul>
       <p className="meta">{SEE_SOMEONE} Clear the pause only when it no longer hurts.</p>
       {failed && <p role="alert">That didn't go through. Training is still paused.</p>}
-      <button type="button" className="primary" disabled={busy} onClick={() => void clear()}>
-        Clear the pause
+      <SavingAnnouncer pending={busy} />
+      <button type="button" className="primary" {...savingProps(busy)} onClick={() => void clear()}>
+        {busy ? SAVING : 'Clear the pause'}
       </button>
     </article>
   );

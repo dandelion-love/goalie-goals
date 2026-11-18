@@ -52,6 +52,8 @@ function withoutCardText(text: string): string {
 interface Copy {
   labels: string[];
   sentences: string[];
+  /** Each element's own text as the script joins it, before card text is taken out. */
+  lines: string[];
 }
 
 /** Script I of the rubric, for jsdom: control labels, and the sentences outside controls. */
@@ -59,13 +61,15 @@ function copyOnScreen(root: HTMLElement = document.body): Copy {
   const labels = [...root.querySelectorAll('button, a[href], [role="button"]')]
     .map((e) => (e.textContent || e.getAttribute('aria-label') || '').trim())
     .filter(Boolean);
-  const sentences = [...root.querySelectorAll('*')]
+  const raw = [...root.querySelectorAll('*')]
     .filter((e) => !e.closest('button, a[href], [role="button"], .sr-only, script, style'))
-    .map((e) => [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent ?? '').join(' '))
+    .map((e) => [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent ?? '').join(' '));
+  const sentences = raw
     .map((t) => withoutCardText(t).replace(/\s+/g, ' ').trim())
     .filter((t) => /[A-Za-z]/.test(t))
     .flatMap((t) => t.split(/(?<=[.!?])\s+/));
-  return { labels, sentences };
+  const lines = raw.map((t) => t.replace(/\s+/g, ' ').trim()).filter((t) => /[A-Za-z]/.test(t));
+  return { labels, sentences, lines };
 }
 
 const screensSeen: string[] = [];
@@ -77,13 +81,16 @@ function checkCopy(where: string, limit: number) {
   const ariaLabels = [...document.querySelectorAll('[aria-label]')].map((e) => e.getAttribute('aria-label') ?? '');
   for (const l of ariaLabels) expect(l, where).not.toMatch(DEV_WORDS);
 
-  const { labels, sentences } = copyOnScreen();
+  const { labels, sentences, lines } = copyOnScreen();
   expect(sentences.length, `${where}: no text found`).toBeGreaterThan(0);
   for (const label of labels) {
     if (CUES.has(label)) continue; // the card's own cue, approved with the card
     expect(words(label), `${where}: label "${label}"`).toBeLessThanOrEqual(3);
   }
   for (const s of sentences) expect(words(s), `${where}: "${s}"`).toBeLessThanOrEqual(limit);
+  // Story #96 AC3: no stray space before punctuation ("Jan 12 ; silence"), as the audit script
+  // reads a line, joining its text nodes with spaces.
+  for (const l of lines) expect(l, `${where}: stray space`).not.toMatch(/\s[;:,.!?]/);
 }
 
 /** In-session screens (K2 to K5) allow 12 words a sentence; every other screen 20. */
@@ -158,6 +165,8 @@ describe('the words on both homes (AC1)', () => {
     expect(await screen.findByRole('heading', { name: 'Session: Strong middle' })).toBeTruthy();
     await screen.findByText(/Keeper reported something hurts/);
     await screen.findByRole('heading', { name: 'Training paused: something hurts' });
+    // The lapse date in the copy rules' own reading (AC3 of story #96).
+    expect(copyOnScreen().lines).toContain('Lapses unanswered on Jan 12; silence never approves.');
     checkCopy('P1 parent home', ELSEWHERE);
   });
 

@@ -729,16 +729,21 @@ button:disabled {
   font-weight: var(--weight-bold);
 }
 
-/* Training days on Parent home: seven toggles, exactly three on. */
+/* Training days on Parent home: seven toggles, exactly three on. Each at least 44 px both
+ * ways with 8 px between (story #96 AC4): one row where it fits, 4 + 3 on a phone. */
 .day-toggles {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: var(--space-1);
+  grid-template-columns: repeat(7, minmax(var(--target), 1fr));
+  gap: var(--space-2);
   margin: var(--space-2) 0 var(--space-3);
 }
 
+.app[data-layout='compact'] .day-toggles {
+  grid-template-columns: repeat(4, minmax(var(--target), 1fr));
+}
+
 .day-toggle {
-  min-width: 0;
+  min-width: var(--target);
   padding: 0;
   border: var(--border-width) solid var(--line);
   border-radius: var(--radius-sm);
@@ -842,23 +847,34 @@ button:disabled {
   margin-left: var(--space-2);
 }
 
-/* Fixed, so it never moves the page as it comes and goes. Inverse colours: the text colour
- * as the fill. */
+/* The toast's place after the inbox list, held at its height whether a toast shows or not, so
+ * its coming and going moves nothing (story #95 AC3), and at least 8 px from Decline and every
+ * other target (story #96 AC1). Tall enough for Undo or two lines of text. */
+.toast-slot {
+  height: calc(2 * var(--text-md) * var(--leading-md) + 2 * var(--space-2));
+  margin-top: var(--space-3);
+}
+
+/* Inverse colours: the text colour as the fill. */
 .toast {
-  position: fixed;
-  left: 50%;
-  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 10;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-3);
-  max-width: calc(100% - var(--space-6));
+  height: 100%;
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
   background: var(--text);
   color: var(--surface);
   box-shadow: var(--shadow-2);
+}
+
+.toast-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 .toast button.secondary {

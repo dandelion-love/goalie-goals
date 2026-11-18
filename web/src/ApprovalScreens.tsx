@@ -15,6 +15,7 @@ import {
 import { fetchPauseStatus, type PauseStatus } from './pain';
 import { PauseInboxItem } from './PainScreens';
 import { LoadError, Skeleton, useSettled } from './Loading';
+import { SAVING, SavingAnnouncer, savingProps, useOneAtATime } from './Saving';
 
 type Load<T> = { kind: 'loading' } | { kind: 'ready'; data: T } | { kind: 'error' };
 
@@ -49,9 +50,11 @@ export function ParentInbox({
   const [state, setState] = useState<Load<{ requests: PendingRequest[]; badge: number; pause: PauseStatus | null }>>({
     kind: 'loading',
   });
-  const [busy, setBusy] = useState<string | null>(null);
+  /** The request on its way, and which control sent it (it reads "Saving…" until it lands). */
+  const [busy, setBusy] = useState<{ id: string; verb: 'approve' | 'decline' | 'undo' } | null>(null);
   const [failed, setFailed] = useState(false);
   const [toast, setToast] = useState<{ toast: Toast; ms: number } | null>(null);
+  const once = useOneAtATime();
   useSettled(state.kind !== 'loading', onSettled);
 
   const load = useCallback(async () => {
@@ -83,32 +86,42 @@ export function ParentInbox({
     return () => clearTimeout(timer);
   }, [toast]);
 
-  async function answer(r: PendingRequest, verb: 'approve' | 'decline') {
-    setBusy(r.id);
-    setFailed(false);
-    try {
-      const { undoForMs } = await answerRequest(r.id, verb, fetchImpl);
-      if (verb === 'approve' && undoForMs > 0) setToast({ toast: { kind: 'undo', id: r.id, title: r.title }, ms: undoForMs });
-    } catch {
-      setFailed(true);
-    }
-    await load();
-    setBusy(null);
-    onChange?.();
-  }
+  const answer = (r: PendingRequest, verb: 'approve' | 'decline') =>
+    once(async () => {
+      setBusy({ id: r.id, verb });
+      setFailed(false);
+      try {
+        const { undoForMs } = await answerRequest(r.id, verb, fetchImpl);
+        if (verb === 'approve' && undoForMs > 0) setToast({ toast: { kind: 'undo', id: r.id, title: r.title }, ms: undoForMs });
+      } catch {
+        setFailed(true);
+      }
+      await load();
+      setBusy(null);
+      onChange?.();
+    });
 
-  async function undo(id: string) {
-    setBusy(id);
-    try {
-      await undoApproval(id, fetchImpl);
-      setToast({ toast: { kind: 'note', text: "Approval undone. It's back in the inbox." }, ms: NOTE_MS });
-    } catch (e) {
-      setToast({ toast: { kind: 'note', text: undoMessage(e) }, ms: NOTE_MS });
-    }
-    await load();
-    setBusy(null);
-    onChange?.();
-  }
+  const undo = (id: string) =>
+    once(async () => {
+      setBusy({ id, verb: 'undo' });
+      try {
+        await undoApproval(id, fetchImpl);
+        setToast({ toast: { kind: 'note', text: "Approval undone. It's back in the inbox." }, ms: NOTE_MS });
+      } catch (e) {
+        setToast({ toast: { kind: 'note', text: undoMessage(e) }, ms: NOTE_MS });
+      }
+      await load();
+      setBusy(null);
+      onChange?.();
+    });
+
+  /** The control that sent the pending request reads "Saving…"; the others wait, disabled. */
+  const pressed = (id: string, verb: 'approve' | 'decline' | 'undo') => busy?.id === id && busy.verb === verb;
+  const control = (id: string, verb: 'approve' | 'decline' | 'undo', label: string) => ({
+    disabled: busy !== null && !pressed(id, verb),
+    ...savingProps(pressed(id, verb)),
+    children: pressed(id, verb) ? SAVING : label,
+  });
 
   const badge = state.kind === 'ready' ? state.data.badge : 0;
 
@@ -125,6 +138,8 @@ export function ParentInbox({
       {state.kind === 'ready' && (
         <PauseInboxItem fetchImpl={fetchImpl} onChange={onChange} status={state.data.pause} onReload={load} />
       )}
+      {/* Undo's "Saving…" is read by the toast's own polite region, so it is said once. */}
+      <SavingAnnouncer pending={busy !== null && busy.verb !== 'undo'} />
       {state.kind === 'loading' && <Skeleton lines={4} className="skeleton-request" />}
       {state.kind === 'error' && (
         <LoadError
@@ -144,48 +159,47 @@ export function ParentInbox({
               <span className="kind">{KIND_LABEL[r.kind] ?? r.kind}</span>
               <h3>{r.title}</h3>
               <p>{r.detail}</p>
-              <p className="meta">Lapses unanswered on {formatDate(r.expiresAt)}; silence never approves.</p>
+              {/* One text node, so no reader or audit script puts a space before the semicolon. */}
+              <p className="meta">{`Lapses unanswered on ${formatDate(r.expiresAt)}; silence never approves.`}</p>
               <div className="actions">
                 <button
                   type="button"
                   className="primary"
-                  disabled={busy !== null}
+                  {...control(r.id, 'approve', 'Approve')}
                   onClick={() => void answer(r, 'approve')}
-                >
-                  Approve
-                </button>
+                />
                 <button
                   type="button"
                   className="secondary"
-                  disabled={busy !== null}
+                  {...control(r.id, 'decline', 'Decline')}
                   onClick={() => void answer(r, 'decline')}
-                >
-                  Decline
-                </button>
+                />
               </div>
             </li>
           ))}
         </ul>
       )}
-      {toast && (
-        <div className="toast" role="status">
-          {toast.toast.kind === 'undo' ? (
-            <>
-              <span>Approved: {toast.toast.title}</span>
-              <button
-                type="button"
-                className="secondary"
-                disabled={busy !== null}
-                onClick={() => void undo((toast.toast as { id: string }).id)}
-              >
-                Undo
-              </button>
-            </>
-          ) : (
-            <span>{toast.toast.text}</span>
-          )}
-        </div>
-      )}
+      {/* A slot kept at the toast's height after the list, toast or not: the toast comes and goes
+          inside it, so nothing moves (story #95), and never over a target (story #96 AC1). */}
+      <div className="toast-slot" aria-hidden={toast ? undefined : true}>
+        {toast && (
+          <div className="toast" role="status">
+            {toast.toast.kind === 'undo' ? (
+              <>
+                <span className="toast-text">{`Approved: ${toast.toast.title}`}</span>
+                <button
+                  type="button"
+                  className="secondary"
+                  {...control(toast.toast.id, 'undo', 'Undo')}
+                  onClick={() => void undo((toast.toast as { id: string }).id)}
+                />
+              </>
+            ) : (
+              <span className="toast-text">{toast.toast.text}</span>
+            )}
+          </div>
+        )}
+      </div>
     </article>
   );
 }
@@ -300,9 +314,11 @@ export function History({
 }) {
   const [state, setState] = useState<Load<{ events: AuditEntry[]; at: number }>>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [busy, setBusy] = useState(false);
+  /** The request whose Undo is on its way (it reads "Saving…" until it lands). */
+  const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [, setTick] = useState(0);
+  const once = useOneAtATime();
   useSettled(state.kind !== 'loading', onSettled);
 
   useEffect(() => {
@@ -330,18 +346,19 @@ export function History({
     return () => clearTimeout(timer);
   }, [nextEnd]);
 
-  async function undo(id: string) {
-    setBusy(true);
-    try {
-      await undoApproval(id, fetchImpl);
-      setNote("Approval undone. It's back in the inbox.");
-    } catch (e) {
-      setNote(undoMessage(e));
-    }
-    setBusy(false);
-    setAttempt((n) => n + 1);
-    onChange?.();
-  }
+  const undo = (id: string) =>
+    once(async () => {
+      setBusy(id);
+      try {
+        await undoApproval(id, fetchImpl);
+        setNote("Approval undone. It's back in the inbox.");
+      } catch (e) {
+        setNote(undoMessage(e));
+      }
+      setBusy(null);
+      setAttempt((n) => n + 1);
+      onChange?.();
+    });
 
   return (
     <article className="card" aria-labelledby="history-title" aria-busy={state.kind === 'loading'}>
@@ -356,6 +373,7 @@ export function History({
           }}
         />
       )}
+      <SavingAnnouncer pending={busy !== null} />
       {note && <p role="status">{note}</p>}
       {state.kind === 'ready' && state.data.events.length === 0 && <p>Nothing yet.</p>}
       {state.kind === 'ready' && state.data.events.length > 0 && (
@@ -377,11 +395,12 @@ export function History({
                 <button
                   type="button"
                   className="secondary undo"
-                  disabled={busy}
-                  aria-label={`Undo approval of ${e.title}`}
+                  disabled={busy !== null && busy !== e.requestId}
+                  {...savingProps(busy === e.requestId)}
+                  aria-label={busy === e.requestId ? undefined : `Undo approval of ${e.title}`}
                   onClick={() => void undo(e.requestId!)}
                 >
-                  Undo
+                  {busy === e.requestId ? SAVING : 'Undo'}
                 </button>
               )}
             </li>

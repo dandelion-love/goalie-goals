@@ -256,7 +256,7 @@ function MovesStep({
         <ol className="move-list">
           {step.moves.map((m, i) => (
             <li key={m.name} aria-current={i === index ? 'step' : undefined} className={i < index ? 'done' : undefined}>
-              {m.name}, {m.seconds} s
+              {`${m.name}, ${m.seconds} s`}
             </li>
           ))}
         </ol>
@@ -384,10 +384,7 @@ function CardStep({
           <img src={card.figureUrl} alt={`${card.name}: how the move looks`} />
           <figcaption className="credit">{card.credit}</figcaption>
         </figure>
-        <p className="dose">
-          {card.doseText}
-          {dose.tempo ? `. Tempo: ${dose.tempo}.` : '.'}
-        </p>
+        <p className="dose">{`${card.doseText}${dose.tempo ? `. Tempo: ${dose.tempo}.` : '.'}`}</p>
       </div>
       <div className="player-controls">{controls}</div>
       <div className="player-side">
