@@ -38,6 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import credits_check  # noqa: E402
+import privacy_guard  # noqa: E402
 
 TRAINING_RULES = "/decisions/training-rules.md"
 
@@ -121,6 +122,8 @@ SVG_BANNED = re.compile(r"<metadata|<script|<image|<foreignObject|sodipodi|inksc
 def load_cards(root: Path) -> dict[str, tuple[Path, dict | None]]:
     cards = {}
     for f in sorted((root / "content" / "exercises").glob("*.json")):
+        if f.name.endswith(DOSSIER_SUFFIX):
+            continue  # a card's dossier (story 115), checked by check_dossiers
         try:
             cards[f.stem] = (f, json.loads(f.read_text(encoding="utf-8")))
         except ValueError:
@@ -417,13 +420,426 @@ def check(root: Path) -> list[str]:
         # Credits.
         for path in (rel, spec_rel, fig):
             found += credits_errors(path, by_path)
+    found += check_dossiers(root, good, by_path)
     return found
+
+
+# --- Exercise dossiers (story 115) -------------------------------------------------------
+# The exercise-dossier Decision (docs/knowledge/decisions/exercise-dossier.md) sets the file
+# shape; the claim rules (docs/knowledge/dossiers/claim-rules.md) set what a claim may say.
+# A dossier is content/exercises/<id>.dossier.json beside its card. The pass fails a dossier
+# when:
+# 1. it has no card, or `id` and `card` disagree (a card with no dossier fails only once
+#    DOSSIER_REQUIRED is on: story 115 adds the plank first, the other cards follow);
+# 2. a field is missing, the wrong type, or outside the Decision's counts and lengths, or
+#    `approved` is not false (only the parent approves, in the app);
+# 3. a claim has no sources, a source id does not resolve, or a source is unused;
+# 4. `evidence` differs from the label computed from the sources, or an `adult` claim's text
+#    does not say "adult";
+# 5. a "what to expect" claim has no outcome, no youth source, or a text that does not quote
+#    its range (low end first) and its weeks;
+# 6. keeper-facing text holds a word the claim rules refuse (looks, size, shape, weight,
+#    prevention, promises), outside a `negates` limits claim;
+# 7. a `main` muscle is not `measured`, or a muscle id is not in the vocabulary;
+# 8. `clips` is not empty (no clip policy Decision yet);
+# 9. a source URL is not https (an `app` source is a repo path), or is a link the privacy
+#    guard refuses;
+# 10. a keeper-facing sentence runs over SENTENCE_WORDS: the player opens the dossier from the
+#    card's intro before set 1, so it is held to the in-session limit of the quality rubric's
+#    CT1, like the card (claim rule 11, short sentences).
+# It warns (exit 0) when `stale_after` has passed, when keeper-facing text runs past about
+# 2,000 characters, and when its reading-grade estimate is above grade 8.
+
+DOSSIER_SUFFIX = ".dossier.json"
+# Story 115 builds the dossiers in two PRs; the second turns this on with the last dossier.
+DOSSIER_REQUIRED = False
+ACTIONS = ("dive", "set-position", "jump", "distribution", "recovery")
+EVIDENCE = ("youth", "adult", "mixed", "app")
+SOURCE_KINDS = ("position-statement", "meta-analysis", "review", "trial", "observational",
+                "lab-study", "guidance", "reference", "app")
+MUSCLES = frozenset((
+    "rectus-abdominis", "external-oblique", "internal-oblique", "transversus-abdominis",
+    "erector-spinae", "gluteus-maximus", "gluteus-medius", "hip-adductors", "hip-flexors",
+    "quadriceps", "hamstrings", "calves", "tibialis-anterior", "pectorals", "deltoids",
+    "triceps", "biceps", "latissimus-dorsi", "trapezius", "serratus-anterior",
+    "rotator-cuff", "forearm-flexors"))
+# The claim rules' refused words, matched as whole words, case-insensitive ("absorb",
+# "fatigue" and "clean" pass). Each new kind of finding becomes a rule here, with a test.
+REFUSED_WORDS = (
+    "tone", "toned", "sculpt", "bulk", "bigger muscles", "muscle growth", "grow your muscles",
+    "hypertrophy", "six-pack", "abs", "flat stomach", "burn fat", "fat", "lose weight",
+    "gain weight", "weight loss", "slim", "lean", "body shape", "look better", "prevent",
+    "prevents", "injury-proof", "protects you from", "guarantee", "you will")
+REFUSED = re.compile(r"(?<![\w-])(" + "|".join(re.escape(w).replace(r"\ ", r"\s+")
+                                               for w in REFUSED_WORDS) + r")(?![\w-])", re.I)
+SOURCE_ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+REPO_PATH = re.compile(r"^(content|docs)/[\w.-]+(/[\w.-]+)*$")
+STAMP = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+PRIVATE_LINK = re.compile(r"claude\.ai/|docs\.google\.com|drive\.google\.com|"
+                          r"gist\.github\.com|dropbox\.com|onedrive\.live\.com", re.I)
+NUMBER = re.compile(r"\d+(?:\.\d+)?")
+DOSSIER_CHARS = 2000
+READING_GRADE = 8.0
+
+
+def load_dossiers(root: Path) -> dict[str, tuple[Path, dict | None]]:
+    out = {}
+    for f in sorted((root / "content" / "exercises").glob("*" + DOSSIER_SUFFIX)):
+        stem = f.name[:-len(DOSSIER_SUFFIX)]
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            out[stem] = (f, data if isinstance(data, dict) else None)
+        except ValueError:
+            out[stem] = (f, None)
+    return out
+
+
+def _text(value: object, lo: int, hi: int) -> bool:
+    return isinstance(value, str) and lo <= len(value.strip()) <= hi and value == value.strip()
+
+
+def _pair(value: object) -> bool:
+    return (isinstance(value, list) and len(value) == 2
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in value)
+            and value[0] <= value[1])
+
+
+def _whole_pair(value: object) -> bool:
+    return _pair(value) and all(isinstance(v, int) for v in value)  # type: ignore[union-attr]
+
+
+def computed_evidence(ids: list[str], population: dict[str, str]) -> str:
+    """The Decision's rule: app sources are set aside unless they are all there is; then all
+    youth gives youth, all adult gives adult, any other mix gives mixed."""
+    pops = [population[i] for i in ids if i in population]
+    rest = [p for p in pops if p != "app"]
+    if not rest:
+        return "app"
+    if all(p == "youth" for p in rest):
+        return "youth"
+    if all(p == "adult" for p in rest):
+        return "adult"
+    return "mixed"
+
+
+def source_errors(sources: object) -> tuple[list[str], dict[str, str]]:
+    """Errors in `sources`, and each good source's population by id."""
+    if not isinstance(sources, list) or not sources:
+        return ["sources must list at least one source"], {}
+    out: list[str] = []
+    population: dict[str, str] = {}
+    for i, s in enumerate(sources):
+        where = f"sources[{i}]"
+        if not isinstance(s, dict):
+            out.append(f"{where} must be an object")
+            continue
+        sid = s.get("id")
+        if not (isinstance(sid, str) and SOURCE_ID.match(sid) and len(sid) <= 40):
+            out.append(f"{where}.id must be lowercase kebab, up to 40 characters")
+            continue
+        where = f"source {sid}"
+        if sid in population:
+            out.append(f"{where} is listed twice")
+        if not _text(s.get("title"), 1, 200):
+            out.append(f"{where}: title must be 1 to 200 characters")
+        if s.get("kind") not in SOURCE_KINDS:
+            out.append(f"{where}: kind must be one of {', '.join(SOURCE_KINDS)}")
+        if s.get("population") not in EVIDENCE:
+            out.append(f"{where}: population must be one of {', '.join(EVIDENCE)}")
+        if not _text(s.get("band"), 1, 30):
+            out.append(f"{where}: band must be an age band of 1 to 30 characters")
+        if not isinstance(s.get("year"), int) or isinstance(s.get("year"), bool):
+            out.append(f"{where}: year must be a whole number")
+        url = s.get("url")
+        if not isinstance(url, str):
+            out.append(f"{where}: url is missing")
+        elif s.get("population") == "app" or s.get("kind") == "app":
+            if not REPO_PATH.match(url) or ".." in url:
+                out.append(f"{where}: an app source's url is a path in this repo")
+        elif not url.startswith("https://"):
+            out.append(f"{where}: url must be https://")
+        if isinstance(url, str) and (PRIVATE_LINK.search(url) or privacy_guard.scan(
+                url, where, skip=frozenset({privacy_guard.PATH_RULE}))):
+            out.append(f"{where}: url is a private link the privacy guard refuses")
+        population[sid] = str(s.get("population"))
+    return out, population
+
+
+def claim_errors(claim: object, where: str, population: dict[str, str], used: set[str], *,
+                 action: bool = False, outcome: bool = False, negates_ok: bool = False,
+                 text_field: str = "text", text_len: tuple[int, int] = (20, 220)) -> list[str]:
+    """One claim record (or a muscle-map entry, whose text is its `plain` label)."""
+    if not isinstance(claim, dict):
+        return [f"{where} must be an object"]
+    out = []
+    text = claim.get(text_field)
+    if not _text(text, *text_len):
+        out.append(f"{where}.{text_field} must be {text_len[0]} to {text_len[1]} characters")
+        text = text if isinstance(text, str) else ""
+    detail = claim.get("detail")
+    if detail is not None and not _text(detail, 1, 400):
+        out.append(f"{where}.detail must be up to 400 characters")
+    ids = claim.get("sources")
+    if not (isinstance(ids, list) and 1 <= len(ids) <= 4 and all(isinstance(i, str) for i in ids)):
+        out.append(f"{where} has no sources: every claim names 1 to 4 source ids (claim rule 1)")
+        ids = []
+    for i in ids:
+        if i not in population:
+            out.append(f"{where}: source {i} is not in sources")
+    used.update(ids)
+    if claim.get("evidence") not in EVIDENCE:
+        out.append(f"{where}.evidence must be one of {', '.join(EVIDENCE)}")
+    elif ids and all(i in population for i in ids):
+        want = computed_evidence(ids, population)
+        if claim["evidence"] != want:
+            out.append(f"{where}: evidence is {claim['evidence']}, but its sources give {want}")
+        elif want == "adult" and text_field == "text" and not re.search(r"\badults?\b", text, re.I):
+            out.append(f"{where}: adult-only evidence must say so in its text (claim rule 3)")
+    if action:
+        if claim.get("action") not in ACTIONS:
+            out.append(f"{where}.action must be one of {', '.join(ACTIONS)}")
+    elif "action" in claim:
+        out.append(f"{where}: action belongs only in why.claims")
+    if claim.get("negates") not in (None, True):
+        out.append(f"{where}.negates must be true or absent")
+    negates = claim.get("negates") is True
+    if negates and not negates_ok:
+        out.append(f"{where}: negates is allowed only in science.limits")
+    if not (negates and negates_ok):
+        for field in (text, detail if isinstance(detail, str) else ""):
+            m = REFUSED.search(field)
+            if m:
+                out.append(f"{where}: says {m.group(1)!r}, which the claim rules refuse "
+                           f"(claim rules 4, 5 and 7)")
+    if outcome:
+        out += outcome_errors(claim, where, text, population, ids)
+    elif "outcome" in claim:
+        out.append(f"{where}: outcome belongs only in expect.claims")
+    return out
+
+
+def _num(v: float) -> str:
+    return f"{v:g}"
+
+
+def outcome_errors(claim: dict, where: str, text: str, population: dict[str, str],
+                   ids: list[str]) -> list[str]:
+    """Claim rule 4: an expected change is a range with a time frame, from a youth source."""
+    o = claim.get("outcome")
+    if not isinstance(o, dict):
+        return [f"{where} has no outcome: an expected change states its range and weeks"]
+    out = []
+    if not _text(o.get("measure"), 1, 60):
+        out.append(f"{where}.outcome.measure must be 1 to 60 characters")
+    if not _pair(o.get("change_pct")):
+        out.append(f"{where}.outcome.change_pct must be [low, high], low first")
+    if not _whole_pair(o.get("weeks")):
+        out.append(f"{where}.outcome.weeks must be [low, high] whole numbers")
+    if not _whole_pair(o.get("sessions_per_week")):
+        out.append(f"{where}.outcome.sessions_per_week must be [low, high] whole numbers")
+    if not _text(o.get("band"), 1, 30):
+        out.append(f"{where}.outcome.band must be an age band")
+    if not any(population.get(i) == "youth" for i in ids):
+        out.append(f"{where}: an expected change needs a youth source (claim rule 3)")
+    if out:
+        return out
+    numbers = NUMBER.findall(text)
+    for name in ("change_pct", "weeks"):
+        lo, hi = (_num(v) for v in o[name])
+        if lo == hi:
+            if lo not in numbers:
+                out.append(f"{where}: text does not quote its {name} {lo} (claim rule 4)")
+        elif not re.search(rf"(?<![\d.]){re.escape(lo)}\s*%?\s*to\s*{re.escape(hi)}(?![\d.])",
+                           text):
+            out.append(f"{where}: text does not quote its {name} as '{lo} to {hi}', "
+                       f"low end first (claim rule 4)")
+    return out
+
+
+def _count(value: object, lo: int, hi: int) -> bool:
+    return isinstance(value, list) and lo <= len(value) <= hi
+
+
+def _part(d: dict, key: str, out: list[str]) -> dict:
+    if not isinstance(d.get(key), dict):
+        out.append(f"{key} must be an object")
+        return {}
+    return d[key]
+
+
+def dossier_errors(d: object, stem: str, cards: dict[str, dict]) -> list[str]:
+    """Every finding for one dossier (rules 1 to 9 above)."""
+    if not isinstance(d, dict):
+        return ["not a JSON object"]
+    out: list[str] = []
+    if d.get("id") != stem:
+        out.append(f"id {d.get('id')!r} must match the file name {stem!r}")
+    if stem not in cards:
+        out.append(f"no card content/exercises/{stem}.json for this dossier")
+    if d.get("card") != f"content/exercises/{stem}.json":
+        out.append(f"card must be content/exercises/{stem}.json")
+    if d.get("approved") is not False:
+        out.append("approved must start false; only the parent approves, in the app")
+    if d.get("licence") != "CC-BY-SA-4.0":
+        out.append("licence must be CC-BY-SA-4.0")
+    for k in ("reviewed_at", "stale_after"):
+        if not (isinstance(d.get(k), str) and STAMP.match(d[k])):
+            out.append(f"{k} must be a UTC timestamp (YYYY-MM-DDTHH:MM:SSZ)")
+    errs, population = source_errors(d.get("sources"))
+    out += errs
+    used: set[str] = set()
+
+    why = _part(d, "why", out)
+    headline = why.get("headline")
+    if not _text(headline, 10, 80):
+        out.append("why.headline must be 10 to 80 characters")
+    elif REFUSED.search(headline):
+        out.append(f"why.headline: says {REFUSED.search(headline).group(1)!r}, which the "
+                   f"claim rules refuse")
+    if not _count(why.get("claims"), 2, 4):
+        out.append("why.claims must list 2 to 4 claims")
+    for i, c in enumerate(why.get("claims") or []):
+        out += claim_errors(c, f"why.claims[{i}]", population, used, action=True)
+
+    expect = _part(d, "expect", out)
+    if not _count(expect.get("claims"), 2, 4):
+        out.append("expect.claims must list 2 to 4 claims")
+    for i, c in enumerate(expect.get("claims") or []):
+        out += claim_errors(c, f"expect.claims[{i}]", population, used, outcome=True)
+    if "keep_up" not in expect:
+        out.append("expect.keep_up is missing")
+    else:
+        out += claim_errors(expect["keep_up"], "expect.keep_up", population, used)
+
+    muscles = _part(d, "muscles", out)
+    if not _count(muscles.get("map"), 2, 8):
+        out.append("muscles.map must list 2 to 8 entries")
+    for i, m in enumerate(muscles.get("map") or []):
+        where = f"muscles.map[{i}]"
+        out += claim_errors(m, where, population, used, text_field="plain", text_len=(1, 60))
+        if not isinstance(m, dict):
+            continue
+        if m.get("muscle") not in MUSCLES:
+            out.append(f"{where}: muscle {m.get('muscle')!r} is not in the vocabulary")
+        if m.get("role") not in ("main", "helping"):
+            out.append(f"{where}.role must be main or helping")
+        if m.get("basis") not in ("measured", "cued"):
+            out.append(f"{where}.basis must be measured or cued")
+        if m.get("role") == "main" and m.get("basis") != "measured":
+            out.append(f"{where}: a main muscle must be measured in a study")
+    if muscles.get("note") is not None:
+        out += claim_errors(muscles["note"], "muscles.note", population, used)
+
+    if d.get("clips") != []:
+        out.append("clips must be empty until the clip policy Decision exists")
+
+    science = _part(d, "science", out)
+    if not _count(science.get("claims"), 2, 5):
+        out.append("science.claims must list 2 to 5 claims")
+    for i, c in enumerate(science.get("claims") or []):
+        out += claim_errors(c, f"science.claims[{i}]", population, used)
+    if not _count(science.get("limits"), 1, 3):
+        out.append("science.limits must list 1 to 3 claims: say what is not known (claim rule 9)")
+    for i, c in enumerate(science.get("limits") or []):
+        out += claim_errors(c, f"science.limits[{i}]", population, used, negates_ok=True)
+
+    for sid in population:
+        if sid not in used:
+            out.append(f"source {sid} is not cited by any claim")
+    for text in keeper_text(d):
+        for sentence in SENTENCE_END.split(text.strip()):
+            if _words(sentence) > SENTENCE_WORDS:
+                out.append(f"{sentence!r} is {_words(sentence)} words; a sentence the player "
+                           f"shows is at most {SENTENCE_WORDS} (quality rubric CT1)")
+    return out
+
+
+def keeper_text(d: dict) -> list[str]:
+    """The keeper-facing text of a dossier: the headline, every claim and the muscle labels."""
+    part = lambda k: d.get(k) if isinstance(d.get(k), dict) else {}  # noqa: E731
+    out = [part("why").get("headline", "")]
+    for section in ("why", "expect", "science"):
+        for key in ("claims", "limits"):
+            out += [c.get("text", "") for c in part(section).get(key) or [] if isinstance(c, dict)]
+    keep_up = part("expect").get("keep_up")
+    if isinstance(keep_up, dict):
+        out.append(keep_up.get("text", ""))
+    out += [m.get("plain", "") for m in part("muscles").get("map") or [] if isinstance(m, dict)]
+    note = part("muscles").get("note")
+    if isinstance(note, dict):
+        out.append(note.get("text", ""))
+    return [t for t in out if isinstance(t, str) and t]
+
+
+def _syllables(word: str) -> int:
+    w = re.sub(r"[^a-z]", "", word.lower())
+    if not w:
+        return 0
+    groups = len(re.findall(r"[aeiouy]+", w))
+    if w.endswith("e") and not w.endswith(("le", "ee")) and groups > 1:
+        groups -= 1
+    return max(1, groups)
+
+
+def reading_grade(texts: list[str]) -> float:
+    """Flesch-Kincaid grade, standard library only: an estimate, never the final word."""
+    sentences = [s for t in texts for s in SENTENCE_END.split(t.strip()) if s.strip()]
+    words = [w for s in sentences for w in re.findall(r"[A-Za-z']+", s)]
+    if not sentences or not words:
+        return 0.0
+    syllables = sum(_syllables(w) for w in words)
+    return 0.39 * len(words) / len(sentences) + 11.8 * syllables / len(words) - 15.59
+
+
+def dossier_warnings(root: Path, now: str | None = None) -> list[str]:
+    """Stale dossiers, long ones and a high reading grade: reviewed, never hidden."""
+    import datetime
+    now = now or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    out = []
+    for f, d in load_dossiers(root).values():
+        if not isinstance(d, dict):
+            continue
+        rel = f.relative_to(root).as_posix()
+        stale = d.get("stale_after")
+        if isinstance(stale, str) and STAMP.match(stale) and stale <= now:
+            out.append(f"{rel}: stale_after {stale} has passed; review it")
+        texts = keeper_text(d)
+        chars = sum(len(t) for t in texts)
+        if chars > DOSSIER_CHARS:
+            out.append(f"{rel}: keeper-facing text is {chars} characters, above about "
+                       f"{DOSSIER_CHARS} (two iPad screens)")
+        grade = reading_grade(texts)
+        if grade > READING_GRADE:
+            out.append(f"{rel}: reading grade about {grade:.1f}, above {READING_GRADE:g} "
+                       f"(an estimate; the reviewer's read decides)")
+    return out
+
+
+def check_dossiers(root: Path, cards: dict[str, dict], by_path: dict[str, dict]) -> list[str]:
+    """Every dossier's findings and its credits entry; with DOSSIER_REQUIRED, every card's dossier."""
+    found: list[str] = []
+    dossiers = load_dossiers(root)
+    for stem, (f, d) in dossiers.items():
+        rel = f.relative_to(root).as_posix()
+        if d is None:
+            found.append(f"{rel}: not valid JSON")
+            continue
+        found += [f"{rel}: {e}" for e in dossier_errors(d, stem, cards)]
+        found += credits_errors(rel, by_path)
+    if DOSSIER_REQUIRED:
+        found += [f"content/exercises/{stem}.json: no dossier at "
+                  f"content/exercises/{stem}{DOSSIER_SUFFIX}" for stem in cards
+                  if stem not in dossiers]
+    return found
+
 
 
 def main(argv: list[str]) -> int:
     root = Path(argv[argv.index("--root") + 1]) if "--root" in argv else Path(
         __file__).resolve().parent.parent
     findings = check(root)
+    for w in dossier_warnings(root):
+        print(f"content_check: warning: {w}")
     if findings:
         print("content_check:\n" + "\n".join(findings), file=sys.stderr)
         return 1

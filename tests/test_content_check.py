@@ -328,5 +328,203 @@ class ContentCheck(unittest.TestCase):
         self.assertEqual(cc.check(ROOT), [])
 
 
+class DossierCheck(unittest.TestCase):
+    """Story 115 AC1: the dossier pass refuses unsourced claims and what the claim rules forbid.
+    Each test copies content/, breaks the plank dossier in one way and expects a finding."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        shutil.copytree(ROOT / "content", self.root / "content")
+        self.path = self.root / "content" / "exercises" / "plank.dossier.json"
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def edit(self, change) -> list[str]:
+        d = json.loads(self.path.read_text(encoding="utf-8"))
+        change(d)
+        self.path.write_text(json.dumps(d), encoding="utf-8")
+        return cc.check(self.root)
+
+    def assertFinding(self, found: list[str], text: str) -> None:
+        self.assertTrue(any("plank.dossier.json" in f and text in f for f in found), found)
+
+    def test_plank_dossier_is_clean(self) -> None:
+        self.assertEqual(cc.check(self.root), [])
+        self.assertEqual(cc.dossier_warnings(self.root, now="2026-11-18T00:00:00Z"), [])
+
+    def test_dossier_is_not_read_as_a_card(self) -> None:
+        self.assertNotIn("plank.dossier", cc.load_cards(self.root))
+
+    # Rule 1 of the claim rules: every claim carries a source.
+    def test_unsourced_claim(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["why"]["claims"][0].update(sources=[])),
+                           "has no sources")
+        self.assertFinding(self.edit(lambda d: d["expect"]["keep_up"].pop("sources")),
+                           "has no sources")
+
+    def test_unknown_and_unused_sources(self) -> None:
+        self.assertFinding(
+            self.edit(lambda d: d["why"]["claims"][0].update(sources=["no-such-source"])),
+            "source no-such-source is not in sources")
+        self.assertFinding(self.edit(lambda d: d["sources"].append({
+            "id": "extra-2020", "url": "https://pubmed.ncbi.nlm.nih.gov/1/", "title": "Extra",
+            "kind": "trial", "population": "youth", "band": "teens", "year": 2020})),
+            "source extra-2020 is not cited")
+
+    # Rule 5: no promises about looks, size, shape or weight.
+    def test_refused_words_about_looks(self) -> None:
+        for text in ("Planks give you a six-pack and flat abs by summer, with steady work.",
+                     "Hold the plank to tone your middle and look better on the pitch.",
+                     "This hold helps you burn fat and lose weight over a few weeks.",
+                     "Keep at it and you get bigger muscles all down your middle."):
+            self.assertFinding(self.edit(lambda d: d["why"]["claims"][0].update(text=text)),
+                               "which the claim rules refuse")
+
+    def test_refused_words_in_the_headline(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["why"].update(headline="A lean, toned middle.")),
+                           "why.headline")
+
+    def test_refused_words_match_whole_words_only(self) -> None:
+        text = "A steady middle helps you absorb a landing. Keep it clean, even with fatigue."
+        self.assertEqual(self.edit(lambda d: d["why"]["claims"][0].update(text=text)), [])
+
+    # Rule 7: injury claims no stronger than the evidence.
+    def test_prevention_claim_outside_a_limit(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["science"]["claims"][0].update(
+            text="Planks prevent back injuries in young keepers who do them twice a week.")),
+            "'prevent'")
+
+    def test_negates_only_in_limits(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["science"]["claims"][0].update(negates=True)),
+                           "negates is allowed only in science.limits")
+        self.assertFinding(self.edit(lambda d: d["science"]["limits"][1].pop("negates")),
+                           "'prevents'")
+
+    def test_promise_you_will(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["expect"]["keep_up"].update(
+            text="You will hold the plank for longer and longer every single week.")),
+            "'You will'")
+
+    # Rule 4: outcomes are ranges with time frames, quoted low end first.
+    def test_outcome_missing(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["expect"]["claims"][0].pop("outcome")),
+                           "has no outcome")
+
+    def test_outcome_range_not_quoted(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["expect"]["claims"][0].update(
+            text="In a trial with pupils in their early teens, trunk training for 6 weeks "
+                 "improved trunk strength tests by up to 22%.")),
+            "as '8 to 22'")
+        self.assertFinding(self.edit(lambda d: d["expect"]["claims"][0].update(
+            text="In a trial with pupils in their early teens, trunk training improved trunk "
+                 "strength tests by 8 to 22% and sideways jumping by 4 to 5%.")),
+            "its weeks 6")
+
+    def test_outcome_high_end_first(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["expect"]["claims"][0].update(
+            text="In a trial with pupils in their early teens, trunk training for 6 weeks "
+                 "improved trunk strength tests by 22 to 8%.")),
+            "low end first")
+
+    def test_outcome_range_shape(self) -> None:
+        self.assertFinding(
+            self.edit(lambda d: d["expect"]["claims"][0]["outcome"].update(change_pct=[22, 8])),
+            "change_pct must be [low, high]")
+        self.assertFinding(
+            self.edit(lambda d: d["expect"]["claims"][0]["outcome"].update(weeks=6)),
+            "weeks must be [low, high]")
+
+    def test_expect_needs_a_youth_source(self) -> None:
+        def adult_only(d: dict) -> None:
+            c = d["expect"]["claims"][0]
+            c.update(sources=["ekstrom-2007"], evidence="adult",
+                     text="In studies with adults, " + c["text"][0].lower() + c["text"][1:])
+        self.assertFinding(self.edit(adult_only), "needs a youth source")
+
+    # Rule 3: adult-only evidence is labelled, and the label is computed, not trusted.
+    def test_evidence_label_must_match_sources(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["why"]["claims"][3].update(evidence="youth")),
+                           "evidence is youth, but its sources give mixed")
+
+    def test_adult_claim_says_adult(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["why"]["claims"][2].update(
+            text="A stiffer middle lets the push from the hips reach the arms and legs.")),
+            "must say so in its text")
+
+    # The Decision's other limits.
+    def test_counts_and_lengths(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["why"].update(claims=d["why"]["claims"][:1])),
+                           "why.claims must list 2 to 4")
+        self.assertFinding(self.edit(lambda d: d["science"].update(limits=[])),
+                           "science.limits must list 1 to 3")
+        self.assertFinding(self.edit(lambda d: d["why"]["claims"][0].update(text="x" * 221)),
+                           "must be 20 to 220 characters")
+        self.assertFinding(self.edit(lambda d: d["why"]["claims"][0].pop("action")),
+                           "action must be one of")
+
+    def test_long_sentence(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["why"]["claims"][0].update(
+            text="When you dive your trunk links the push from your legs to your hands.")),
+            "a sentence the player shows is at most 12")
+
+    def test_starts_unapproved(self) -> None:
+        self.assertFinding(self.edit(lambda d: d.update(approved=True)),
+                           "approved must start false")
+
+    def test_muscles(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["muscles"]["map"][0].update(muscle="abs-ish")),
+                           "not in the vocabulary")
+        self.assertFinding(self.edit(lambda d: d["muscles"]["map"][3].update(role="main")),
+                           "a main muscle must be measured")
+
+    def test_clips_empty(self) -> None:
+        self.assertFinding(self.edit(lambda d: d.update(clips=[{"url": "https://example.com"}])),
+                           "clips must be empty")
+
+    def test_source_urls(self) -> None:
+        self.assertFinding(self.edit(lambda d: d["sources"][0].update(url="http://example.com/a")),
+                           "url must be https://")
+        self.assertFinding(self.edit(lambda d: d["sources"][0].update(
+            url="https://docs.google.com/document/d/0000")), "private link")
+        self.assertFinding(self.edit(lambda d: d["sources"][-1].update(url="../outside.json")),
+                           "path in this repo")
+
+    def test_dossier_needs_a_card_and_credits(self) -> None:
+        shutil.copy(self.path, self.path.with_name("no-such-card.dossier.json"))
+        found = cc.check(self.root)
+        self.assertTrue(any("no card content/exercises/no-such-card.json" in f for f in found))
+        self.assertTrue(any("no-such-card.dossier.json: no entry in content/credits.json" in f
+                            for f in found))
+
+    def test_card_and_id_agree(self) -> None:
+        self.assertFinding(self.edit(lambda d: d.update(card="content/exercises/side-plank.json")),
+                           "card must be content/exercises/plank.json")
+
+    def test_not_json(self) -> None:
+        self.path.write_text("{", encoding="utf-8")
+        self.assertFinding(cc.check(self.root), "not valid JSON")
+
+    def test_warnings_stale_long_and_hard(self) -> None:
+        self.assertTrue(any("has passed" in w for w in
+                            cc.dossier_warnings(self.root, now="2028-01-01T00:00:00Z")))
+        hard = ("Electromyographical characterisation demonstrates considerable neuromuscular "
+                "activation variability.")
+        self.assertGreater(cc.reading_grade([hard]), cc.READING_GRADE)
+        self.assertLess(cc.reading_grade(["You hold still. Then you push off fast."]), 8)
+
+        def every_claim_hard(d: dict) -> None:
+            for part in ("why", "expect", "science"):
+                for c in d[part]["claims"]:
+                    c["text"] = hard
+        self.edit(every_claim_hard)
+        self.assertTrue(any("reading grade" in w for w in
+                            cc.dossier_warnings(self.root, now="2026-11-18T00:00:00Z")))
+        self.edit(lambda d: d["science"]["claims"].extend([{"text": "y" * 200}] * 3))
+        self.assertTrue(any("characters, above about 2000" in w for w in
+                            cc.dossier_warnings(self.root, now="2026-11-18T00:00:00Z")))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

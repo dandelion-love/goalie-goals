@@ -112,9 +112,10 @@ describe('seed the demo household (AC1)', () => {
     expect(await t.roles.roleFor(KAI)).toBe('keeper');
     expect(await t.roles.roleFor(SAM)).toBe('parent');
 
-    // The inbox holds the demo requests: real cards at their spec doses (demoData.ts).
+    // The inbox holds the demo requests: real cards at their spec doses (demoData.ts), and the
+    // plank's dossier (story 115), which the demo parent approves in the walk.
     const pending = await t.approvals.pending();
-    expect(pending.map((r) => r.itemId)).toEqual(DEMO_REQUESTS.map((r) => r.itemId));
+    expect(pending.map((r) => r.itemId)).toEqual([...DEMO_REQUESTS.map((r) => r.itemId), 'dossier-plank']);
 
     // The invented Tuesday is a training day carrying Strong middle, approved.
     expect(weekdayOf(TODAY)).toBe(2);
@@ -261,7 +262,7 @@ describe('reset the demo household (AC1)', () => {
 
     expect((await app.inject({ url: '/api/pain/status', headers: as(SAM) })).json().paused).toBe(false);
     const after = (await app.inject({ url: '/api/approvals/pending', headers: as(SAM) })).json();
-    expect((Array.isArray(after) ? after : after.requests).length).toBe(DEMO_REQUESTS.length);
+    expect((Array.isArray(after) ? after : after.requests).length).toBe(DEMO_REQUESTS.length + 1);
     expect((await app.inject({ url: `/api/progress/summary?date=${date}`, headers: as(SAM) })).json()).toEqual(before);
     expect((await app.inject({ url: `/api/training/days?date=${date}`, headers: as(SAM) })).json()).toEqual(daysBefore);
   });
@@ -362,6 +363,6 @@ describe('the reset refuses anything but the demo household (AC3)', () => {
     const before = await t.progress.summary(TODAY);
     await resetDemoHousehold(t, TODAY);
     expect(await t.progress.summary(TODAY)).toEqual(before);
-    expect((await t.approvals.pending()).length).toBe(DEMO_REQUESTS.length);
+    expect((await t.approvals.pending()).length).toBe(DEMO_REQUESTS.length + 1);
   });
 });

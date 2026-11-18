@@ -34,7 +34,8 @@ const ladderRows = readdirSync(ladderDir)
   .map((c) => ({ id: ids(c[1])[0], unlockAt: c[c.length - 2] }));
 
 const cardIds = readdirSync(join(ROOT, 'content', 'exercises'))
-  .filter((f) => f.endsWith('.json'))
+  // A card's dossier (story 115) sits beside it; it is not a card.
+  .filter((f) => f.endsWith('.json') && !f.endsWith('.dossier.json'))
   .map((f) => (JSON.parse(read(ROOT, 'content', 'exercises', f)) as { id: string; name: string }));
 
 describe('the rung data matches its sources (story 114 AC3)', () => {

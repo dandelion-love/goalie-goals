@@ -18,6 +18,8 @@ import { LoadSpace, useSettled } from './Loading';
 import { SAVING, SavingAnnouncer, savingProps, useOneAtATime } from './Saving';
 import { shortDate } from './dates';
 import { nextStep } from './ladders';
+import { DossierToggle } from './DossierScreens';
+import { fetchDossiers, fetchRequestDossier, type Dossier } from './dossier';
 
 type Load<T> = { kind: 'loading' } | { kind: 'ready'; data: T } | { kind: 'error' };
 
@@ -222,6 +224,10 @@ export function ParentInbox({
               <span className="kind">{KIND_LABEL[r.kind] ?? r.kind}</span>
               <h3>{r.title}</h3>
               <p>{r.detail}</p>
+              {/* Story 115: the parent reads the whole dossier before answering. */}
+              {r.kind === 'dossier' && (
+                <DossierToggle label="Read it" level={4} load={() => fetchRequestDossier(r.id, fetchImpl)} />
+              )}
               {/* One text node, so no reader or audit script puts a space before the semicolon. */}
               <p className="meta">{`Lapses unanswered on ${formatDate(r.expiresAt)}; silence never approves.`}</p>
               {answered ? (
@@ -310,14 +316,17 @@ export function ApprovedTraining({
   refresh?: number;
   onSettled?: () => void;
 }) {
-  const [state, setState] = useState<Load<{ items: ApprovedItem[]; waiting: number }>>({ kind: 'loading' });
+  const [state, setState] = useState<
+    Load<{ items: ApprovedItem[]; waiting: number; dossiers: Map<string, Dossier> }>
+  >({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   useSettled(state.kind !== 'loading', onSettled);
 
   useEffect(() => {
     let live = true;
-    fetchApproved(fetchImpl)
-      .then((data) => live && setState({ kind: 'ready', data }))
+    // The approved dossiers load with the items (story 115); without them the list still shows.
+    Promise.all([fetchApproved(fetchImpl), fetchDossiers(fetchImpl).catch(() => new Map<string, Dossier>())])
+      .then(([data, dossiers]) => live && setState({ kind: 'ready', data: { ...data, dossiers } }))
       .catch(() => live && setState({ kind: 'error' }));
     return () => {
       live = false;
@@ -345,14 +354,21 @@ export function ApprovedTraining({
             <p>No session planned yet.</p>
           ) : (
             <ul className="requests">
-              {state.data.items.map((i) => (
-                <li key={`${i.itemId}:${i.itemVersion}`} className="request">
-                  <span className="kind">{KIND_LABEL[i.kind] ?? i.kind}</span>
-                  <h3>{i.title}</h3>
-                  <p>{i.detail}</p>
-                  {i.kind === 'exercise' && <NextStepLine itemId={i.itemId} />}
-                </li>
-              ))}
+              {/* A dossier opens from its exercise (story 115), not as an item of its own. */}
+              {state.data.items
+                .filter((i) => i.kind !== 'dossier')
+                .map((i) => {
+                  const dossier = i.kind === 'exercise' ? state.data.dossiers.get(cardIdOf(i.itemId)) : undefined;
+                  return (
+                    <li key={`${i.itemId}:${i.itemVersion}`} className="request">
+                      <span className="kind">{KIND_LABEL[i.kind] ?? i.kind}</span>
+                      <h3>{i.title}</h3>
+                      <p>{i.detail}</p>
+                      {i.kind === 'exercise' && <NextStepLine itemId={i.itemId} />}
+                      {dossier && <DossierToggle dossier={dossier} level={4} />}
+                    </li>
+                  );
+                })}
             </ul>
           )}
           {state.data.waiting > 0 && (
@@ -386,6 +402,7 @@ const REFUSED_VERB: Record<AuditEntry['kind'], string> = {
   plan: 'answer',
   exercise: 'answer',
   harder_version: 'answer',
+  dossier: 'answer',
   pause: 'clear',
   schedule: 'change',
 };

@@ -25,6 +25,7 @@ import { DemoAuditLog, DemoRefused, DemoWeeklyPlan, localDate, resetDemoHousehol
 import { loadContent } from './content.js';
 import { FirestoreStartedStore, TrainingService, utcDate } from './training.js';
 import { registerTrainingRoutes } from './trainingRoutes.js';
+import { registerDossierRoutes } from './dossierRoutes.js';
 import { InAppNotifier } from './notifier.js';
 import { FirestoreProgressStore, MemoryProgressStore, ProgressService, type ProgressStore } from './progress.js';
 import { registerProgressRoutes } from './progressRoutes.js';
@@ -232,6 +233,8 @@ export async function buildApp({
       await seedDemoSession(trainingService, utcDate(new Date()));
     } else {
       await trainingService.proposeFor(utcDate(new Date()));
+      // Story 115: each exercise dossier waits for the parent, as the cards do.
+      await trainingService.dossiers.propose();
     }
   }
 
@@ -298,6 +301,7 @@ export async function buildApp({
   registerPainRoutes(app, { pain: painService, roles: roleStore });
 
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused() });
+  registerDossierRoutes(app, { dossiers: trainingService.dossiers, approvals: approvalService, roles: roleStore });
   if (scheduleService) registerScheduleRoutes(app, { schedule: scheduleService, roles: roleStore });
 
   const ownProgress: ProgressStore | undefined = progress

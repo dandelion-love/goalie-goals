@@ -8,10 +8,11 @@ import { asDate, asObject, createOrdered, deleteCollection, seqOf, type FsDb, ty
 import type { Notifier } from './notifier.js';
 import { isRole, type Role } from './roles.js';
 
-export type RequestKind = 'plan' | 'exercise' | 'harder_version';
+export type RequestKind = 'plan' | 'exercise' | 'harder_version' | 'dossier';
 export type RequestState = 'pending' | 'approved' | 'declined' | 'expired';
 
-export const REQUEST_KINDS: readonly RequestKind[] = ['plan', 'exercise', 'harder_version'];
+/** `dossier`: an exercise dossier (story 115), shown to the keeper only once approved. */
+export const REQUEST_KINDS: readonly RequestKind[] = ['plan', 'exercise', 'harder_version', 'dossier'];
 
 /** A request lapses to "not approved (expired)" after this long without an answer. */
 export const REQUEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;

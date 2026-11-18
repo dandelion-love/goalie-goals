@@ -416,6 +416,6 @@ describe('dev mock seed', () => {
   it('gives the parent demo requests to answer', async () => {
     app = await buildApp({ config: { ...config(), audience: '', devMockIdentity: true } });
     const res = await app.inject({ method: 'GET', url: '/api/approvals/pending', headers: { cookie: 'dev_as=sam%40example.com' } });
-    expect(res.json().requests.map((r: { kind: string }) => r.kind)).toEqual(['plan', 'exercise', 'exercise', 'harder_version']);
+    expect(res.json().requests.map((r: { kind: string }) => r.kind)).toEqual(['plan', 'exercise', 'exercise', 'harder_version', 'dossier']);
   });
 });

@@ -22,6 +22,7 @@ import { CueContext, usePlayerSound, useStateCues } from './sound';
 import { loadRewards, play, Reward } from './motion';
 import { celebrate, preloadCelebration } from './celebrate';
 import { afterPaint } from './defer';
+import { DossierToggle } from './DossierScreens';
 
 export interface SessionPlayerProps {
   session: Session;
@@ -506,6 +507,8 @@ function CardIntro({ card }: { card: Card }) {
         </div>
       </dl>
       <ParentChecks card={card} />
+      {/* Story 115: the card's approved dossier opens here, before set 1. */}
+      {card.dossier && <DossierToggle dossier={card.dossier} />}
     </section>
   );
 }

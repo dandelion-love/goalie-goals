@@ -49,10 +49,13 @@ export const DEMO_PARENT = { account: 'sam@example.com', role: 'parent' as const
 
 /**
  * Local development only: propose today's session and its cards, then approve them as the demo
- * parent, so the keeper's player has an approved session to run.
+ * parent, so the keeper's player has an approved session to run. Each exercise dossier (story
+ * 115) is proposed too and left in the parent's inbox: the demo shows the parent approving it
+ * before the keeper can read it, as production waits for the owner.
  */
 export async function seedDemoSession(training: TrainingService, date: string): Promise<void> {
   await training.proposeFor(date);
+  await training.dossiers.propose();
   for (const r of await training.approvals.pending()) {
     if (r.itemId.startsWith('card-') || r.itemId.startsWith('session-')) {
       await training.approvals.approve(r.id, DEMO_PARENT);

@@ -19,6 +19,12 @@ Every file here, other than this README, `LICENSE` and `credits.json`, has an en
 - `exercises/<id>.spec.md`: the card's acceptance spec. It cites the training-rules
   Decision for the dose, the progression limit and the stop signs.
 - `figures/<id>.svg`: the card's figure, a plain SVG with no metadata.
+- `exercises/<id>.dossier.json`: the card's dossier (why it matters for a goalkeeper, what
+  to expect, and the evidence), in the shape of the exercise-dossier Decision
+  (`docs/knowledge/decisions/exercise-dossier.md`). Every claim names its sources and
+  evidence label. It starts unapproved; the parent approves it in the app, and any change
+  to the file asks again.
 
 `python3 tools/content_check.py` validates every card against its schema, its spec, the
-default equipment profiles, the training-rules limits, its figure and its credits.
+default equipment profiles, the training-rules limits, its figure and its credits, and
+every dossier against the Decision and the claim rules (`docs/knowledge/dossiers/`).

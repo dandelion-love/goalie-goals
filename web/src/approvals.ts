@@ -1,7 +1,8 @@
 // Client for the parent-approval API. The server enforces every rule; these calls only read
 // what the signed-in role may see and send the parent's answers.
 
-export type RequestKind = 'plan' | 'exercise' | 'harder_version';
+/** `dossier`: an exercise dossier (story 115), shown to the keeper once approved. */
+export type RequestKind = 'plan' | 'exercise' | 'harder_version' | 'dossier';
 
 export interface PendingRequest {
   id: string;
@@ -153,4 +154,5 @@ export const KIND_LABEL: Record<RequestKind, string> = {
   plan: 'Plan',
   exercise: 'New exercise',
   harder_version: 'Harder version',
+  dossier: 'About an exercise',
 };

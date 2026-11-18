@@ -15,6 +15,7 @@ import type { Role } from './roles.js';
 import { itemVersion } from './approvals.js';
 import { asObject, type FsDb } from './firestoreDb.js';
 import { cardSeconds, doseText, type CardSource, type ContentLibrary, type ExerciseCard } from './content.js';
+import { DossierService, type ClientDossier } from './dossiers.js';
 
 /** A timed, low-risk move in a warm-up or cool-down (no equipment, no jumping). */
 export interface Move {
@@ -87,6 +88,8 @@ export interface ClientCard {
   timer: ExerciseCard['timer'];
   figureUrl: string;
   credit: string;
+  /** The card's dossier (story 115), only when its version is approved; absent otherwise. */
+  dossier?: ClientDossier;
 }
 
 export interface ClientSession {
@@ -269,12 +272,25 @@ export interface TrainingServiceDeps {
   started?: StartedStore;
 }
 
+/** A client session with each card's approved dossier attached (story 115). */
+function withDossiers(session: ClientSession, dossiers: Map<string, ClientDossier>): ClientSession {
+  return {
+    ...session,
+    cards: session.cards.map((c) => {
+      const dossier = dossiers.get(c.id);
+      return dossier ? { ...c, dossier } : c;
+    }),
+  };
+}
+
 export class TrainingService {
   readonly approvals: ApprovalService;
   private content: ContentLibrary;
   readonly plan: TrainingPlan;
   private readonly snapshots: MemorySnapshotStore;
   private readonly startedStore: StartedStore | undefined;
+  /** Exercise dossiers (story 115), approved like the cards they explain. */
+  readonly dossiers: DossierService;
 
   constructor({
     approvals,
@@ -288,6 +304,7 @@ export class TrainingService {
     this.plan = plan;
     this.snapshots = snapshots;
     this.startedStore = started;
+    this.dossiers = new DossierService({ approvals, content: () => this.content });
   }
 
   /** Read the stored started marker (startup, story 118). The server runs as one instance. */
@@ -392,7 +409,7 @@ export class TrainingService {
 
     const current = this.currentSession(template);
     if (current && (await this.playable(current))) {
-      return { date, planned: true, today: this.toClient(current), lastApproved: null, waiting };
+      return { date, planned: true, today: await this.sessionToClient(current), lastApproved: null, waiting };
     }
 
     // The newest approved earlier version whose cards are all approved too.
@@ -403,7 +420,7 @@ export class TrainingService {
     for (const r of approved) {
       const snap = this.snapshots.sessions.get(r.itemVersion);
       if (snap && (await this.playable(snap))) {
-        return { date, planned: true, today: null, lastApproved: this.toClient(snap), waiting };
+        return { date, planned: true, today: null, lastApproved: await this.sessionToClient(snap), waiting };
       }
     }
     return { date, planned: true, today: null, lastApproved: null, waiting };
@@ -520,6 +537,11 @@ export class TrainingService {
     if (!snap || snap.itemId !== cardItemId(cardId)) return null;
     if (!(await this.approvals.isApproved(snap.itemId, snap.itemVersion))) return null;
     return snap.source.figureSvg;
+  }
+
+  /** A session for the player, each card with its approved dossier when it has one (story 115). */
+  private async sessionToClient(s: SessionSnapshot): Promise<ClientSession> {
+    return withDossiers(this.toClient(s), await this.dossiers.approved());
   }
 
   private toClient(s: SessionSnapshot): ClientSession {

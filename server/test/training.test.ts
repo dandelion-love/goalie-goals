@@ -510,7 +510,11 @@ describe('training routes', () => {
     const kai = await app.inject({ method: 'GET', url: '/api/training/today?date=2026-01-05', headers: { cookie: 'dev_as=kai%40example.com' } });
     expect(kai.json().today.cards.map((c: { id: string }) => c.id)).toEqual(['plank', 'side-plank', 'glute-bridge']);
     const sam = await app.inject({ method: 'GET', url: '/api/approvals/pending', headers: { cookie: 'dev_as=sam%40example.com' } });
-    expect(sam.json().requests).toHaveLength(DEMO_REQUESTS.length);
+    // The demo requests, and the plank's dossier (story 115), left for the parent to approve.
+    expect(sam.json().requests.map((r: { itemId: string }) => r.itemId)).toEqual([
+      ...DEMO_REQUESTS.map((r) => r.itemId),
+      'dossier-plank',
+    ]);
   });
 
   it('asks the parent for the whole weekly pack at startup outside the dev mock', async () => {
@@ -529,9 +533,11 @@ describe('training routes', () => {
       'session-strong-middle',
       'session-spring-legs',
       'session-quick-feet-strong-arms',
+      // Story 115: the plank's dossier waits for the parent too.
+      'dossier-plank',
     ]);
     const kai = await app.inject({ method: 'GET', url: '/api/training/today?date=2026-01-05', headers: as(KAI) });
-    expect(kai.json()).toMatchObject({ planned: true, today: null, lastApproved: null, waiting: 12 });
+    expect(kai.json()).toMatchObject({ planned: true, today: null, lastApproved: null, waiting: 13 });
   });
 });
 

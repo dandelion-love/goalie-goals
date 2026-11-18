@@ -66,6 +66,14 @@
       "checked": "2026-11-17"
     },
     {
+      "path": "content/exercises/plank.dossier.json",
+      "title": "Front plank dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-18"
+    },
+    {
       "path": "content/exercises/pogo-hops.json",
       "title": "Low pogo hops exercise card",
       "author": "the goalie-goals contributors",

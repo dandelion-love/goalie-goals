@@ -1,6 +1,8 @@
 // Client for today's session. The server sends approved item versions only; this module
 // reads them and never builds a session of its own.
 
+import type { Dossier } from './dossier';
+
 export interface Move {
   name: string;
   seconds: number;
@@ -36,6 +38,8 @@ export interface Card {
   timer: 'reps' | 'interval' | 'countdown' | 'none';
   figureUrl: string;
   credit: string;
+  /** The card's dossier (story 115): sent only once the parent has approved it. */
+  dossier?: Dossier;
 }
 
 export interface Session {
