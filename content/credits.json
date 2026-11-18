@@ -216,6 +216,20 @@
       "licence": "CC-BY-SA-4.0",
       "source": "drawn for this repo",
       "checked": "2026-11-17"
+    },
+    {
+      "path": "web/public/icon.svg",
+      "author": "the goalie-goals contributors",
+      "licence": "MIT",
+      "source": "drawn for this repo (app icon)",
+      "checked": "2026-11-18"
+    },
+    {
+      "path": "web/public/icon-maskable.svg",
+      "author": "the goalie-goals contributors",
+      "licence": "MIT",
+      "source": "drawn for this repo (maskable app icon)",
+      "checked": "2026-11-18"
     }
   ]
 }
