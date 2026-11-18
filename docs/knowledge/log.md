@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Added**: dossier clip links: the link policy (official channels, no embed, no tracking, age rules, the spread rule, parent approval), the link record and pre-release check design, and a low-diving-save sample.
 * **Added**: CC0 media research: Openclipart, Wikimedia Commons, Public Domain Vectors and FreeSVG, Openverse, CC0 icon and character sets and open pose data, with a coverage table per exercise; the exercise-media Decision gains the CC0 sources that pass and new never-used entries.
 * **Added**: quality research (usability heuristics, usability measures, SUS and child-adapted versions, WCAG 2.2 thresholds, platform guidelines, legibility at a distance, visual consistency, game feel, motion, sound, copy, response times) with the quality-rubric Decision and an empty baseline table.
 * **Added**: CC0 media research: CC0 rigged characters and animation sets with a per-pack licence table, open tools to pose and render them, and a feasibility note with one rendered sample pose and a comparison with the parametric vector figure.
