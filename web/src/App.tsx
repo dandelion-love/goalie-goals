@@ -198,7 +198,7 @@ function Screen({
       return (
         <>
           {/* The pause holds without the network: the device's own copy is shown. */}
-          {pauseStore.read() && <PausedPanel />}
+          {pauseStore.read() && <PausedPanel mistake={!!pauseStore.read()?.mistake} />}
           <section className="notice" aria-labelledby="error-title">
             <h1 id="error-title">Can't reach the app</h1>
             <p>Check the connection and try again.</p>

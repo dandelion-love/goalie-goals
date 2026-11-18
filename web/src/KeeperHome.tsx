@@ -17,7 +17,15 @@ import {
   type FlushResult,
   type OutboxStore,
 } from './outbox';
-import { flushPause, startPause, syncPause, type BodyArea, type LocalPause, type PauseStore } from './pain';
+import {
+  flushPause,
+  markMistake,
+  startPause,
+  syncPause,
+  type BodyArea,
+  type LocalPause,
+  type PauseStore,
+} from './pain';
 import type { Session, SessionResult } from './training';
 import type { WakeLockController } from './wakeLock';
 import type { OfflineStore } from './offline';
@@ -84,7 +92,26 @@ function usePause(store: PauseStore, fetchImpl?: typeof fetch) {
     });
   }, [store, fetchImpl]);
 
-  return { pause, start, send, flush, sent };
+  /**
+   * "Tapped by mistake" (story 104): noted on the device at once and kept in the outbox, then
+   * sent after the report. The area chosen so far goes with the report; the report's typed text
+   * does not. The pause holds: only the parent's clear lifts it. No sound is touched.
+   */
+  const mistake = useCallback(
+    (area: BodyArea | null) => {
+      const current = store.read() ?? startPause(store);
+      if (area && !current.sent && !current.report) store.write({ ...current, report: { bodyArea: area, note: '' } });
+      markMistake(store);
+      setPause(store.read());
+      void flushPause(store, fetchImpl).then((ok) => {
+        setPause(store.read());
+        if (ok) setSent((n) => n + 1);
+      });
+    },
+    [store, fetchImpl],
+  );
+
+  return { pause, start, send, flush, sent, mistake };
 }
 
 /**
@@ -157,7 +184,7 @@ export function KeeperHome({
   const [reporting, setReporting] = useState(false);
   const [changed, setChanged] = useState(0);
   const [settled, setSettled] = useState({ today: false, progress: false, training: false });
-  const { pause, start, send, flush, sent } = usePause(pauseStore, fetchImpl);
+  const { pause, start, send, flush, sent, mistake } = usePause(pauseStore, fetchImpl);
   // The playing session's start event, the stop kept while Resume is offered, and the finish
   // whose XP the finish screen shows.
   const startSent = useRef<{ id: string; session: Session } | null>(null);
@@ -269,7 +296,7 @@ export function KeeperHome({
         onStop={stopTapped}
         onResume={resumed}
         progress={progress}
-        hurtForm={<PainReportForm onSend={send} />}
+        hurtForm={<PainReportForm onSend={send} onMistake={mistake} />}
         onExit={() => {
           // A transition (story #98 AC5): the tap paints its response at once, and the home,
           // a large render, follows without holding the tap's frame.
@@ -340,7 +367,14 @@ export function KeeperHome({
         <article className="card" aria-labelledby="report-title">
           <h2 id="report-title">Something hurts</h2>
           <p>Stop and rest. Tell an adult now. If someone collapses, call the local emergency number.</p>
-          <PainReportForm onSend={send} />
+          <PainReportForm
+            onSend={send}
+            onMistake={(area) => {
+              mistake(area);
+              // The paused panel below says what happens next.
+              setReporting(false);
+            }}
+          />
         </article>
       )}
       {changed > 0 && !pause && (
@@ -349,7 +383,11 @@ export function KeeperHome({
         </p>
       )}
       {pause ? (
-        <PausedPanel />
+        <PausedPanel
+          mistake={!!pause.mistake}
+          // While the report form above is still open, its own "Tapped by mistake" is the one.
+          onMistake={reporting && !pause.sent && !pause.report ? undefined : () => mistake(null)}
+        />
       ) : (
         <TodayPanel
           fetchImpl={fetchImpl}

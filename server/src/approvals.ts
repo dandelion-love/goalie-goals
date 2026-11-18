@@ -107,6 +107,8 @@ export type AuditAction =
   | 'refused'
   | 'paused'
   | 'cleared'
+  /** The keeper marked a pain report "Tapped by mistake": a note, never a clear (story 104). */
+  | 'marked'
   | 'changed'
   /** The parent undid an approval within `UNDO_WINDOW_MS`: its own event, never an edit. */
   | 'undone'

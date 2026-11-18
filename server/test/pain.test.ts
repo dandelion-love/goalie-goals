@@ -77,6 +77,69 @@ describe('PainService (AC1, AC3)', () => {
   });
 });
 
+describe('Tapped by mistake (story 104)', () => {
+  const NOTE_ID = 'demo-mistake-0001';
+
+  it('keeps the pause: a note for the parent with the role and the time, never a clear (AC2, AC3, AC4)', async () => {
+    let now = new Date('2026-01-07T17:00:00Z');
+    pain = new PainService({ store: new MemoryPainStore(), audit, notifier, clock: () => now });
+    await pain.report(KEEPER, { ...REPORT, bodyArea: 'knee' });
+    now = new Date('2026-01-07T17:02:00Z');
+    const marked = await pain.markMistake(KEEPER, { id: NOTE_ID, reportId: REPORT.id });
+    expect(marked.mistakeAt?.toISOString()).toBe('2026-01-07T17:02:00.000Z');
+    // Still paused, and nothing clears it however long it waits.
+    now = new Date('2026-03-01T00:00:00Z');
+    expect((await pain.status()).paused).toBe(true);
+    expect(await pain.isPaused()).toBe(true);
+    expect(await notifier.unreadCount('parent')).toBe(1);
+    // The keeper still cannot clear it; the parent clears it with one call.
+    await expect(pain.clear(KEEPER, '2026-03-01')).rejects.toMatchObject({ code: 'forbidden' });
+    await pain.clear(PARENT, '2026-03-01');
+    expect((await pain.status()).paused).toBe(false);
+
+    const events = await audit.list();
+    expect(events.map((e) => [e.action, e.actorRole, e.title])).toEqual([
+      ['paused', 'keeper', 'something hurts (knee)'],
+      ['marked', 'keeper', 'something hurts (knee)'],
+      ['refused', 'keeper', 'the training pause'],
+      ['cleared', 'parent', 'the training pause'],
+    ]);
+    expect(JSON.stringify(events)).not.toContain(NOTE);
+  });
+
+  it('is accepted once per pause; a resend of the same note is stored once and logged once', async () => {
+    await pain.report(KEEPER, { ...REPORT, bodyArea: 'knee' });
+    await pain.markMistake(KEEPER, { id: NOTE_ID, reportId: REPORT.id });
+    await pain.markMistake(KEEPER, { id: NOTE_ID, reportId: REPORT.id });
+    await expect(pain.markMistake(KEEPER, { id: 'demo-mistake-0002', reportId: REPORT.id })).rejects.toMatchObject({
+      code: 'already_marked',
+    });
+    const events = await audit.list();
+    expect(events.filter((e) => e.action === 'marked')).toHaveLength(1);
+    expect(events.at(-1)).toMatchObject({ action: 'refused', actorRole: 'keeper', title: 'a mistake note', itemId: 'training-pause-mistake' });
+  });
+
+  it('is refused and logged with no open pause, from the parent, or with a bad id (AC4)', async () => {
+    await expect(pain.markMistake(KEEPER, { id: NOTE_ID, reportId: REPORT.id })).rejects.toMatchObject({ code: 'not_paused' });
+    await pain.report(KEEPER, { ...REPORT, bodyArea: 'knee' });
+    await expect(pain.markMistake(PARENT, { id: NOTE_ID, reportId: REPORT.id })).rejects.toMatchObject({ code: 'forbidden' });
+    await expect(pain.markMistake(KEEPER, { id: 'x', reportId: REPORT.id })).rejects.toMatchObject({ code: 'invalid' });
+    await expect(pain.markMistake(KEEPER, { id: NOTE_ID, reportId: 'demo-report-9999' })).rejects.toMatchObject({ code: 'not_paused' });
+    await pain.clear(PARENT, '2026-01-08');
+    // A note queued offline that arrives after the clear is refused: it never marks a later pause.
+    await expect(pain.markMistake(KEEPER, { id: NOTE_ID, reportId: REPORT.id })).rejects.toMatchObject({ code: 'not_paused' });
+    const refused = (await audit.list()).filter((e) => e.action === 'refused');
+    expect(refused.map((e) => [e.actorRole, e.title])).toEqual([
+      ['keeper', 'a mistake note'],
+      ['parent', 'a mistake note'],
+      ['keeper', 'a mistake note'],
+      ['keeper', 'a mistake note'],
+      ['keeper', 'a mistake note'],
+    ]);
+    expect((await audit.list()).some((e) => e.action === 'marked')).toBe(false);
+  });
+});
+
 describe('pain routes', () => {
   let app: FastifyInstance | undefined;
   let logLines: string[];
@@ -151,6 +214,50 @@ describe('pain routes', () => {
     expect(text).not.toContain(NOTE);
     expect(text).not.toContain(KAI);
     expect(text).not.toContain(SAM);
+  });
+
+  it('takes a keeper-only mistake note with no text; the parent sees it and clears with one call (story 104)', async () => {
+    const a = await testApp();
+    await a.inject({ method: 'POST', url: '/api/pain', headers: as(KAI), payload: REPORT });
+    const byParent = await a.inject({ method: 'POST', url: '/api/pain/mistake', headers: as(SAM), payload: { id: 'demo-mistake-0001', reportId: REPORT.id } });
+    expect(byParent.statusCode).toBe(403);
+    // Any text sent along is never read or stored.
+    const res = await a.inject({
+      method: 'POST',
+      url: '/api/pain/mistake',
+      headers: as(KAI),
+      payload: { id: 'demo-mistake-0001', reportId: REPORT.id, note: 'zq7-marker free text' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ paused: true, report: { id: REPORT.id, date: REPORT.date, mistake: true } });
+    const again = await a.inject({ method: 'POST', url: '/api/pain/mistake', headers: as(KAI), payload: { id: 'demo-mistake-0002', reportId: REPORT.id } });
+    expect(again.statusCode).toBe(409);
+
+    const today = (await a.inject({ method: 'GET', url: '/api/training/today?date=2026-01-07', headers: as(KAI) })).json();
+    expect(today).toMatchObject({ paused: true, today: null });
+    const kai = (await a.inject({ method: 'GET', url: '/api/pain/status', headers: as(KAI) })).json();
+    expect(kai.reports).toEqual([{ id: REPORT.id, date: REPORT.date, mistake: true }]);
+    const sam = (await a.inject({ method: 'GET', url: '/api/pain/status', headers: as(SAM) })).json();
+    expect(sam.reports[0].mistakeAt).toMatch(/^\d{4}-\d\d-\d\dT/);
+
+    const cleared = await a.inject({ method: 'POST', url: '/api/pain/clear', headers: as(SAM), payload: { date: '2026-01-08' } });
+    expect(cleared.json()).toEqual({ paused: false, cleared: 1 });
+    const late = await a.inject({ method: 'POST', url: '/api/pain/mistake', headers: as(KAI), payload: { id: 'demo-mistake-0003', reportId: REPORT.id } });
+    expect(late.statusCode).toBe(409);
+
+    const events = (await a.inject({ method: 'GET', url: '/api/audit', headers: as(KAI) })).json().events;
+    const pauseEvents = events.filter((e: { kind: string }) => e.kind === 'pause');
+    expect(pauseEvents.map((e: { action: string; actorRole: string }) => [e.action, e.actorRole])).toEqual([
+      ['paused', 'keeper'],
+      ['refused', 'parent'],
+      ['marked', 'keeper'],
+      ['refused', 'keeper'],
+      ['cleared', 'parent'],
+      ['refused', 'keeper'],
+    ]);
+    const text = JSON.stringify(events) + logLines.join('\n');
+    expect(text).not.toContain('zq7-marker');
+    expect(text).not.toContain(KAI);
   });
 
   it('holds every streak through the pause days', async () => {

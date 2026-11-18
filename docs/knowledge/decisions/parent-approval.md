@@ -132,6 +132,12 @@ approved sessions. If training is paused for pain, the fallback is rest only.
   approved steps (technique only, then part volume, then the plan). Return is a sequence,
   not a switch.[^ardern-2016]
 - Pain during a return step pauses training again and restarts the return.
+- **Tapped by mistake** (story 104): after **Something hurts**, the keeper can mark the report
+  as a mistake, on the report form or the paused screen. It is a note for the parent, never a
+  clear: training stays paused until the parent checks in and clears it with one tap, and
+  nothing clears it on its own. Only the keeper sends it, once per pause and only while the
+  pause is open; it carries the role and the time, no text, and waits in the device's outbox
+  when offline. Anything else is refused and logged.
 - The keeper's view is recorded with the clearance, so the decision is shared.[^ardern-2016]
 
 # 8. Audit trail

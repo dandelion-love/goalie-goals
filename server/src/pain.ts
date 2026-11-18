@@ -61,6 +61,13 @@ export interface PainReport {
   clearedAt: Date | null;
   /** The parent's local date of the clear; the pause covers `date` to `clearedOn`. */
   clearedOn: string | null;
+  /**
+   * When the keeper marked the report "Tapped by mistake" (story 104). A note for the parent
+   * only: the pause holds until the parent clears it.
+   */
+  mistakeAt: Date | null;
+  /** Made by the device, so a note sent again from the offline outbox is stored once. */
+  mistakeId: string | null;
 }
 
 export interface PainStore {
@@ -69,10 +76,17 @@ export interface PainStore {
   list(): Promise<PainReport[]>;
   /** Mark every open report cleared; returns the ones it cleared. */
   clearOpen(at: Date, on: string): Promise<PainReport[]>;
+  /** Mark one open report as tapped by mistake; null when it is not open or already marked. */
+  markMistake(reportId: string, mistakeId: string, at: Date): Promise<PainReport | null>;
 }
 
 function copy(r: PainReport): PainReport {
-  return { ...r, at: new Date(r.at), clearedAt: r.clearedAt ? new Date(r.clearedAt) : null };
+  return {
+    ...r,
+    at: new Date(r.at),
+    clearedAt: r.clearedAt ? new Date(r.clearedAt) : null,
+    mistakeAt: r.mistakeAt ? new Date(r.mistakeAt) : null,
+  };
 }
 
 export class MemoryPainStore implements PainStore {
@@ -104,11 +118,19 @@ export class MemoryPainStore implements PainStore {
     }
     return cleared;
   }
+
+  async markMistake(reportId: string, mistakeId: string, at: Date): Promise<PainReport | null> {
+    const r = this.reports.get(reportId);
+    if (!r || r.clearedAt || r.mistakeAt) return null;
+    r.mistakeAt = new Date(at);
+    r.mistakeId = mistakeId;
+    return copy(r);
+  }
 }
 
 export class PainError extends Error {
   constructor(
-    readonly code: 'forbidden' | 'invalid' | 'not_paused',
+    readonly code: 'forbidden' | 'invalid' | 'not_paused' | 'already_marked',
     message: string,
   ) {
     super(message);
@@ -137,6 +159,17 @@ export interface PauseStatus {
 }
 
 const PAUSE_REF = 'training-pause';
+/** The audit item of a "Tapped by mistake" note and its refusals (story 104). */
+export const MISTAKE_REF = 'training-pause-mistake';
+
+export interface MistakeInput {
+  /** Made by the device: the same note sent again is stored once. */
+  id: string;
+  /** The open report the note is about (the device's pause). */
+  reportId: string;
+}
+
+const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 
 export class PainService implements PauseSource {
   private readonly store: PainStore;
@@ -153,7 +186,7 @@ export class PainService implements PauseSource {
 
   /** Either role may report pain, at any time, with no gate. */
   async report(actor: { account: string; role: Role }, input: ReportInput): Promise<PainReport> {
-    if (!/^[A-Za-z0-9-]{8,64}$/.test(input.id) || !isBodyArea(input.bodyArea)) {
+    if (!ID_RE.test(input.id) || !isBodyArea(input.bodyArea)) {
       throw new PainError('invalid', 'A report needs an id and a body area from the list.');
     }
     const note = typeof input.note === 'string' ? input.note.trim().slice(0, NOTE_MAX) || null : null;
@@ -167,6 +200,8 @@ export class PainService implements PauseSource {
       reportedBy: actor.role,
       clearedAt: null,
       clearedOn: null,
+      mistakeAt: null,
+      mistakeId: null,
     });
     if (!before) {
       await this.audit.append({
@@ -230,6 +265,59 @@ export class PainService implements PauseSource {
     });
     await this.notifier.withdraw(PAUSE_REF);
     return cleared;
+  }
+
+  /**
+   * The keeper says "Something hurts" was tapped by mistake (story 104). It is a note for the
+   * parent, never a clear: the pause holds until the parent clears it, and nothing clears it on
+   * its own. Only the keeper may send it, only while that report's pause is open, and once per
+   * pause; anything else is refused and logged. It carries no text: the role and the time only.
+   */
+  async markMistake(actor: { account: string; role: Role }, input: MistakeInput): Promise<PainReport> {
+    const all = await this.store.list();
+    const requestId = all.find((r) => r.id === input.reportId)?.id ?? PAUSE_REF;
+    const refuse = async (code: PainError['code'], reason: string): Promise<never> => {
+      await this.audit.append({
+        at: this.clock(),
+        action: 'refused',
+        actorRole: actor.role,
+        actor: actor.account,
+        requestId,
+        kind: 'pause',
+        itemId: MISTAKE_REF,
+        itemVersion: '',
+        title: 'a mistake note',
+        reason,
+      });
+      throw new PainError(code, reason);
+    };
+    if (actor.role !== 'keeper') return refuse('forbidden', `The ${actor.role} may not send a mistake note`);
+    if (!ID_RE.test(input.id) || !ID_RE.test(input.reportId)) return refuse('invalid', 'A mistake note needs an id and a report');
+    // The same note again (a resend from the offline outbox): stored once, logged once.
+    const same = all.find((r) => r.mistakeId === input.id);
+    if (same) return same;
+    const open = all.filter((r) => !r.clearedAt);
+    const target = open.find((r) => r.id === input.reportId);
+    if (!target) return refuse('not_paused', 'No open pause for this note');
+    if (open.some((r) => r.mistakeAt)) return refuse('already_marked', 'This pause already has a mistake note');
+    const marked = await this.store.markMistake(target.id, input.id, this.clock());
+    if (!marked) return refuse('already_marked', 'This pause already has a mistake note');
+    await this.audit.append({
+      at: this.clock(),
+      action: 'marked',
+      actorRole: actor.role,
+      actor: actor.account,
+      requestId: marked.id,
+      kind: 'pause',
+      itemId: MISTAKE_REF,
+      itemVersion: '',
+      // The body area only, as for the report.
+      title: `something hurts (${BODY_AREA_LABEL[marked.bodyArea].toLowerCase()})`,
+      reason: null,
+    });
+    // A fresh nudge: the parent checks in, then clears. The clear withdraws it.
+    await this.notifier.notify({ to: 'parent', ref: PAUSE_REF, title: 'Training paused: marked as a mistake' });
+    return marked;
   }
 
   /** For streaks: each report pauses from its date to the clear date, both included. */

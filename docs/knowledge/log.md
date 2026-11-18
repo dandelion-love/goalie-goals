@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Changed**: parent-approval, section 7: the keeper can mark a pain report "Tapped by mistake"; it is a note for the parent and never clears the pause (story 104).
 * **Changed**: quality-rubric, after the e735b71 re-audit: the re-audit's scores added to the score table (103 of 111), Script C dispatches trusted Playwright clicks so FL4 counts only shifts users would see, Script F measures a wrapped textarea or select by its own border, and SO2 scores each cue against its loudness tier's target; baseline scores unchanged.
 * **Added**: government video as private reference footage: defence and space agency libraries in the US, UK, Canada, Australia and New Zealand and YouTube's terms side by side, the rules for footage (reference only, never traced, never the keeper or the family, publisher-made, publisher download only), and a coverage table with a public-domain clip for 13 of 26 movements.
 * **Added**: themed weekly rotation research: habit from stable cues (implementation intentions, context-dependent repetition, time and day consistency), themed-day rotations described generically, youth periodisation and the football year, a proposed themed week with capped light days checked rule by rule against the training rules, a four-week block with a lighter week, and the weekly-rotation Decision.

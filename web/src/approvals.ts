@@ -37,6 +37,8 @@ export interface AuditEntry {
     | 'refused'
     | 'paused'
     | 'cleared'
+    /** The keeper marked a pain report "Tapped by mistake"; the pause still holds (story 104). */
+    | 'marked'
     | 'changed'
     | 'undone'
     /** A start queued on the keeper's device that reached the server after an undo (story #94). */
@@ -47,6 +49,8 @@ export interface AuditEntry {
    * `schedule`: the parent's choice of training days.
    */
   kind: RequestKind | 'pause' | 'schedule';
+  /** What the event is about; `training-pause-mistake` for a mistake note (story 104). */
+  itemId?: string;
   title: string;
   reason: string | null;
   /** On an approval the parent may still undo: milliseconds left, as of the response. */

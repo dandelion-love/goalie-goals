@@ -124,7 +124,7 @@ function parentServer() {
     if (url === '/api/notifications/badge') return json({ unread: requests.length + 1 });
     if (url === '/api/audit') return json({ events: audit });
     if (url === '/api/pain/status') {
-      return json({ paused: true, since: '2026-01-05', reports: [{ id: 'p1', bodyArea: 'knee', note: null, date: '2026-01-05' }] });
+      return json({ paused: true, since: '2026-01-05', reports: [{ id: 'p1', bodyArea: 'knee', note: null, date: '2026-01-05', mistakeAt: '2026-01-05T17:02:00Z' }] });
     }
     if (url.startsWith('/api/progress/summary')) {
       const streak = { current: 2, best: 3 };
@@ -142,6 +142,8 @@ describe('the words on both homes (AC1)', () => {
     expect(await screen.findByRole('heading', { name: 'Session: Strong middle' })).toBeTruthy();
     await screen.findByText(/Keeper reported something hurts/);
     await screen.findByRole('heading', { name: 'Training paused: something hurts' });
+    // Story 104: the keeper's mistake note, in the same copy rules.
+    await screen.findByText('Check in before clearing.');
     // The lapse date in the copy rules' own reading (AC3 of story #96).
     expect(copyOnScreen().lines).toContain('Lapses unanswered on Jan 12; silence never approves.');
     checkCopy('P1 parent home', ELSEWHERE);
@@ -193,6 +195,21 @@ describe('the words on both homes (AC1)', () => {
 
     render(<PausedPanel />);
     checkCopy('K8 paused', ELSEWHERE);
+    cleanup();
+
+    // Story 104: "Tapped by mistake" on the form and the paused screen, and after it.
+    render(<PainReportForm onSend={async () => true} onMistake={() => {}} />);
+    checkCopy('K7 pain report with Tapped by mistake', ELSEWHERE);
+    click('Tapped by mistake');
+    checkCopy('K7 tapped by mistake', ELSEWHERE);
+    cleanup();
+
+    render(<PausedPanel onMistake={() => {}} />);
+    checkCopy('K8 paused with Tapped by mistake', ELSEWHERE);
+    cleanup();
+
+    render(<PausedPanel mistake />);
+    checkCopy('K8 paused after Tapped by mistake', ELSEWHERE);
     cleanup();
 
     render(

@@ -6,13 +6,23 @@ import type { Role, RoleStore } from './roles.js';
 import { DATE_RE, utcDate } from './training.js';
 import { PainError, type PainReport, type PainService } from './pain.js';
 
-const STATUS: Record<PainError['code'], number> = { forbidden: 403, invalid: 400, not_paused: 409 };
+const STATUS: Record<PainError['code'], number> = { forbidden: 403, invalid: 400, not_paused: 409, already_marked: 409 };
 
 /** The parent reads the report to look after the keeper; the keeper's device needs ids only. */
 function reportFor(role: Role, r: PainReport) {
-  return role === 'parent'
-    ? { id: r.id, bodyArea: r.bodyArea, note: r.note, date: r.date, at: r.at.toISOString() }
-    : { id: r.id, date: r.date };
+  if (role === 'parent') {
+    return {
+      id: r.id,
+      bodyArea: r.bodyArea,
+      note: r.note,
+      date: r.date,
+      at: r.at.toISOString(),
+      // Story 104: when the keeper marked it "Tapped by mistake"; the pause still holds.
+      mistakeAt: r.mistakeAt?.toISOString() ?? null,
+    };
+  }
+  // The keeper's device learns only that the note is in, so every device shows the same screen.
+  return r.mistakeAt ? { id: r.id, date: r.date, mistake: true } : { id: r.id, date: r.date };
 }
 
 export function registerPainRoutes(
@@ -65,6 +75,24 @@ export function registerPainRoutes(
     if (!role) return reply;
     const s = await pain.status();
     return { paused: s.paused, since: s.since, reports: s.open.map((r) => reportFor(role, r)) };
+  });
+
+  // Story 104: "Tapped by mistake". Both roles reach the service, so a parent's attempt, a note
+  // with no open pause and a second note are refused there and logged. Only the two ids are
+  // read: the note carries no text.
+  app.post<{ Body: { id?: unknown; reportId?: unknown } | undefined }>('/api/pain/mistake', async (req, reply) => {
+    const role = await roleOf(req, reply);
+    if (!role) return reply;
+    const b = req.body ?? {};
+    try {
+      const r = await pain.markMistake(
+        { account: req.identity!.account, role },
+        { id: typeof b.id === 'string' ? b.id : '', reportId: typeof b.reportId === 'string' ? b.reportId : '' },
+      );
+      return { paused: !r.clearedAt, report: reportFor(role, r) };
+    } catch (e) {
+      return fail(reply, e);
+    }
   });
 
   // Both roles reach the service, so a keeper's attempt is refused there and logged.

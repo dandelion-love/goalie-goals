@@ -30,6 +30,12 @@ export interface LocalPause {
   reportId: string;
   sent: boolean;
   report: { bodyArea: BodyArea; note: string } | null;
+  /**
+   * "Tapped by mistake" (story 104): the note's id, and whether the server has it. It waits in
+   * this outbox, after the report, until it is sent. It never lifts the pause: only the
+   * parent's clear does. Absent in a pause written before story 104.
+   */
+  mistake?: { id: string; sent: boolean } | null;
 }
 
 export interface PauseStore {
@@ -117,10 +123,56 @@ export function startPause(store: PauseStore, now: Date = new Date()): LocalPaus
 const HEADERS = { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' };
 
 /**
- * Send the outbox entry, if any. A report with no body area chosen goes as "not said" so the
- * parent still hears at once. Returns true when nothing is left to send.
+ * "Tapped by mistake" (story 104): note it on the device at once, in the outbox, and keep the
+ * pause. Once per pause: a second tap changes nothing. Returns the pause, or null if none.
+ */
+export function markMistake(store: PauseStore): LocalPause | null {
+  const pause = store.read();
+  if (!pause) return null;
+  if (pause.mistake) return pause;
+  const next: LocalPause = { ...pause, mistake: { id: newReportId(), sent: false } };
+  store.write(next);
+  return next;
+}
+
+/**
+ * Send everything waiting: the report, then the mistake note. A report with no body area
+ * chosen goes as "not said" so the parent still hears at once. Returns true when nothing is
+ * left to send.
  */
 export async function flushPause(store: PauseStore, fetchImpl: typeof fetch = fetch): Promise<boolean> {
+  if (!(await flushReport(store, fetchImpl))) return false;
+  return flushMistake(store, fetchImpl);
+}
+
+/**
+ * The mistake note goes after its report. The server answers 4xx when it will never take it
+ * (the pause was cleared meanwhile, or a note is already in): it is settled then, and only a
+ * network failure or a server error keeps it for the next send.
+ */
+async function flushMistake(store: PauseStore, fetchImpl: typeof fetch): Promise<boolean> {
+  const pause = store.read();
+  if (!pause?.mistake || pause.mistake.sent || !pause.sent) return true;
+  const { id } = pause.mistake;
+  try {
+    const res = await fetchImpl('/api/pain/mistake', {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { ...HEADERS, 'Content-Type': 'application/json' },
+      // Two ids and nothing else: the note carries no text.
+      body: JSON.stringify({ id, reportId: pause.reportId }),
+    });
+    if (!res.ok && res.status >= 500) return false;
+  } catch {
+    return false;
+  }
+  const latest = store.read();
+  if (latest?.mistake?.id === id) store.write({ ...latest, mistake: { id, sent: true } });
+  return true;
+}
+
+async function flushReport(store: PauseStore, fetchImpl: typeof fetch): Promise<boolean> {
   const pause = store.read();
   if (!pause || pause.sent) return true;
   try {
@@ -149,7 +201,17 @@ export async function flushPause(store: PauseStore, fetchImpl: typeof fetch = fe
 export interface PauseStatus {
   paused: boolean;
   since: string | null;
-  reports: { id: string; date: string; bodyArea?: BodyArea; note?: string | null; at?: string }[];
+  reports: {
+    id: string;
+    date: string;
+    bodyArea?: BodyArea;
+    note?: string | null;
+    at?: string;
+    /** The keeper's view: the report is marked "Tapped by mistake" (story 104). */
+    mistake?: boolean;
+    /** The parent's view: when the keeper marked it "Tapped by mistake" (story 104). */
+    mistakeAt?: string | null;
+  }[];
 }
 
 export async function fetchPauseStatus(fetchImpl: typeof fetch = fetch): Promise<PauseStatus> {
@@ -174,10 +236,20 @@ export async function syncPause(store: PauseStore, fetchImpl: typeof fetch = fet
     return store.read();
   }
   const local = store.read();
+  // A note the server already has (sent from another device) shows here too.
+  const marked = status.reports.some((r) => r.mistake || r.mistakeAt) ? { id: 'from-server', sent: true } : null;
   if (status.paused && !local) {
-    store.write({ since: status.since ?? localDate(), reportId: status.reports[0]?.id ?? newReportId(), sent: true, report: null });
+    store.write({
+      since: status.since ?? localDate(),
+      reportId: status.reports[0]?.id ?? newReportId(),
+      sent: true,
+      report: null,
+      mistake: marked,
+    });
   } else if (!status.paused && local?.sent) {
     store.clear();
+  } else if (status.paused && local && !local.mistake && marked) {
+    store.write({ ...local, mistake: marked });
   }
   return store.read();
 }

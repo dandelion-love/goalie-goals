@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { BODY_AREAS, bodyAreaLabel, clearPause, fetchPauseStatus, type BodyArea, type PauseStatus } from './pain';
 import { SAVING, SavingAnnouncer, savingProps, useOneAtATime } from './Saving';
-import { shortDate } from './dates';
+import { shortDate, shortTime } from './dates';
+
+/** The keeper's control after "Something hurts" (story 104). It never lifts the pause. */
+export const MISTAKE_LABEL = 'Tapped by mistake';
+
+/** What the keeper sees once it is tapped: still paused, and the parent checks first. */
+export const MISTAKE_NOTED = 'Noted: tapped by mistake. Training stays paused until your parent checks.';
 
 /**
  * Where it hurts as large toggles (each at least 56 px) with radio-group semantics: one tap
@@ -59,13 +65,30 @@ export function BodyAreaChoice({ value, onChange }: { value: BodyArea | null; on
   );
 }
 
-/** Where it hurts (a short fixed list) and an optional note. Nothing else is asked. */
-export function PainReportForm({ onSend }: { onSend: (area: BodyArea, note: string) => Promise<boolean> }) {
+/**
+ * Where it hurts (a short fixed list) and an optional note. Nothing else is asked. With
+ * `onMistake`, the keeper can also say it was tapped by mistake (story 104): the area chosen so
+ * far goes to the parent with the note, and training stays paused.
+ */
+export function PainReportForm({
+  onSend,
+  onMistake,
+}: {
+  onSend: (area: BodyArea, note: string) => Promise<boolean>;
+  onMistake?: (area: BodyArea | null) => void;
+}) {
   const [area, setArea] = useState<BodyArea | null>(null);
   const [note, setNote] = useState('');
-  const [state, setState] = useState<'editing' | 'sending' | 'sent' | 'saved'>('editing');
+  const [state, setState] = useState<'editing' | 'sending' | 'sent' | 'saved' | 'mistake'>('editing');
   const once = useOneAtATime();
 
+  if (state === 'mistake') {
+    return (
+      <p className="pain-sent" role="status">
+        {MISTAKE_NOTED}
+      </p>
+    );
+  }
   if (state === 'sent') return <p className="pain-sent" role="status">Your parent has been told. Training is paused until they clear it.</p>;
   if (state === 'saved') {
     return (
@@ -109,6 +132,19 @@ export function PainReportForm({ onSend }: { onSend: (area: BodyArea, note: stri
           Choose where it hurts first.
         </p>
       )}
+      {onMistake && (
+        <button
+          type="button"
+          className="secondary session-control wide"
+          disabled={state === 'sending'}
+          onClick={() => {
+            onMistake(area);
+            setState('mistake');
+          }}
+        >
+          {MISTAKE_LABEL}
+        </button>
+      )}
     </form>
   );
 }
@@ -118,13 +154,28 @@ export const SEE_SOMEONE =
   'See a health professional before training again after a knock to the head, chest pain, fainting or swelling. ' +
   'The same goes for pain that changes how you move.';
 
-/** The keeper's home while paused: rest, and nothing to train. */
-export function PausedPanel() {
+/**
+ * The keeper's home while paused: rest, and nothing to train. `onMistake` offers "Tapped by
+ * mistake" (story 104); once it is tapped (`mistake`) the panel says the pause holds until the
+ * parent checks. Nothing here lifts the pause.
+ */
+export function PausedPanel({ mistake = false, onMistake }: { mistake?: boolean; onMistake?: () => void } = {}) {
   return (
     <article className="card paused" aria-labelledby="paused-title">
       <h2 id="paused-title">Training is paused</h2>
-      <p>Something hurt, so training stops until your parent clears it. Rest, and tell an adult if it gets worse.</p>
+      {mistake ? (
+        <p className="pain-sent" role="status">
+          {MISTAKE_NOTED}
+        </p>
+      ) : (
+        <p>Something hurt, so training stops until your parent clears it. Rest, and tell an adult if it gets worse.</p>
+      )}
       <p className="meta">{SEE_SOMEONE}</p>
+      {!mistake && onMistake && (
+        <button type="button" className="secondary session-control" onClick={onMistake}>
+          {MISTAKE_LABEL}
+        </button>
+      )}
     </article>
   );
 }
@@ -132,6 +183,12 @@ export function PausedPanel() {
 function formatDay(date: string): string {
   const d = new Date(`${date}T00:00:00`);
   return Number.isNaN(d.getTime()) ? date : shortDate(d);
+}
+
+/** "Jan 7, 5:02 PM", in the parent's time zone. */
+function formatAt(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : `${shortDate(d)}, ${shortTime(d)}`;
 }
 
 /**
@@ -200,6 +257,15 @@ export function PauseInboxItem({
             <h3>{bodyAreaLabel(r.bodyArea)}</h3>
             <p className="meta">Reported {formatDay(r.date)}</p>
             {r.note && <p>{r.note}</p>}
+            {r.mistakeAt && (
+              // Story 104: the keeper's note. It never clears the pause; the parent checks first.
+              <div className="mistake-note">
+                <p>
+                  <strong>Marked as a mistake by the keeper</strong> <time dateTime={r.mistakeAt}>{formatAt(r.mistakeAt)}</time>
+                </p>
+                <p>Check in before clearing.</p>
+              </div>
+            )}
           </li>
         ))}
       </ul>

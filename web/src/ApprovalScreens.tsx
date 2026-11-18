@@ -346,6 +346,7 @@ const ACTION_TEXT: Record<AuditEntry['action'], string> = {
   refused: 'refused',
   paused: 'reported',
   cleared: 'cleared',
+  marked: 'marked',
   changed: 'set',
   undone: 'undid the approval of',
   started: 'started',
@@ -359,11 +360,34 @@ const REFUSED_VERB: Record<AuditEntry['kind'], string> = {
   schedule: 'change',
 };
 
+/** The audit item of a keeper's "Tapped by mistake" note (story 104). */
+const MISTAKE_ITEM = 'training-pause-mistake';
+
 const ACTOR_TEXT: Record<AuditEntry['actorRole'], string> = {
   parent: 'Parent',
   keeper: 'Keeper',
   system: 'App',
 };
+
+/** One History line: roles, the item and what happened; for a pause, the body area only. */
+function historyLine(e: AuditEntry): string {
+  const actor = ACTOR_TEXT[e.actorRole];
+  switch (e.action) {
+    case 'expired':
+      return `${e.title} lapsed unanswered`;
+    case 'refused':
+      return `${actor} tried to ${e.itemId === MISTAKE_ITEM ? 'send' : (REFUSED_VERB[e.kind] ?? 'answer')} ${e.title}; refused`;
+    case 'paused':
+      return `${actor} reported ${e.title}; training paused`;
+    case 'marked':
+      // Story 104: a note for the parent; the pause holds until the parent clears it.
+      return `${actor} marked ${e.title} as a mistake; still paused`;
+    case 'started':
+      return `${e.title} started before the undo reached the device; it still counts`;
+    default:
+      return `${actor} ${ACTION_TEXT[e.action]} ${e.title}`;
+  }
+}
 
 /**
  * The audit log, newest first. Both roles see the same history. The parent's latest approval
@@ -450,15 +474,7 @@ export function History({
           {[...state.data.events].reverse().map((e) => (
             <li key={e.id}>
               <time dateTime={e.at}>{formatDate(e.at)}</time>{' '}
-              {e.action === 'expired'
-                ? `${e.title} lapsed unanswered`
-                : e.action === 'refused'
-                  ? `${ACTOR_TEXT[e.actorRole]} tried to ${REFUSED_VERB[e.kind] ?? 'answer'} ${e.title}; refused`
-                  : e.action === 'paused'
-                    ? `${ACTOR_TEXT[e.actorRole]} reported ${e.title}; training paused`
-                    : e.action === 'started'
-                      ? `${e.title} started before the undo reached the device; it still counts`
-                      : `${ACTOR_TEXT[e.actorRole]} ${ACTION_TEXT[e.action]} ${e.title}`}
+              {historyLine(e)}
               {e.reason && e.action === 'declined' ? `: ${e.reason}` : ''}
               {undoUntil(e) > Date.now() && (
                 <button

@@ -11,3 +11,9 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export function shortDate(d: Date): string {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
+
+/** "5:02 PM": the time of day, in the device's time zone, written without Intl (as above). */
+export function shortTime(d: Date): string {
+  const h = d.getHours() % 12 || 12;
+  return `${h}:${String(d.getMinutes()).padStart(2, '0')} ${d.getHours() < 12 ? 'AM' : 'PM'}`;
+}
