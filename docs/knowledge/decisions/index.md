@@ -11,3 +11,7 @@
 ## Parent approval
 
 * [Parent approval as a primary behaviour](/decisions/parent-approval.md) - The parent approves every new exercise, load increase, plan change and any sharing before the keeper sees it; a pain report pauses all training until the parent clears it; while anything waits, only already-approved sessions run.
+
+## UX patterns
+
+* [UX patterns this app adopts](/decisions/ux-patterns.md) - Which game-like learning-app patterns the app adopts, how each is adapted to physical training done by a keeper and a parent together, and which it leaves out and why.
