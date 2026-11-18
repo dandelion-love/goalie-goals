@@ -42,6 +42,12 @@ Public-domain (CC0) media for the app: exercise figures and pose references, rew
 * [Drawn and generated figures](/exercise-media/drawn-and-generated-figures.md) - The parametric vector figure this route is compared with.
 * [Exercise media](/decisions/exercise-media.md) - The Decision on sources, attribution and stored format that any rendered figure must meet.
 
+# Anatomy and muscle maps
+
+* [Open muscle-map components and their art](/cc0-media/muscle-map-components.md) - Nine body-highlighter packages, code and art licences checked apart; body-muscles' own drawing passes under Apache-2.0, the shared react-native-body-highlighter art does not.
+* [Open muscle diagrams and CC0 sets](/cc0-media/muscle-map-diagrams.md) - wger's overlays and Commons' muscular-system SVGs are realistic CC BY-SA anatomy; no CC0 front and back map exists.
+* [Muscle map for exercise dossiers](/cc0-media/muscle-map-recommendation.md) - body-muscles' path data in the app's own component and tokens, a 15-group vocabulary and a proposed mapping for the current cards; the map never shows data about the keeper.
+
 # Related
 
 * [Sound and haptics](/ux/sound-and-haptics.md) - Why cues are functional first and must carry across a room.
