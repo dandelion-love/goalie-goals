@@ -40,6 +40,10 @@
 
 * [Reuse of exercise content](/decisions/exercise-content-reuse.md) - What the app reuses as-is, adapts, and builds to explain exercises, with each licence named and checked for a public repo and hosted app, and what it rejects.
 
+## Exercise dossiers
+
+* [Exercise dossier content model](/decisions/exercise-dossier.md) - A dossier file beside each card with six fixed sections, claim records that each carry source ids and an evidence label, length limits, a muscle vocabulary for the muscle map, an empty clip list until the link policy lands, and owner approval; the content check enforces it.
+
 ## Exercise media
 
 * [Exercise media](/decisions/exercise-media.md) - The media and text sources the app uses to illustrate exercises, how attribution is shown, the stored format, how an exercise with no open media is illustrated, and what is never used.

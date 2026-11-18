@@ -29,6 +29,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 * [Building for the iPad](/platform/index.md) - installing, layout, touch, push, offline, media and sign-in for an iPad home-screen web app
 
+* [Exercise dossiers](/dossiers/index.md) - what an exercise dossier holds: its sections, the claim rules, the youth evidence behind "what to expect", and a worked front plank example
+
 * [Quality measures](/quality/index.md) - usability heuristics, SUS, WCAG 2.2, platform guidelines, legibility at a distance, visual consistency, game feel, motion, sound, copy and response times, and what each means for a two-person training app
 * [Usability](/usability/index.md) - lightweight usability methods for one household, and the privacy-safe ten-minute home check with its proxy check
 
