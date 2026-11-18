@@ -198,7 +198,9 @@ button.danger {
   color: var(--stop-on);
 }
 
-/* `button.` so it outranks the base `button` rule, which sets 44 px. */
+/* `button.` so it outranks the base `button` rule, which sets 44 px. The 56 px is a floor on
+ * the whole border box (min-height, with border-box sizing), never a height that comes out of
+ * padding and line height, so no label length or viewport rounds it lower (story #102). */
 button.session-control {
   --press-depth: var(--press-depth-session);
   min-height: var(--target-session);

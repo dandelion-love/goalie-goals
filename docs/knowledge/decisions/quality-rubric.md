@@ -506,7 +506,7 @@ the click's `pointerdown` to the frame after the marker text appears.
   const boxes = [...new Set([...document.querySelectorAll(sel)].filter(e => !inText(e)).map(hit))]
     .map(e => ({ e, r: e.getBoundingClientRect(), name: (e.getAttribute('aria-label') || e.textContent || e.tagName).trim().slice(0, 40) }))
     .filter(b => b.r.width > 0 && b.r.height > 0);
-  const small = boxes.filter(b => b.r.width < min || b.r.height < min)
+  const small = boxes.filter(b => b.r.width < min - 0.01 || b.r.height < min - 0.01)
     .map(b => ({ name: b.name, w: Math.round(b.r.width), h: Math.round(b.r.height) }));
   const gap = (p, q) => Math.max(0, Math.max(p.left, q.left) - Math.min(p.right, q.right), Math.max(p.top, q.top) - Math.min(p.bottom, q.bottom));
   let closest = { px: Infinity };
@@ -721,10 +721,12 @@ Scores are copied from the reviewer's signed audit comment on #54; the builder n
 | Target (from this Decision, not a score) | | | | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
 | Baseline | 2026-11-18 | 8bb86c7 | [#54 audit](https://github.com/dandelion-love/goalie-goals/issues/54#issuecomment-6970879591) | 1 | 1 | 1 | 3 | 1 | 0 | 0 | 0 | 2 | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 3 | 3 | 0 | 3 | 1 | 3 | 2 | 3 | 0 | 3 | 2 | 0 | 1 |
 | Re-audit | 2026-11-18 | e735b71 | [#54 re-audit](https://github.com/dandelion-love/goalie-goals/issues/54#issuecomment-6977002578) | 3 | 2 | 3 | 1 | 3 | 3 | 2 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3* | 3 | 3 | 2 | 2 | 3 | 2 | 3 | 3 | 3 | 3 | 3 | 2 | 3 | 3 | 3 | 3 |
+| Re-audit | 2026-11-18 | 34134c3 | [#54 re-audit](https://github.com/dandelion-love/goalie-goals/issues/54#issuecomment-6978009382) | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 2 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 2 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 2 | 3 | 3 | 3 | 3 |
 
 \* The reviewer scored SO2 by its tier ruling, which the SO2 rule now states (method
-changes below). The re-audit totals 103 of 111, with 30 of 37 items at target, per the
-reviewer's correction on #54.
+changes below). The e735b71 re-audit totals 103 of 111, with 30 of 37 items at target, per
+the reviewer's correction on #54. The 34134c3 re-audit totals 108 of 111, with 34 of 37 items
+at target.
 
 ## Method changes
 
@@ -790,3 +792,10 @@ e735b71 and before the next audit, from the reviewer's method notes and SO2 ruli
 [^pw-network]: Playwright, network routing and offline.
 [^axe]: axe-core on GitHub.
 [^ffmpeg-astats]: FFmpeg, astats filter.
+
+**2026-11-18 (UTC), after the 34134c3 re-audit.** From the judge's LT1 ruling on #102.
+It does not change any score above: LT1 stays 2 in the 34134c3 row.
+
+- Script D (LT1) ignores sub-pixel rounding under 0.01 px: a box counts as small only
+  below the minimum by more than 0.01 px, so a press transform's floating-point noise is
+  not read as a short button.

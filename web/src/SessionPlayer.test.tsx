@@ -216,6 +216,55 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
   });
 });
 
+// Story #102 AC1. The rubric's audit measured a cue-rating button at 55.9 px in landscape. The
+// 56 px must be the declared floor of the whole box (min-height from the session target token,
+// border-box sizing), with nothing in the cascade that sets a height, caps it or scales the
+// button, so no label length or viewport can bring it under 56 px.
+describe.each(SIZES)('a full 56 px with a long cue label on $name (#102)', ({ width, height, layout }) => {
+  const LONG_CUE = 'Squeeze your bottom and tummy tight and keep your hips level from start to finish';
+
+  const expectFloor = (b: HTMLElement) => {
+    const name = b.textContent ?? '';
+    expect(b.classList.contains('session-control'), name).toBe(true);
+    expect(cascaded(rules, b, 'min-height'), name).toBe('var(--target-session)');
+    expect(px(cascaded(rules, b, 'min-height')), name).toBe(56);
+    expect(px(cascaded(rules, b, 'min-width')), name).toBeGreaterThanOrEqual(56);
+    expect(cascaded(rules, b, 'box-sizing'), name).toBe('border-box');
+    for (const p of ['height', 'max-height', 'block-size', 'max-block-size', 'transform', 'scale', 'zoom']) {
+      expect(cascaded(rules, b, p), `${name} ${p}`).toBeNull();
+    }
+  };
+
+  it('holds every button on the cue-rating screen and the stop screen at the floor', () => {
+    setViewport(width, height);
+    const plank = { ...PLANK, cues: [...PLANK.cues, LONG_CUE] };
+    render(
+      <SessionPlayer
+        session={demoSession({ warmUp: [], coolDown: [], cards: [plank] })}
+        layout={layout}
+        wakeLock={fakeWake('active')}
+        onExit={() => {}}
+      />,
+    );
+    click('Start set 1');
+    click('End set');
+
+    // The cue-rating screen: every cue, the long one included, Skip and the bar's controls.
+    expect(screen.getByRole('heading', { name: 'How did set 1 look?' })).toBeTruthy();
+    const rating = [...document.querySelectorAll<HTMLElement>('.cue-buttons button')].map((b) => b.textContent);
+    expect(rating).toEqual([...PLANK.cues, LONG_CUE, 'Skip']);
+    const onRating = screen.getAllByRole('button');
+    expect(onRating.map((b) => b.textContent)).toEqual(expect.arrayContaining(['Squeeze your bottom', LONG_CUE, 'Skip', 'Stop']));
+    onRating.forEach(expectFloor);
+
+    // The stop screen: Resume and everything else on it.
+    click('Stop');
+    const onStop = screen.getAllByRole('button');
+    expect(onStop.map((b) => b.textContent)).toContain('Resume');
+    onStop.forEach(expectFloor);
+  });
+});
+
 describe('touch targets in the stylesheet', () => {
   it('sets 44 px for every button and 56 px for in-session controls', () => {
     // The sizes are tokens (story #76): --target and --target-session in src/tokens.css.
