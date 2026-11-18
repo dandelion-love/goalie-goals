@@ -5,7 +5,7 @@
     "static lunge"
   ],
   "category": "strength",
-  "why": "Keepers push off one leg to dive and jump, so strength and balance on one leg matter.",
+  "why": "Keepers push off one leg to dive and jump. So strength and balance on one leg matter.",
   "goal": [
     "leg-strength",
     "single-leg-strength",
@@ -29,14 +29,14 @@
     "parent": "Stand side-on, about 2 m away."
   },
   "steps": [
-    "Take a long step forward and lift the back heel so you stand on the ball of that foot.",
+    "Take a long step forward. Lift the back heel and stand on the ball of that foot.",
     "Stand tall with your hands on your hips.",
-    "Bend both knees and lower straight down until the back knee is just above the floor.",
+    "Bend both knees and lower straight down. Stop when the back knee is just above the floor.",
     "Push through the front foot to rise. Do all reps, then switch legs."
   ],
   "cues": [
-    "Straight down, straight up",
-    "Front knee over the foot",
+    "Straight down, up",
+    "Knee over foot",
     "Tall chest"
   ],
   "mistakes": [
@@ -59,8 +59,10 @@
     "Same number of clean reps on both legs"
   ],
   "stop_if": [
-    "Pain in the knee, hip or lower back, or pain that changes how you move",
-    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Pain in the knee, hip or lower back",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
     "Losing balance again and again (end the set)"
   ],
   "easier": {
@@ -69,7 +71,7 @@
   },
   "harder": {
     "variant": "Pause for two seconds at the bottom.",
-    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
   },
   "dose": {
     "kind": "reps",

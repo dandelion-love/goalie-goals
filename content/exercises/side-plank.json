@@ -5,7 +5,7 @@
     "side bridge"
   ],
   "category": "trunk",
-  "why": "Strong sides keep you long and in control when you land on your side after a dive.",
+  "why": "Strong sides keep you long and controlled when you land sideways.",
   "goal": [
     "trunk-stability",
     "lateral-trunk"
@@ -28,8 +28,8 @@
     "parent": "Kneel in front, level with the hips."
   },
   "steps": [
-    "Lie on one side with the elbow under the shoulder and the legs stacked.",
-    "Lift your hips so your body makes a straight line from head to feet.",
+    "Lie on one side, elbow under the shoulder, legs stacked.",
+    "Lift your hips into a straight line from head to feet.",
     "Rest the top hand on your hip and look straight ahead.",
     "Hold for the time, lower, then do the other side."
   ],
@@ -54,8 +54,10 @@
     "Same time on both sides"
   ],
   "stop_if": [
-    "Pain in the shoulder, lower back or hip, or pain that changes how you move",
-    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Pain in the shoulder, lower back or hip",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
     "Hips drop and cannot be lifted again (end the set)"
   ],
   "easier": {
@@ -64,7 +66,7 @@
   },
   "harder": {
     "variant": "Reach the top arm straight up during the hold.",
-    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
   },
   "dose": {
     "kind": "hold",

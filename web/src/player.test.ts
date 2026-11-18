@@ -42,9 +42,9 @@ describe('session player flow', () => {
     s = run([...warm, next, next]);
     expect(s.phase).toEqual({ kind: 'feedback', set: 1 });
     expect(s.setsDone).toBe(1);
-    s = run([...warm, next, next, { type: 'praise', cue: 'Straight like a board' }]);
+    s = run([...warm, next, next, { type: 'praise', cue: 'Stay board-straight' }]);
     expect(s.phase).toEqual({ kind: 'rest', set: 1 });
-    expect(s.feedback).toBe('Straight like a board: nice');
+    expect(s.feedback).toBe('Stay board-straight: nice');
     s = run([...warm, next, next, next, next, next, next]);
     expect(s.step).toBe(2);
     expect(s.phase).toEqual({ kind: 'ready' });

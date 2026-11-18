@@ -5,7 +5,7 @@
     "incline push-up"
   ],
   "category": "strength",
-  "why": "Pushing strength helps you punch the ball clear and get up fast after a dive.",
+  "why": "Pushing strength helps you punch the ball clear. It also helps you get up fast after a dive.",
   "goal": [
     "upper-body-push",
     "trunk-stability"
@@ -29,15 +29,15 @@
     "parent": "Stand side-on, about 2 m away."
   },
   "steps": [
-    "Face the wall and put your hands on it at shoulder height, a little wider than your shoulders.",
+    "Face the wall, hands on it at shoulder height. Place them a little wider than your shoulders.",
     "Walk your feet back until your body leans in one straight line.",
-    "Bend the elbows to bring your chest toward the wall, elbows angled back.",
+    "Bend the elbows to bring your chest toward the wall. Keep the elbows angled back.",
     "Push the wall away until your arms are straight."
   ],
   "cues": [
-    "Body in one line",
+    "One straight line",
     "Elbows back",
-    "Chest to the wall"
+    "Chest to wall"
   ],
   "mistakes": [
     {
@@ -46,7 +46,7 @@
     },
     {
       "mistake": "Elbows flared straight out",
-      "fix": "Angle the elbows back, about halfway between the body and straight out."
+      "fix": "Angle the elbows back, halfway between the body and straight out."
     },
     {
       "mistake": "Head poking forward",
@@ -59,8 +59,10 @@
     "Full push to straight arms"
   ],
   "stop_if": [
-    "Pain in the shoulder, elbow or wrist, or pain that changes how you move",
-    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Pain in the shoulder, elbow or wrist",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
     "Feet slipping on the floor (fix the footing before going on)"
   ],
   "easier": {
@@ -69,7 +71,7 @@
   },
   "harder": {
     "variant": "Hands on a stable step or the bottom stair, feet further back.",
-    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
   },
   "dose": {
     "kind": "reps",

@@ -75,12 +75,12 @@ In **Window B (Kai, iPad)**:
 4. **Front plank** (2 sets of a 20 s hold): the figure and its credit line sit beside the
    steps, cues, common mistakes and stop signs.
    1. Tap **Start set 1**, then **End set** (or let the 20 s run).
-   2. Under "How did set 1 look?", tap the cue **Straight like a board**. The app says
-      "Straight like a board: nice": the cue, never the person.
+   2. Under "How did set 1 look?", tap the cue **Stay board-straight**. The app says
+      "Stay board-straight: nice": the cue, never the person.
    3. Tap **Skip rest**, then **End set**, then tap **Keep breathing**.
 5. **Glute bridge** (2 sets of 12):
    1. Tap **Start set 1**, then **Set done** (or tap **+1** twelve times).
-   2. Tap **Push through the heels**, then **Skip rest**, **Set done** and **Ribs down**.
+   2. Tap **Push through heels**, then **Skip rest**, **Set done** and **Ribs down**.
 6. Cool-down: tap **Next**.
 
 ![Keeper home on an iPad, Today's path for Strong middle with Start session](demo/03-keeper-today-ipad.png)

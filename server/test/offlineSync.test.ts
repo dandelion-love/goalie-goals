@@ -92,7 +92,7 @@ const finish = (a: FastifyInstance, session: { itemId: string; itemVersion: stri
       itemVersion: session.itemVersion,
       outcome: 'done',
       warmUpLogged: true,
-      praised: ['Straight like a board', 'Push through the heels'],
+      praised: ['Stay board-straight', 'Push through heels'],
     },
   });
 

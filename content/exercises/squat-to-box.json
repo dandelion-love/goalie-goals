@@ -6,7 +6,7 @@
     "sit-to-stand"
   ],
   "category": "strength",
-  "why": "Strong legs push you off the ground for a dive or a high catch, and sitting back to a box teaches a safe squat shape.",
+  "why": "Strong legs push you up for a dive or a high catch. Sitting back to a box teaches a safe squat shape.",
   "goal": [
     "leg-strength",
     "hip-strength"
@@ -30,8 +30,8 @@
     "parent": "Stand side-on, about 2 m away, where you can see knees and back."
   },
   "steps": [
-    "Stand a short step in front of the box, feet about shoulder width, toes turned out a little.",
-    "Reach both arms forward and push your hips back as if sitting down.",
+    "Stand a short step in front of the box. Feet about shoulder width, toes turned out a little.",
+    "Reach both arms forward and push your hips back, as if sitting.",
     "Lower until you lightly touch the box. Do not sit down or relax.",
     "Push through the whole foot to stand tall again."
   ],
@@ -43,7 +43,7 @@
   "mistakes": [
     {
       "mistake": "Knees fall inward",
-      "fix": "Push the knees out so they point the same way as the toes."
+      "fix": "Push the knees out, in line with the toes."
     },
     {
       "mistake": "Dropping onto the box",
@@ -51,7 +51,7 @@
     },
     {
       "mistake": "Heels lift",
-      "fix": "Keep your weight over the middle of the foot and sit back more."
+      "fix": "Keep your weight mid-foot and sit back more."
     }
   ],
   "parent_check": [
@@ -60,8 +60,10 @@
     "Back stays long, not rounded"
   ],
   "stop_if": [
-    "Pain in the knee, hip or lower back, or pain that changes how you move",
-    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Pain in the knee, hip or lower back",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
     "Knees keep caving in after a reminder (end the set)"
   ],
   "easier": {
@@ -70,7 +72,7 @@
   },
   "harder": {
     "variant": "Pause for two seconds just above the box before standing.",
-    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
   },
   "dose": {
     "kind": "reps",

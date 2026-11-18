@@ -115,8 +115,8 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
 
     // Immediate feedback names the cue, never the person.
     expect(screen.getByRole('heading', { name: 'How did set 1 look?' })).toBeTruthy();
-    click('Straight like a board');
-    expect(screen.getByRole('status').textContent).toBe('Straight like a board: nice');
+    click('Stay board-straight');
+    expect(screen.getByRole('status').textContent).toBe('Stay board-straight: nice');
     expect(screen.getByRole('button', { name: '45 left', description: 'Rest' })).toBeTruthy();
     click('Skip rest');
     click('End set');
@@ -134,7 +134,7 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
     expect(counter.querySelector('.counter-value')!.textContent).toBe('0');
     expect((screen.getByRole('button', { name: '+1' }) as HTMLButtonElement).disabled).toBe(true);
     click('Set done');
-    click('Push through the heels');
+    click('Push through heels');
     click('Skip rest');
     click('Set done');
     click('Skip');
@@ -143,7 +143,7 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
     expect(screen.getByRole('heading', { name: 'Easy walk and slow breaths' })).toBeTruthy();
     click('Next');
     expect(screen.getByRole('heading', { name: 'Session done' })).toBeTruthy();
-    expect(screen.getByText('Straight like a board')).toBeTruthy();
+    expect(screen.getByText('Stay board-straight')).toBeTruthy();
     expect(screen.queryByText(/one more/i)).toBeNull();
     await vi.waitFor(() => expect(wake.released).toBe(1));
     expect(results).toHaveLength(1);
@@ -151,7 +151,7 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
       itemId: 'session-starter',
       itemVersion: 'sha256:session2',
       outcome: 'done',
-      praised: ['Straight like a board', 'Push through the heels'],
+      praised: ['Stay board-straight', 'Push through heels'],
       setsDone: 4,
     });
 

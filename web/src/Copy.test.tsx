@@ -22,32 +22,10 @@ const wake: WakeLockController = {
 /** Developer wording that must never reach the keeper or the parent. */
 const DEV_WORDS = /content\/|\.spec\.md|\.json\b|card version|\(exercise card\)|sha256|\bweb\/src\b|\bserver\/src\b/i;
 
-/**
- * Card text is the owner-approved exercise content (training rules: the owner approves every
- * exercise), so its own wording is not this app's copy; the words around it are.
- */
-const CARD_TEXT = [PLANK, BRIDGE].flatMap((c) => [
-  c.name,
-  c.why,
-  c.doseText,
-  ...c.steps,
-  ...c.cues,
-  ...c.stopIf,
-  ...c.mistakes.flatMap((m) => [m.mistake, m.fix]),
-  c.easier.variant,
-  c.easier.useWhen,
-  c.credit,
-  c.dose.tempo ?? '',
-]).filter(Boolean);
-const CUES = new Set([PLANK, BRIDGE].flatMap((c) => c.cues));
-
+// Card text counts like any other text on screen (story #91): cue buttons are labels, and the
+// card's steps, mistakes, stop signs and hints are sentences. tools/content_check.py holds every
+// repo card to the same limits.
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
-
-function withoutCardText(text: string): string {
-  let out = text;
-  for (const t of [...CARD_TEXT].sort((a, b) => b.length - a.length)) out = out.split(t).join(' ');
-  return out;
-}
 
 interface Copy {
   labels: string[];
@@ -65,7 +43,7 @@ function copyOnScreen(root: HTMLElement = document.body): Copy {
     .filter((e) => !e.closest('button, a[href], [role="button"], .sr-only, script, style'))
     .map((e) => [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent ?? '').join(' '));
   const sentences = raw
-    .map((t) => withoutCardText(t).replace(/\s+/g, ' ').trim())
+    .map((t) => t.replace(/\s+/g, ' ').trim())
     .filter((t) => /[A-Za-z]/.test(t))
     .flatMap((t) => t.split(/(?<=[.!?])\s+/));
   const lines = raw.map((t) => t.replace(/\s+/g, ' ').trim()).filter((t) => /[A-Za-z]/.test(t));
@@ -84,7 +62,6 @@ function checkCopy(where: string, limit: number) {
   const { labels, sentences, lines } = copyOnScreen();
   expect(sentences.length, `${where}: no text found`).toBeGreaterThan(0);
   for (const label of labels) {
-    if (CUES.has(label)) continue; // the card's own cue, approved with the card
     expect(words(label), `${where}: label "${label}"`).toBeLessThanOrEqual(3);
   }
   for (const s of sentences) expect(words(s), `${where}: "${s}"`).toBeLessThanOrEqual(limit);
@@ -185,7 +162,7 @@ describe('the words on both homes (AC1)', () => {
     checkCopy('K3 timed hold', IN_SESSION);
     click('End set');
     checkCopy('form-cue rating', IN_SESSION);
-    click('Straight like a board');
+    click('Stay board-straight');
     checkCopy('K5 rest', IN_SESSION);
     click('Skip rest');
     click('End set');

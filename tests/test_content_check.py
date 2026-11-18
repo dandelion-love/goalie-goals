@@ -155,6 +155,89 @@ class ContentCheck(unittest.TestCase):
         self.assertFinding(self.edit_card(lambda c: c["stop_if"].append("Feeling bored")),
                            "stop_if differs")
 
+    # Story #91: CT1 limits on card text the player shows, and the required warning signs.
+    LONG = "Keep both of your feet flat on the floor the whole time you move."  # 14 words
+
+    def test_cue_label_over_three_words(self) -> None:
+        found = self.edit_card(lambda c: c["cues"].__setitem__(0, "Straight like a board"),
+                               "plank")
+        self.assertFinding(found, "cues[0] 'Straight like a board' is 4 words")
+
+    def test_cue_label_of_three_words_passes(self) -> None:
+        self.assertEqual(
+            self.edit_card(lambda c: c["cues"].__setitem__(0, "Hips back first")), [])
+
+    def test_long_step(self) -> None:
+        self.assertFinding(self.edit_card(lambda c: c["steps"].__setitem__(0, self.LONG)),
+                           "steps[0]: 'Keep both of your feet")
+
+    def test_long_step_split_into_short_sentences_passes(self) -> None:
+        split = "Keep both feet flat on the floor. Do it the whole time you move."
+        self.assertEqual(self.edit_card(lambda c: c["steps"].__setitem__(0, split)), [])
+
+    def test_long_reason(self) -> None:
+        self.assertFinding(self.edit_card(lambda c: c.update(why=self.LONG)), "why: ")
+
+    def test_long_cue_feedback(self) -> None:
+        found = self.edit_card(lambda c: c["cues"].__setitem__(
+            0, "Keep both feet flat on the floor the whole time you move"))
+        self.assertFinding(found, "cues[0] feedback: ")
+
+    def test_long_mistake_and_fix(self) -> None:
+        def change(c):
+            c["mistakes"][0]["mistake"] = self.LONG
+            c["mistakes"][1]["fix"] = self.LONG
+        found = self.edit_card(change)
+        self.assertFinding(found, "mistakes[0].mistake: ")
+        self.assertFinding(found, "mistakes[1].fix: ")
+
+    def test_long_stop_sign(self) -> None:
+        found = self.edit_card(lambda c: c["stop_if"].append(
+            "Any knee pain at all that does not go away after a short rest (end the set)"))
+        self.assertFinding(found, "stop_if[5]: 'Any knee pain at all")
+        self.assertFinding(found, "is 17 words")
+
+    def test_long_easier_and_harder_hints(self) -> None:
+        def change(c):
+            c["easier"]["use_when"] = self.LONG
+            c["harder"]["variant"] = self.LONG
+        found = self.edit_card(change)
+        self.assertFinding(found, "easier: ")
+        self.assertFinding(found, "harder.variant: ")
+
+    def test_long_move_on_rule(self) -> None:
+        found = self.edit_card(lambda c: c["harder"].update(
+            move_on_when="Every rep clean in two sessions in a row, and the owner approves "
+                         "the change."))
+        self.assertFinding(found, "harder.move_on_when: ")
+
+    def test_long_tempo(self) -> None:
+        found = self.edit_card(lambda c: c["dose"].update(tempo=self.LONG.rstrip(".")))
+        self.assertFinding(found, "dose.tempo: ")
+
+    def _drop_stop(self, needle: str) -> list[str]:
+        return self.edit_card(lambda c: c.update(
+            stop_if=[s for s in c["stop_if"] if needle not in s]), "plank")
+
+    def test_missing_chest_sign(self) -> None:
+        found = self._drop_stop("Chest pain")
+        for name in ("chest pain", "a racing heartbeat", "shortness of breath"):
+            self.assertFinding(found, f"stop_if is missing {name}")
+
+    def test_missing_faint_sign(self) -> None:
+        found = self._drop_stop("faint")
+        self.assertFinding(found, "stop_if is missing dizziness")
+        self.assertFinding(found, "stop_if is missing feeling faint")
+
+    def test_missing_pain_sign(self) -> None:
+        def no_pain(c):
+            c["stop_if"] = [s for s in c["stop_if"] if not s.startswith("Pain")]
+        self.assertFinding(self.edit_card(no_pain, "plank"), "stop_if is missing a pain sign")
+
+    def test_split_stop_sign_keeps_every_warning(self) -> None:
+        for card in cc.load_cards(ROOT).values():
+            self.assertEqual(cc.safety_errors(card[1]), [], card[0].name)
+
     def test_maximal_words(self) -> None:
         self.assertFinding(
             self.edit_card(lambda c: c["steps"].append("Do as many as you can.")),

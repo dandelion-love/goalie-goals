@@ -12,6 +12,12 @@ equipment-model Decision. The check fails a card when:
   space, surface);
 - its dose is outside the training-rules Decision's limits (LIMITS), or uses words of
   maximal effort;
+- its stop signs leave out a warning sign every card must carry (REQUIRED_STOPS: a pain
+  sign, chest pain, a racing heartbeat, shortness of breath, dizziness and feeling faint,
+  from the training-rules Decision's warning signs);
+- text the player shows mid-session is too long for the quality rubric's CT1: a cue label
+  over 3 words, or a sentence over 12 words in the reason, a step, a cue's feedback line,
+  a mistake or its fix, a stop sign, the easier or harder hint, or the tempo (shown_text);
 - its acceptance spec, content/exercises/<id>.spec.md, is missing, does not cite the
   training-rules Decision, has a dose that differs from the card's, or lists other stop
   signs;
@@ -89,6 +95,24 @@ DOSE_KEYS = {"reps": ("reps",), "contacts": ("reps",), "efforts": ("reps", "dist
 MAXIMAL = re.compile(r"\bmax(imal|imum)?\b|\bto failure\b|\b1 ?rm\b|\bone[- ]rep\b|"
                      r"\bas many (reps )?as (you can|possible)\b|\bamrap\b", re.I)
 MOVE_ON = re.compile(r"two sessions in a row.*owner approves", re.I)
+# The quality rubric's CT1 limits for in-session screens (K2 to K5):
+# docs/knowledge/decisions/quality-rubric.md. A cue is a button label; every other card
+# line is counted per sentence, as the rubric's Script I counts text on screen.
+CUE_WORDS = 3
+SENTENCE_WORDS = 12
+SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+
+# Warning signs every card's stop_if must carry (training-rules Decision, "Warning signs
+# that stop a session"). Long signs may be split into several items; the check reads them
+# together, so a split keeps every sign and a dropped one fails.
+REQUIRED_STOPS = {
+    "a pain sign": re.compile(r"\bpain (in|that changes how you move)\b", re.I),
+    "chest pain": re.compile(r"\bchest pain\b", re.I),
+    "a racing heartbeat": re.compile(r"\bracing heartbeat\b", re.I),
+    "shortness of breath": re.compile(r"\bshortness of breath\b", re.I),
+    "dizziness": re.compile(r"\bdizz", re.I),
+    "feeling faint": re.compile(r"\bfaint", re.I),
+}
 SVG_BANNED = re.compile(r"<metadata|<script|<image|<foreignObject|sodipodi|inkscape|"
                         r"xlink:href|href=|data:|\son[a-z]+=|<!ENTITY|<!DOCTYPE", re.I)
 
@@ -183,6 +207,48 @@ def dose_errors(dose: dict) -> list[str]:
             out.append(f"dose total {total} {dose['kind']} is above {lim['total']} "
                        f"(training-rules Decision)")
     return out
+
+
+def shown_text(card: dict) -> list[tuple[str, str]]:
+    """The card lines the player shows, as (field, text) pairs, in the shape the screen
+    renders them (web/src/SessionPlayer.tsx and the cue feedback of web/src/player.ts)."""
+    out = [("why", card["why"])]
+    out += [(f"steps[{i}]", s) for i, s in enumerate(card["steps"])]
+    out += [(f"cues[{i}] feedback", f"{c}: nice") for i, c in enumerate(card["cues"])]
+    for i, m in enumerate(card["mistakes"]):
+        out += [(f"mistakes[{i}].mistake", m["mistake"]), (f"mistakes[{i}].fix", f": {m['fix']}")]
+    out += [(f"stop_if[{i}]", s) for i, s in enumerate(card["stop_if"])]
+    out.append(("easier", f"Easier: {card['easier']['variant']} ({card['easier']['use_when']})"))
+    out += [("harder.variant", card["harder"]["variant"]),
+            ("harder.move_on_when", card["harder"]["move_on_when"]),
+            ("dose.tempo", f"Tempo: {card['dose']['tempo']}.")]
+    return out
+
+
+def _words(text: str) -> int:
+    return len(text.split())
+
+
+def text_errors(card: dict) -> list[str]:
+    """CT1 (quality rubric): cue labels at most 3 words, every other sentence at most 12."""
+    out = []
+    for i, cue in enumerate(card["cues"]):
+        if _words(cue) > CUE_WORDS:
+            out.append(f"cues[{i}] {cue!r} is {_words(cue)} words; a cue label is at most "
+                       f"{CUE_WORDS} (quality rubric CT1)")
+    for field, text in shown_text(card):
+        for sentence in SENTENCE_END.split(text.strip()):
+            if _words(sentence) > SENTENCE_WORDS:
+                out.append(f"{field}: {sentence!r} is {_words(sentence)} words; an in-session "
+                           f"sentence is at most {SENTENCE_WORDS} (quality rubric CT1)")
+    return out
+
+
+def safety_errors(card: dict) -> list[str]:
+    """Warning signs every card's stop_if must keep (training-rules Decision)."""
+    stops = " ".join(card["stop_if"])
+    return [f"stop_if is missing {name} (training-rules Decision, warning signs)"
+            for name, pattern in REQUIRED_STOPS.items() if not pattern.search(stops)]
 
 
 def _section(text: str, heading: str) -> str:
@@ -316,6 +382,8 @@ def check(root: Path) -> list[str]:
             found.append(f"{rel}: jump cards need setup.surface_note (never on concrete)")
         # Safety and progression.
         found += [f"{rel}: {e}" for e in dose_errors(card["dose"])]
+        found += [f"{rel}: {e}" for e in safety_errors(card)]
+        found += [f"{rel}: {e}" for e in text_errors(card)]
         if MAXIMAL.search(_text_of(card)):
             found.append(f"{rel}: uses words of maximal effort (training-rules rule 3)")
         if not MOVE_ON.search(card["harder"]["move_on_when"]):

@@ -5,7 +5,7 @@
     "forearm plank"
   ],
   "category": "trunk",
-  "why": "A strong, stiff middle lets you dive and land without the body folding.",
+  "why": "A strong, stiff middle lets you dive and land without folding.",
   "goal": [
     "trunk-stability"
   ],
@@ -29,11 +29,11 @@
   "steps": [
     "Lie face down with your forearms under your shoulders.",
     "Tuck your toes and lift so you rest on forearms and toes.",
-    "Make a straight line from head to heels by squeezing your bottom and tummy.",
-    "Breathe steadily, hold for the time, then lower your knees to the floor."
+    "Make a straight line from head to heels. Squeeze your bottom and tummy to hold it.",
+    "Breathe steadily and hold for the time. Then lower your knees to the floor."
   ],
   "cues": [
-    "Straight like a board",
+    "Stay board-straight",
     "Keep breathing",
     "Squeeze your bottom"
   ],
@@ -57,8 +57,10 @@
     "Breathing steadily"
   ],
   "stop_if": [
-    "Pain in the lower back or shoulders, or pain that changes how you move",
-    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Pain in the lower back or shoulders",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
     "Hips sag and cannot be lifted again (end the set)"
   ],
   "easier": {
@@ -67,7 +69,7 @@
   },
   "harder": {
     "variant": "Lift one foot a little for two seconds, then the other.",
-    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
   },
   "dose": {
     "kind": "hold",

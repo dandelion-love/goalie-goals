@@ -5,7 +5,7 @@
     "ankle hops"
   ],
   "category": "power",
-  "why": "Quick, springy ankles help you bounce into your set position and leave the ground fast.",
+  "why": "Quick, springy ankles help you bounce into your set position. They also help you leave the ground fast.",
   "goal": [
     "reactive-ankle",
     "landing"
@@ -30,8 +30,8 @@
   },
   "steps": [
     "Stand tall, feet hip width, arms relaxed.",
-    "Make small quick hops, only a few centimetres high, mostly from the ankles.",
-    "Land softly on the balls of the feet with the knees a little bent.",
+    "Make small quick hops, a few centimetres high, mostly from the ankles.",
+    "Land softly on the balls of the feet, knees a little bent.",
     "Count each landing, stop at the set's number and rest."
   ],
   "cues": [
@@ -60,7 +60,8 @@
   ],
   "stop_if": [
     "Pain in the heel, shin, ankle or below the kneecap",
-    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
     "Landings turn loud or the knees cave in (end the set)"
   ],
   "easier": {
@@ -69,7 +70,7 @@
   },
   "harder": {
     "variant": "Small hops forward and back over a line on the floor.",
-    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
   },
   "dose": {
     "kind": "contacts",

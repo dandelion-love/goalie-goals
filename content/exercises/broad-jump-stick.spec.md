@@ -31,11 +31,15 @@ From [training rules](/decisions/training-rules.md), warning signs that stop a s
 Stop at once and record why if any of these appears:
 
 - Pain in the knee, below the kneecap, heel or ankle
-- Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath
+- Chest pain, a racing heartbeat or unusual shortness of breath
+- Dizziness or feeling faint
 - Landing on straight knees, or the knees cave in (end the set)
 
 ## Acceptance
 
 - The card's dose matches the Dose list above exactly, and stays inside the limits it cites.
 - The card's `stop_if` list matches the Stop signs above.
+- Every card line the player sees meets the [quality rubric](/decisions/quality-rubric.md)'s
+  CT1: cue labels at most 3 words, every other sentence at most 12 words. A long stop sign
+  is split into short ones, never dropped.
 - The card names at least one substitute, and its figure and credits entries exist.

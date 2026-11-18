@@ -5,7 +5,7 @@
     "side shuffle"
   ],
   "category": "footwork",
-  "why": "Shuffling sideways while staying low keeps you square to the ball as you move across the goal.",
+  "why": "Low sideways shuffles keep you square to the ball across the goal.",
   "goal": [
     "lateral-footwork",
     "leg-strength"
@@ -28,9 +28,9 @@
     "parent": "Stand in front like a shooter and point left or right to start each effort."
   },
   "steps": [
-    "Start in a ready stance: feet wider than the hips, knees bent, hands up in front.",
+    "Start in a ready stance, hands up in front. Feet wider than the hips, knees bent.",
     "Shuffle sideways to one spot without crossing or clicking the feet together.",
-    "Reach the spot with the outside foot, then shuffle back to the start.",
+    "Reach the spot with the outside foot, then shuffle back to start.",
     "Walk around and rest for the full time before the next effort."
   ],
   "cues": [
@@ -45,7 +45,7 @@
     },
     {
       "mistake": "Crossing or clicking the feet",
-      "fix": "Push off the trailing foot and keep a gap between the feet."
+      "fix": "Push off the trailing foot; keep a gap between the feet."
     },
     {
       "mistake": "Looking down at the feet",
@@ -58,8 +58,10 @@
     "Hands stay up and ready"
   ],
   "stop_if": [
-    "Pain in an ankle, knee, hip or groin, or pain that changes how you move",
-    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Pain in an ankle, knee, hip or groin",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
     "Slipping on the floor (fix footwear or surface before going on)"
   ],
   "easier": {
@@ -68,7 +70,7 @@
   },
   "harder": {
     "variant": "Shuffle on the parent's point and change direction once in the middle.",
-    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
   },
   "dose": {
     "kind": "efforts",

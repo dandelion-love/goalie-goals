@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import type { Config } from '../src/config.js';
@@ -7,7 +10,14 @@ import { IDENTITY_HEADER, ProxyJwtVerifier } from '../src/identity.js';
 import { ApprovalService, MemoryApprovalStore, MemoryAuditLog, REQUEST_TTL_MS } from '../src/approvals.js';
 import { InAppNotifier } from '../src/notifier.js';
 import { DEMO_REQUESTS } from '../src/demoData.js';
-import { cardSeconds, creditLine, doseText, loadContent, type ContentLibrary } from '../src/content.js';
+import {
+  cardSeconds,
+  creditLine,
+  defaultContentRoot,
+  doseText,
+  loadContent,
+  type ContentLibrary,
+} from '../src/content.js';
 import {
   STARTER_SESSION,
   SingleSessionPlan,
@@ -51,6 +61,41 @@ function withEditedCard(content: ContentLibrary, id: string, step: string): Cont
     contentHash: `0e${src.contentHash.slice(2)}`,
   });
   return { cards };
+}
+
+/** The library with one card's reason replaced (the hash changes with it). */
+function withReason(content: ContentLibrary, id: string, why: string): ContentLibrary {
+  const cards = new Map(content.cards);
+  const src = cards.get(id)!;
+  cards.set(id, { ...src, card: { ...src.card, why }, contentHash: `0f${src.contentHash.slice(2)}` });
+  return { cards };
+}
+
+/** The plank card's wording before story #91 shortened it. */
+const OLD_PLANK = {
+  cue: 'Straight like a board',
+  step: 'Make a straight line from head to heels by squeezing your bottom and tummy.',
+  stop: 'Pain in the lower back or shoulders, or pain that changes how you move',
+};
+
+/**
+ * The repo's content folder, read through loadContent (so the hashes are real), with the
+ * plank card put back in its wording before story #91.
+ */
+function contentWithOldPlank(): ContentLibrary {
+  const dir = mkdtempSync(join(tmpdir(), 'goalie-content-'));
+  try {
+    cpSync(defaultContentRoot(), join(dir, 'content'), { recursive: true });
+    const file = join(dir, 'content', 'exercises', 'plank.json');
+    const card = JSON.parse(readFileSync(file, 'utf8')) as { cues: string[]; steps: string[]; stop_if: string[] };
+    card.cues = card.cues.map((c) => (c === 'Stay board-straight' ? OLD_PLANK.cue : c));
+    card.steps = card.steps.map((s) => (s.startsWith('Make a straight line') ? OLD_PLANK.step : s));
+    card.stop_if = [OLD_PLANK.stop, ...card.stop_if.filter((s) => !s.startsWith('Pain'))];
+    writeFileSync(file, JSON.stringify(card, null, 2));
+    return loadContent(join(dir, 'content'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 let clock: TestClock;
@@ -114,7 +159,7 @@ describe('request text the parent reads', () => {
       expect(r.content.detail).not.toMatch(REPO_WORDS);
     }
     expect(pending[0].content.detail).toBe(
-      'A strong, stiff middle lets you dive and land without the body folding. Dose: 2 sets of 20 s hold, rest 45 s.',
+      'A strong, stiff middle lets you dive and land without folding. Dose: 2 sets of 20 s hold, rest 45 s.',
     );
   });
 
@@ -132,6 +177,10 @@ describe('request text the parent reads', () => {
   });
 
   it("drops a card's reason when it runs over the limit, keeping the dose", async () => {
+    // Every repo card's reason is short (story #91), so this one is lengthened for the test.
+    const long =
+      'Strong legs push you off the ground for a dive or a high catch, and sitting back to a box teaches a safe squat shape.';
+    training.setContent(withReason(CONTENT, 'squat-to-box', long));
     plan.template = { ...STARTER_SESSION, cardIds: ['squat-to-box'] };
     await training.proposeFor(DATE);
     const card = (await approvals.pending()).find((r) => r.itemId === 'card-squat-to-box')!;
@@ -188,7 +237,7 @@ describe("today's session", () => {
     expect(res.today?.cards.map((c) => c.id)).toEqual(['plank', 'glute-bridge']);
     const plank = res.today!.cards[0];
     expect(plank.steps.length).toBeGreaterThanOrEqual(3);
-    expect(plank.cues).toContain('Straight like a board');
+    expect(plank.cues).toContain('Stay board-straight');
     expect(plank.mistakes[0]).toHaveProperty('fix');
     expect(plank.credit).toMatch(/^Figure: /);
     expect(plank.figureUrl).toMatch(/^\/api\/training\/cards\/plank\/figure\.svg\?v=sha256/);
@@ -281,6 +330,42 @@ describe('AC3: no approved session today', () => {
     }
     const res = await training.today(DATE);
     expect(res).toMatchObject({ today: null, lastApproved: null });
+  });
+});
+
+describe('story #91 AC3: reworded card text is a new version the parent approves', () => {
+  it('gives the reworded card a new hash and request; the old wording never plays once the new one is approved', async () => {
+    const old = contentWithOldPlank();
+    expect(old.cards.get('plank')!.contentHash).not.toBe(CONTENT.cards.get('plank')!.contentHash);
+    expect(old.cards.get('glute-bridge')!.contentHash).toBe(CONTENT.cards.get('glute-bridge')!.contentHash);
+
+    // The parent approved the session with the old wording.
+    training.setContent(old);
+    await training.proposeFor(DATE);
+    await approveAllPending();
+    const before = (await training.today(DATE)).today!;
+    expect(before.cards[0].cues).toContain(OLD_PLANK.cue);
+
+    // The new wording arrives: it needs its own approval, and only the reworded card asks.
+    training.setContent(CONTENT);
+    await training.proposeFor(DATE);
+    const asks = (await approvals.pending()).map((r) => r.itemId);
+    expect(asks).toContain('card-plank');
+    expect(asks).not.toContain('card-glute-bridge');
+    const waiting = await training.today(DATE);
+    expect(waiting.today).toBeNull();
+    expect(waiting.lastApproved?.cards[0].cues).toContain(OLD_PLANK.cue);
+    expect(JSON.stringify(waiting)).not.toContain('Stay board-straight');
+
+    // Once approved, only the new wording is served: the old one is no longer playable.
+    await approveAllPending();
+    const after = await training.today(DATE);
+    expect(after.lastApproved).toBeNull();
+    const plank = after.today!.cards[0];
+    expect(plank.cues).toContain('Stay board-straight');
+    expect(plank.stopIf).toEqual(CONTENT.cards.get('plank')!.card.stop_if);
+    const served = JSON.stringify(after);
+    for (const line of Object.values(OLD_PLANK)) expect(served).not.toContain(line);
   });
 });
 

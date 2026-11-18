@@ -30,12 +30,17 @@ restart one step below the last level.
 From [training rules](/decisions/training-rules.md), warning signs that stop a session.
 Stop at once and record why if any of these appears:
 
-- Pain in the lower back, hips or knees, or pain that changes how you move
-- Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath
-- A cramp in the back of the thigh that does not ease with rest (end the set)
+- Pain in the lower back, hips or knees
+- Pain that changes how you move
+- Chest pain, a racing heartbeat or unusual shortness of breath
+- Dizziness or feeling faint
+- Back-of-thigh cramp that does not ease with rest (end the set)
 
 ## Acceptance
 
 - The card's dose matches the Dose list above exactly, and stays inside the limits it cites.
 - The card's `stop_if` list matches the Stop signs above.
+- Every card line the player sees meets the [quality rubric](/decisions/quality-rubric.md)'s
+  CT1: cue labels at most 3 words, every other sentence at most 12 words. A long stop sign
+  is split into short ones, never dropped.
 - The card names at least one substitute, and its figure and credits entries exist.
