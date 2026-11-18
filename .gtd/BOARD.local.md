@@ -104,6 +104,9 @@ reviewer also owns the clean-room check (no private data, no copied text or asse
    failing commit with a fix on top, because the history keeps it public. If a failing
    commit is already public, stop and tell the owner (`needs:james`), as the privacy
    skill's leak steps say. Only the owner deletes or rewrites a pushed branch.
+   Commit messages carry `Refs #n`, never a closing keyword (`Closes`, `Fixes`,
+   `Resolves`): `pr_open` refuses them, and its `closes` flag closes the issue on
+   merge. Rewording a pushed commit needs a force-push, which is not allowed here.
 5. Each new kind of finding is codified (a guard rule with a test, a line in the privacy
    skill, or a rule here), never by writing the private value into the repo.
 6. The reviewer never reviews its own work, and the builder never passes its own.
