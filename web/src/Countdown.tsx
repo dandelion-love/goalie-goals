@@ -105,7 +105,7 @@ export function Countdown({
         <p className="timer-label" id={labelId}>
           {label}
         </p>
-        <button type="button" className="timer-face session-control" onClick={tap} aria-describedby={labelId}>
+        <button type="button" className="primary session-control timer-face" onClick={tap} aria-describedby={labelId}>
           <span className="timer-time">{mmss(remaining)}</span> <span className="timer-unit">left</span>
         </button>
         {waitingForTap && (

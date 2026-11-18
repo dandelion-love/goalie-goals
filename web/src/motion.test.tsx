@@ -216,7 +216,7 @@ describe('AC1: every button look has a pressed state', () => {
         'secondary session-control',
         'danger session-control safety-control',
         'secondary session-control safety-control',
-        'timer-face session-control',
+        'primary session-control timer-face',
         'area-option',
         'day-toggle',
         'secondary undo',

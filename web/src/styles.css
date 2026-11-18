@@ -151,60 +151,58 @@ textarea {
   text-align: center;
 }
 
-/* Buttons: every one at least 44 px; anything tapped mid-session at least 56 px. */
+/*
+ * Buttons (story #99). Every button is one of three looks, each defined once just below:
+ * primary (the action fill), secondary (outlined on the surface) and danger (the stop fill).
+ * All three share one shape and one text size, the session's (at least 20 px, rubric TC5), so a
+ * look is the same on both homes and in the player. A toggle takes the primary look when it is
+ * on and the secondary look when it is off. Size is not a look: every button is at least 44 px,
+ * and anything tapped mid-session (.session-control) at least 56 px.
+ * src/buttonLooks.test.tsx counts the looks the way the rubric's Script A does.
+ */
 button {
   min-height: var(--target);
   min-width: var(--target);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
   font-weight: var(--weight-bold);
   cursor: pointer;
 }
 
-/* The pressable edge: the role's darker edge below the fill (a border, not a shadow). */
-button.primary {
-  min-height: var(--target);
-  min-width: var(--target);
-  padding: 0 var(--space-5);
-  border: 0;
-  border-bottom: var(--press-depth) solid var(--action-edge);
-  border-radius: var(--radius-md);
+/* Each look's pressable edge: the role's darker edge, deepest at the bottom (a border, not a
+ * shadow). */
+button.primary,
+.area-option[aria-checked='true'],
+.day-toggle[aria-pressed='true'] {
+  border: var(--border-width) solid var(--action-edge);
+  border-bottom-width: var(--press-depth);
   background: var(--action);
   color: var(--action-on);
-  font-weight: var(--weight-bold);
-  cursor: pointer;
 }
 
-button.secondary {
-  min-height: var(--target);
-  padding: 0 var(--space-5);
+button.secondary,
+.area-option,
+.day-toggle {
   border: var(--border-width) solid var(--line);
   border-bottom-width: var(--press-depth);
-  border-radius: var(--radius-md);
-  background: transparent;
+  background: var(--surface);
   color: var(--text);
-  font-weight: var(--weight-bold);
-  cursor: pointer;
 }
 
 button.danger {
-  min-height: var(--target-session);
-  padding: 0 var(--space-5);
-  border: 0;
-  border-bottom: var(--press-depth) solid var(--stop-edge);
-  border-radius: var(--radius-md);
+  border: var(--border-width) solid var(--stop-edge);
+  border-bottom-width: var(--press-depth);
   background: var(--stop);
   color: var(--stop-on);
-  font-weight: var(--weight-bold);
-  cursor: pointer;
 }
 
-/* `button.` so it outranks `button.primary` and `button.secondary`, which set 44 px. */
+/* `button.` so it outranks the base `button` rule, which sets 44 px. */
 button.session-control {
   --press-depth: var(--press-depth-session);
   min-height: var(--target-session);
   min-width: var(--target-session);
-  font-size: var(--text-lg);
-  line-height: var(--leading-lg);
 }
 
 button.wide {
@@ -300,6 +298,12 @@ button:active:not(:disabled) {
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
   margin-top: var(--space-3);
+}
+
+/* The words are centred in the half-width cell, so the sides can be narrow: Approve and Decline
+ * keep their words whole at the 320 px reflow width. */
+.actions button {
+  padding: 0 var(--space-1);
 }
 
 .history {
@@ -552,16 +556,11 @@ button:active:not(:disabled) {
   align-content: start;
 }
 
+/* The timer's face is a primary button; this only lays out its time. */
 .timer-face {
   display: grid;
   justify-items: center;
   padding: var(--space-3);
-  border: 0;
-  border-bottom: var(--press-depth) solid var(--action-edge);
-  border-radius: var(--radius-lg);
-  background: var(--action);
-  color: var(--action-on);
-  cursor: pointer;
 }
 
 .timer-label {
@@ -711,7 +710,9 @@ button:active:not(:disabled) {
   padding: 0;
 }
 
+/* No padding: the browser's own 2 px is off the spacing scale (story #99). */
 .pain-form legend {
+  padding: 0;
   font-weight: var(--weight-bold);
   margin-bottom: var(--space-2);
 }
@@ -722,27 +723,14 @@ button:active:not(:disabled) {
   gap: var(--space-2);
 }
 
-/* Large toggles with radio semantics: one tap chooses, arrow keys move. */
+/* Large toggles with radio semantics: one tap chooses, arrow keys move. Their looks are the
+ * secondary one, and the primary one when checked (the button looks above). */
 .area-option {
   display: flex;
   align-items: center;
   min-height: var(--target-session);
   padding: var(--space-2) var(--space-4);
-  border: var(--border-width) solid var(--line);
-  border-bottom-width: var(--press-depth);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-weight: var(--weight-bold);
   text-align: left;
-  cursor: pointer;
-}
-
-.area-option[aria-checked='true'] {
-  border-color: var(--action-edge);
-  background: var(--action);
-  color: var(--action-on);
 }
 
 .pain-note {
@@ -775,21 +763,9 @@ button:active:not(:disabled) {
   grid-template-columns: repeat(4, minmax(var(--target), 1fr));
 }
 
+/* Looks: secondary, and primary when on (the button looks above). */
 .day-toggle {
-  min-width: var(--target);
   padding: 0;
-  border: var(--border-width) solid var(--line);
-  border-bottom-width: var(--press-depth);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-}
-
-.day-toggle[aria-pressed='true'] {
-  background: var(--action);
-  border-color: var(--action-edge);
-  color: var(--action-on);
 }
 
 .themes {
@@ -917,9 +893,9 @@ button:active:not(:disabled) {
   overflow: hidden;
 }
 
-.toast button.secondary {
-  color: var(--surface);
-  border-color: var(--surface);
+/* Undo keeps its full width; the message gives way, up to its two lines. */
+.toast button {
+  flex: none;
 }
 
 /* The undo toast rises into place; under reduced motion it only fades in (story #78). */

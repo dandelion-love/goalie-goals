@@ -126,7 +126,8 @@ describe('contrast of the tokens, with a margin (story #76, AC3)', () => {
       styles.find((r) => r.selectors.includes(selector) && r.declarations.has(property))?.declarations.get(property) ?? '';
     const tokenOf = (value: string) => value.match(/var\((--[\w-]+)\)/g)?.at(-1)?.slice(4, -1) ?? '';
     const border = tokenOf(decl('.area-option', 'border'));
-    const checkedBorder = tokenOf(decl(".area-option[aria-checked='true']", 'border-color'));
+    // Checked, it takes the primary button look, whose edge is in its `border` (story #99).
+    const checkedBorder = tokenOf(decl(".area-option[aria-checked='true']", 'border'));
     const fill = tokenOf(decl('.area-option', 'background'));
     const checkedFill = tokenOf(decl(".area-option[aria-checked='true']", 'background'));
     expect([border, checkedBorder, fill, checkedFill]).toEqual(['--line', '--action-edge', '--surface', '--action']);
