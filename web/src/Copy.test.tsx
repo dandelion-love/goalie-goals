@@ -7,7 +7,7 @@ import { PainReportForm, PausedPanel } from './PainScreens';
 import { MemoryPauseStore } from './pain';
 import type { AuditEntry, PendingRequest } from './approvals';
 import type { WakeLockController } from './wakeLock';
-import { BRIDGE, PLANK, demoSession, keeperServer, todayWith } from './session.fixture';
+import { BRIDGE, PLANK, demoSession, demoWeek, keeperServer, todayWith } from './session.fixture';
 
 // Copy rules from the quality rubric (CT1, CT3) and the UX patterns Decision, checked over
 // the rendered screens with the existing demo fixtures.
@@ -142,6 +142,8 @@ function parentServer() {
     if (url === '/api/pain/status') {
       return json({ paused: true, since: '2026-01-05', reports: [{ id: 'p1', bodyArea: 'knee', note: null, date: '2026-01-05', mistakeAt: '2026-01-05T17:02:00Z' }] });
     }
+    // Story 114: this week, with a safety stop and the pause on the days ahead.
+    if (url.startsWith('/api/progress/week')) return json(demoWeek('2026-01-07', 'paused', 'stopped'));
     if (url.startsWith('/api/progress/summary')) {
       const streak = { current: 2, best: 3 };
       return json({ date: '2026-01-05', xp: { total: 40, today: 0 }, team: streak, keeper: streak, parent: streak, today: null, runs: [] });
@@ -160,6 +162,8 @@ describe('the words on both homes (AC1)', () => {
     await screen.findByRole('heading', { name: 'Training paused: something hurts' });
     // Story 104: the keeper's mistake note, in the same copy rules.
     await screen.findByText('Check in before clearing.');
+    // Story 114: this week's strip, in the same copy rules.
+    await screen.findByText('1 of 3 sessions');
     // Story 113: a recent session, opened, in the same copy rules.
     const recent = await screen.findByText('Jan 5: Strong middle, Stopped for safety');
     fireEvent.click(recent.closest('summary')!);
@@ -171,8 +175,23 @@ describe('the words on both homes (AC1)', () => {
 
   it('keeper home, the player at every phase, and the finish screen', async () => {
     const server = keeperServer(todayWith());
-    render(<App fetchImpl={server.fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
+    // Story 114: cards in Your training, each with its next step.
+    const approved = ['plank', 'broad-jump-stick'].map((id) => ({
+      kind: 'exercise',
+      itemId: `card-${id}`,
+      itemVersion: `sha256:${id}`,
+      title: id === 'plank' ? PLANK.name : 'Broad jump with stick landing',
+      detail: PLANK.why,
+      approvedAt: '2026-01-05T09:00:00Z',
+    }));
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input) === '/api/training/approved'
+        ? new Response(JSON.stringify({ items: approved, waiting: 0 }))
+        : server.fetchImpl(input, init)) as typeof fetch;
+    render(<App fetchImpl={fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
     await screen.findByRole('button', { name: 'Start session' });
+    await screen.findByText(/Squat jump and stick/);
+    await screen.findByRole('list', { name: 'Days this week' });
     checkCopy('K1 keeper home', ELSEWHERE);
 
     click('Start session');

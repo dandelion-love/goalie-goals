@@ -3,6 +3,7 @@ import { fetchToday, localDate, type Session, type Today } from './training';
 import { LoadError, Skeleton, useSettled } from './Loading';
 import type { OfflineStore } from './offline';
 import { precacheFigures } from './figures';
+import { nextText, type NextSession } from './week';
 
 type Load = { kind: 'loading' } | { kind: 'ready'; data: Today; saved?: boolean } | { kind: 'error' };
 
@@ -59,10 +60,13 @@ export function TodayPanel({
   refresh = 0,
   onSettled,
   now = () => new Date(),
+  next = null,
 }: {
   fetchImpl?: typeof fetch;
   onStart: (session: Session) => void;
   doneToday?: boolean;
+  /** The next planned session after today (story 114), shown once today is done. */
+  next?: NextSession | null;
   /** The device's copy of today's approved session: shown offline, and while loading. */
   cache?: OfflineStore;
   /** Load again when this changes. */
@@ -104,7 +108,7 @@ export function TodayPanel({
       {state.kind === 'loading' &&
         (saved ? (
           // The saved copy holds the panel's final size; Start waits for the fresh answer.
-          <TodayBody today={saved} doneToday={doneToday} resting={resting} onRest={() => {}} onStart={() => {}} disabled />
+          <TodayBody today={saved} doneToday={doneToday} next={next} resting={resting} onRest={() => {}} onStart={() => {}} disabled />
         ) : (
           <Skeleton lines={6} className="skeleton-today" />
         ))}
@@ -119,7 +123,7 @@ export function TodayPanel({
       )}
       {state.kind === 'ready' && (
         <>
-          <TodayBody today={state.data} doneToday={doneToday} resting={resting} onRest={() => setResting(true)} onStart={onStart} />
+          <TodayBody today={state.data} doneToday={doneToday} next={next} resting={resting} onRest={() => setResting(true)} onStart={onStart} />
           {state.saved && <p className="meta">Saved on this device.</p>}
         </>
       )}
@@ -130,6 +134,7 @@ export function TodayPanel({
 function TodayBody({
   today,
   doneToday,
+  next,
   resting,
   onRest,
   onStart,
@@ -137,6 +142,7 @@ function TodayBody({
 }: {
   today: Today;
   doneToday: boolean;
+  next: NextSession | null;
   resting: boolean;
   onRest: () => void;
   onStart: (session: Session) => void;
@@ -148,6 +154,8 @@ function TodayBody({
       <div className="done-today" role="status">
         <p className="done-title">Done for today</p>
         <p>Today's session is done. See you next time.</p>
+        {/* Story 114: what comes next, in a line kept for it so nothing moves when it loads. */}
+        <p className="done-next">{next ? nextText(next) : ''}</p>
       </div>
     );
   if (resting) return <p className="done-today">Rest day chosen. Recovery is part of training.</p>;

@@ -5,6 +5,8 @@ import { TodayPanel as TodayPanelBody } from './LessonPath';
 import { sound, useWarmCues } from './sound';
 import { ProgressPanel as ProgressPanelBody } from './ProgressPanel';
 import { SessionHistory as SessionHistoryPanel } from './SessionHistory';
+import { WeekPanel as WeekPanelBody } from './WeekPanel';
+import type { NextSession, WeekView } from './week';
 import { PainReportForm, PausedPanel, STOP_AND_REST } from './PainScreens';
 import { fetchProgress, isDoneForToday, type FinishProgressState } from './progress';
 import {
@@ -57,6 +59,7 @@ const ProgressPanel = memo(ProgressPanelBody);
 const ApprovedTraining = memo(ApprovedTrainingPanel);
 const History = memo(HistoryPanel);
 const SessionHistory = memo(SessionHistoryPanel);
+const WeekPanel = memo(WeekPanelBody);
 const deviceNow = () => new Date();
 
 /** The training pause on this device: set at once, kept offline, synced when online. */
@@ -196,7 +199,10 @@ export function KeeperHome({
   const [recorded, setRecorded] = useState(0);
   const [reporting, setReporting] = useState(false);
   const [changed, setChanged] = useState(0);
-  const [settled, setSettled] = useState({ today: false, progress: false, sessions: false, training: false });
+  const [settled, setSettled] = useState({ today: false, week: false, progress: false, sessions: false, training: false });
+  // The next planned session, from This week (story 114): Today says it once today is done.
+  const [next, setNext] = useState<NextSession | null>(null);
+  const onWeek = useCallback((w: WeekView) => setNext(w.next), []);
   const { pause, refresh, send, flush, sent, mistake } = usePause(pauseStore, fetchImpl);
   // The playing session's start event, the stop kept while Resume is offered, and the finish
   // whose XP the finish screen shows.
@@ -227,13 +233,15 @@ export function KeeperHome({
   const doneToday = finishedHere || recordedToday;
   const settle = useCallback((panel: keyof typeof settled) => () => setSettled((s) => ({ ...s, [panel]: true })), []);
   const onToday = useMemo(() => settle('today'), [settle]);
+  const onWeekSettled = useMemo(() => settle('week'), [settle]);
   const onProgress = useMemo(() => settle('progress'), [settle]);
   const onSessions = useMemo(() => settle('sessions'), [settle]);
   const onTraining = useMemo(() => settle('training'), [settle]);
   // Each panel shows once every panel above it has settled, so nothing on screen moves as
   // the home fills in (story #80 AC1).
   const todaySettled = !!pause || settled.today;
-  const progressSettled = todaySettled && settled.progress;
+  const weekSettled = todaySettled && settled.week;
+  const progressSettled = weekSettled && settled.progress;
   const sessionsSettled = progressSettled && settled.sessions;
   const trainingSettled = sessionsSettled && (!!pause || settled.training);
 
@@ -443,9 +451,14 @@ export function KeeperHome({
           refresh={changed + epoch}
           onSettled={onToday}
           now={now}
+          next={next}
         />
       )}
+      {/* This week (story 114): the near goal across the week, under today. */}
       <Reveal open={todaySettled}>
+        <WeekPanel fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onWeekSettled} onWeek={onWeek} now={now} />
+      </Reveal>
+      <Reveal open={weekSettled}>
         <ProgressPanel fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onProgress} />
       </Reveal>
       {/* Recent sessions (story 113): their own panel, above the approvals. */}

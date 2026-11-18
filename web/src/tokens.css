@@ -131,6 +131,7 @@
   --skeleton-request: 180px;
   --skeleton-today: 360px;
   --skeleton-days: 200px;
+  --skeleton-week: 150px;
 
   /* Colour: light theme. */
   --bg: #f4f7fb;

@@ -924,6 +924,11 @@ button:active:not(:disabled) {
   min-height: var(--skeleton-today);
 }
 
+/* About the size of This week's count, strip and lines (story 114). */
+.skeleton-week {
+  min-height: var(--skeleton-week);
+}
+
 /* About the size of the Training days card's text, toggles, themes and Save. */
 .skeleton-days {
   min-height: var(--skeleton-days);
@@ -1062,4 +1067,96 @@ button:active:not(:disabled) {
 
 .history-note:not(:empty) {
   margin-top: var(--space-3);
+}
+
+/* Story 114: This week on both homes. Seven days in one row where it fits, 4 + 3 on a phone,
+ * as the Training days toggles are. Each state has its own look and its own word, so colour is
+ * never the only sign. Rest and pause share the rest colours; a pause has a dashed edge. */
+.week-count {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: var(--weight-bold);
+}
+
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.app[data-layout='compact'] .week-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) var(--space-1);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+}
+
+.week-day-name {
+  font-weight: var(--weight-bold);
+}
+
+.week-day-state {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
+.week-day.state-trained,
+.week-day.state-stopped {
+  border-color: var(--success-edge);
+  background: var(--success-tint);
+}
+
+.week-day.state-rest {
+  border-color: var(--rest-tint);
+  background: var(--rest-tint);
+}
+
+.week-day.state-paused {
+  border-style: dashed;
+  border-color: var(--rest-edge);
+  background: var(--rest-tint);
+}
+
+.week-day.state-today {
+  border-color: var(--action-edge);
+  background: var(--action-tint);
+}
+
+/* Today stands out whatever its state: a thicker edge in the focus ink. */
+.week-day.is-today {
+  outline: var(--border-width) solid var(--action-ink);
+  outline-offset: var(--hairline);
+}
+
+/* One line tall with or without a next session, so nothing below moves. */
+.week-next {
+  min-height: calc(var(--text-md) * var(--leading-md));
+  margin: var(--space-2) 0 0;
+  font-weight: var(--weight-bold);
+}
+
+/* Story 114: what each card in Your training leads to. */
+.next-step {
+  margin: var(--space-2) 0 0;
+}
+
+/* After Done for today: the next planned session, one line kept for it. */
+.done-today .done-next {
+  min-height: calc(var(--text-md) * var(--leading-md));
+  margin: var(--space-2) 0 0;
 }

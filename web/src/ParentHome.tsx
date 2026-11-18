@@ -4,6 +4,7 @@ import { History as HistoryPanel, ParentInbox as InboxPanel } from './ApprovalSc
 import { ProgressPanel as ProgressPanelBody } from './ProgressPanel';
 import { SessionHistory as SessionHistoryPanel } from './SessionHistory';
 import { TrainingDays as TrainingDaysPanel } from './TrainingDays';
+import { WeekPanel as WeekPanelBody } from './WeekPanel';
 import { Reveal } from './Loading';
 import { useMoment } from './motion';
 
@@ -16,13 +17,15 @@ const TrainingDays = memo(TrainingDaysPanel);
 const ParentInbox = memo(InboxPanel);
 const History = memo(HistoryPanel);
 const SessionHistory = memo(SessionHistoryPanel);
+const WeekPanel = memo(WeekPanelBody);
 
 export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl?: typeof fetch; epoch?: number }) {
   // Answering a request, or undoing an approval, adds to the history and changes the inbox,
   // so both reload after each.
   const [answered, setAnswered] = useState(0);
-  const [settled, setSettled] = useState({ progress: false, sessions: false, days: false, inbox: false });
+  const [settled, setSettled] = useState({ progress: false, week: false, sessions: false, days: false, inbox: false });
   const onProgress = useCallback(() => setSettled((s) => ({ ...s, progress: true })), []);
+  const onWeek = useCallback(() => setSettled((s) => ({ ...s, week: true })), []);
   const onSessions = useCallback(() => setSettled((s) => ({ ...s, sessions: true })), []);
   const onDays = useCallback(() => setSettled((s) => ({ ...s, days: true })), []);
   const onInbox = useCallback(() => setSettled((s) => ({ ...s, inbox: true })), []);
@@ -39,7 +42,8 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
   const inbox = useRef<HTMLDivElement>(null);
   useMoment(() => inbox.current?.firstElementChild ?? null, 'approval-left', inboxChanges);
   // Each panel shows once every panel above it has settled (story #80 AC1).
-  const sessionsOpen = settled.progress;
+  const weekOpen = settled.progress;
+  const sessionsOpen = weekOpen && settled.week;
   const daysOpen = sessionsOpen && settled.sessions;
   const inboxOpen = daysOpen && settled.days;
   const historyOpen = inboxOpen && settled.inbox;
@@ -47,6 +51,10 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Parent home</h1>
       <ProgressPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onProgress} />
+      {/* This week (story 114): the days the parent set, each in its state, and what comes next. */}
+      <Reveal open={weekOpen}>
+        <WeekPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onWeek} />
+      </Reveal>
       {/* Recent sessions (story 113): their own panel, apart from the approvals history. */}
       <Reveal open={sessionsOpen}>
         <SessionHistory fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onSessions} />

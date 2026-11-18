@@ -83,27 +83,36 @@ In **Window A (Sam, phone)**:
 
 1. Point at **Together so far**: team streak 6 training days, Kai's and Sam's streaks 6 each,
    94 XP. "Rest days and pauses never break a streak."
-2. Point at **Training days**: today and the two days the table above gives are on, each
+2. Point at **This week**: the seven days, Monday first, each marked **Today**, **Planned** or
+   **Rest** from Sam's training days, with "0 of 3 sessions" and the next session ("Next
+   session" and the day two days on, **Spring legs**). A rest day, a pause or a safety stop
+   never shows as missed: a safety stop counts as kept.
+3. Point at **Training days**: today and the two days the table above gives are on, each
    with its session, today's always **Strong middle** (on a Thursday: "Mon: Quick feet,
    strong arms", "Thu: Strong middle", "Sat: Spring legs"). "Pick 3 days with a rest day
    between each": the server refuses two days back to back and says why. Leave the days as
    they are, so today stays the Strong middle day.
-3. Scroll to **Inbox**, with its badge of **4**. Each request shows what would change and
+4. Scroll to **Inbox**, with its badge of **4**. Each request shows what would change and
    when it lapses: "silence never approves".
-4. On **Squat to box** ("Bodyweight only, 2 sets of 10, 60 s rest"), tap **Approve**.
-5. The badge drops to **3**, and the newest **History** entry is "Parent approved Squat to
+5. On **Squat to box** ("Bodyweight only, 2 sets of 10, 60 s rest"), tap **Approve**.
+6. The badge drops to **3**, and the newest **History** entry is "Parent approved Squat to
    box". (The entries below it are the seed approving the week's sessions and cards as Sam.)
 
-![Parent home on a phone, the inbox with its badge of 4 and the Squat to box request](demo/01-parent-inbox-phone.png)
+![Parent home on a phone, Together so far and This week with today marked and 0 of 3 sessions](demo/00-parent-home-phone.png)
 
-![the same screen after Approve, badge 3, History showing the approval](demo/02-parent-approved-phone.png)
+![the inbox on a phone, with its badge of 4 and the Squat to box request](demo/01-parent-inbox-phone.png)
+
+![the same inbox after Approve: badge 3, Squat to box gone from it](demo/02-parent-approved-phone.png)
 
 ### 2. The keeper plays today's session on the iPad (about 2 minutes)
 
 In **Window B (Kai, iPad)**:
 
 1. **Keeper home** shows **Today**: the path of steps for **Strong middle** (warm-up, Front
-   plank, Side plank, Glute bridge, cool-down, finish).
+   plank, Side plank, Glute bridge, cool-down, finish). Under it, **This week** shows the
+   same strip as Sam's, and each card in **Your training** shows its next step: the next
+   rung's name and the goal that opens it (for **Squat to box**, "Paused box squat", 2 sets
+   of 15, all clean, two sessions in a row, then the parent decides).
 2. Tap **Start session**.
 3. Warm-up: each move runs on a countdown. To keep the demo short, tap **Next** six times.
 4. **Front plank** (2 sets of a 20 s hold): the figure and its credit line sit beside the
@@ -132,7 +141,9 @@ Still in **Window B**:
    earned: a fixed session credit of 10 for the logged warm-up plus 2 for each set rated well.
    With every set of **Strong middle** rated, that is 6 sets and **+22 XP**. There is no
    "one more?" prompt.
-2. Tap **Done for today**. **Together so far** now shows a team streak of 7 training days and
+2. Tap **Done for today**. **Today** now says "Done for today" and names the next session
+   (the day two days on, **Spring legs**); **This week** marks today **Trained** and reads
+   "1 of 3 sessions". **Together so far** now shows a team streak of 7 training days and
    116 XP. Reps and minutes earn nothing: XP counts showing up and good form.
 
 ![the Session done screen with the XP and the streaks](demo/05-keeper-finish-ipad.png)

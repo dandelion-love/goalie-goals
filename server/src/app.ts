@@ -28,6 +28,7 @@ import { registerTrainingRoutes } from './trainingRoutes.js';
 import { InAppNotifier } from './notifier.js';
 import { FirestoreProgressStore, MemoryProgressStore, ProgressService, type ProgressStore } from './progress.js';
 import { registerProgressRoutes } from './progressRoutes.js';
+import { registerWeekRoutes } from './weekRoutes.js';
 import { FirestorePainStore, MemoryPainStore, PainService, type PainStore } from './pain.js';
 import { registerPainRoutes } from './painRoutes.js';
 import { WeeklyPlan } from './weeklyPlan.js';
@@ -313,6 +314,7 @@ export async function buildApp({
       pauses: painService,
     });
   registerProgressRoutes(app, { progress: progressService, roles: roleStore });
+  registerWeekRoutes(app, { progress: progressService, plan: trainingService.plan, roles: roleStore });
 
   const historyService =
     history ??

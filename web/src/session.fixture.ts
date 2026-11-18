@@ -2,6 +2,7 @@
 // exercise cards; doses are the cards' own.
 
 import type { Card, Session, Today } from './training';
+import type { WeekDayState, WeekView } from './week';
 
 export const PLANK: Card = {
   id: 'plank',
@@ -65,6 +66,33 @@ export function todayWith(over: Partial<Today> = {}): Today {
   return { date: '2026-01-05', planned: true, today: demoSession(), lastApproved: null, waiting: 0, paused: false, ...over };
 }
 
+/**
+ * This week as the server sends it (story 114): Mon, Wed and Fri planned with the demo themes,
+ * for the week that holds `today`; `todayState` is today's state, `earlier` each earlier
+ * planned day's.
+ */
+export function demoWeek(today = '2026-01-05', todayState: WeekDayState = 'today', earlier: WeekDayState = 'trained'): WeekView {
+  const titles = ['Strong middle', null, 'Spring legs', null, 'Quick feet, strong arms', null, null];
+  const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const shift = (date: string, n: number) => {
+    const d = new Date(`${date}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const monday = shift(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
+  const days = titles.map((title, i) => {
+    const date = shift(monday, i);
+    const state: WeekDayState = date === today ? todayState : !title ? 'rest' : date < today ? earlier : 'planned';
+    return { date, day: names[i], state, isToday: date === today, title };
+  });
+  const kept = days.filter((d) => d.state === 'trained' || d.state === 'stopped').length;
+  const after = days.find((d) => d.date > today && d.title);
+  const next = after
+    ? { date: after.date, day: after.day, title: after.title! }
+    : { date: shift(monday, 7), day: 'Mon', title: 'Strong middle' };
+  return { date: today, days, kept, planned: 3, next };
+}
+
 /** A fake API for the keeper's home: /api/me, today's session and the approval screens. */
 export function keeperServer(
   today: Today | (() => Today),
@@ -81,6 +109,11 @@ export function keeperServer(
     if (url === '/api/training/approved') return json({ items: [], waiting: 0 });
     if (url === '/api/audit') return json({ events: [] });
     if (url === '/api/history/sessions') return json({ sessions: [] });
+    if (url.startsWith('/api/progress/week')) {
+      const date = new URL(url, 'http://test').searchParams.get('date') ?? '2026-01-05';
+      const kind = dayKind(date);
+      return json(demoWeek(date, kind === 'safety_stop' ? 'stopped' : kind ? 'trained' : 'today'));
+    }
     if (url.startsWith('/api/progress/summary')) {
       const date = new URL(url, 'http://test').searchParams.get('date') ?? '';
       const streak = { current: 0, best: 0 };

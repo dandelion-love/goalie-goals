@@ -17,6 +17,7 @@ import { PauseInboxItem } from './PainScreens';
 import { LoadSpace, useSettled } from './Loading';
 import { SAVING, SavingAnnouncer, savingProps, useOneAtATime } from './Saving';
 import { shortDate } from './dates';
+import { nextStep } from './ladders';
 
 type Load<T> = { kind: 'loading' } | { kind: 'ready'; data: T } | { kind: 'error' };
 
@@ -271,6 +272,34 @@ export function ParentInbox({
   );
 }
 
+/** The card id in an exercise's item id (`card-plank`), as the server writes it. */
+const cardIdOf = (itemId: string) => (itemId.startsWith('card-') ? itemId.slice('card-'.length) : itemId);
+
+/**
+ * A card's next step on its ladder (story 114 AC3), worded as a goal, never a promise: the next
+ * rung still needs clean form and the parent's approval. Nothing for a card on no ladder.
+ */
+function NextStepLine({ itemId }: { itemId: string }) {
+  const step = nextStep(cardIdOf(itemId));
+  if (!step) return null;
+  if (step.kind === 'top') {
+    return (
+      <p className="next-step meta">
+        <strong>Next step:</strong> Top of this ladder for now.
+      </p>
+    );
+  }
+  // One text node, so the line reads as written (no space before its full stops).
+  const also = step.alsoNeeds.length ? ` ${step.alsoNeeds.join(' and ')} comes first too.` : '';
+  const text = ` ${step.name}. Goal: ${step.goal}, all clean, two sessions in a row.${also} Then your parent decides.`;
+  return (
+    <p className="next-step meta">
+      <strong>Next step:</strong>
+      {text}
+    </p>
+  );
+}
+
 /** The keeper's training: approved items only. Pending changes show as a count, never content. */
 export function ApprovedTraining({
   fetchImpl,
@@ -321,6 +350,7 @@ export function ApprovedTraining({
                   <span className="kind">{KIND_LABEL[i.kind] ?? i.kind}</span>
                   <h3>{i.title}</h3>
                   <p>{i.detail}</p>
+                  {i.kind === 'exercise' && <NextStepLine itemId={i.itemId} />}
                 </li>
               ))}
             </ul>
