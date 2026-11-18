@@ -58,7 +58,8 @@ export function registerScheduleRoutes(
       return response(schedule, date);
     } catch (e) {
       if (e instanceof ScheduleError) {
-        return reply.code(e.code === 'forbidden' ? 403 : 400).send({ error: e.code, message: e.message });
+        const status = e.code === 'forbidden' ? 403 : e.code === 'unavailable' ? 503 : 400;
+        return reply.code(status).send({ error: e.code, message: e.message });
       }
       return reply.code(500).send({ error: 'failed' });
     }

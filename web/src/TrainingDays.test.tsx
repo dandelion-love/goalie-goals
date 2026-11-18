@@ -16,7 +16,7 @@ function daysBody(days: Weekday[]): TrainingDays {
   return { days: sorted, themes: sorted.map((d, i) => ({ day: d, name: NAMES[d], title: THEMES[i] })) };
 }
 
-function fakeServer(role: 'keeper' | 'parent') {
+function fakeServer(role: 'keeper' | 'parent', { saveFails = false } = {}) {
   let days: Weekday[] = [1, 3, 5];
   const audit: AuditEntry[] = [];
   const puts: unknown[] = [];
@@ -33,6 +33,7 @@ function fakeServer(role: 'keeper' | 'parent') {
       if (method === 'GET') return json(daysBody(days));
       const body = JSON.parse(String(init?.body)) as { days: Weekday[] };
       puts.push(body);
+      if (saveFails) return json({ error: 'unavailable', message: "Couldn't save the training days. Try again." }, 503);
       const set = new Set(body.days);
       const clash = body.days.find((d) => set.has(((d + 1) % 7) as Weekday));
       if (clash !== undefined) {
@@ -96,6 +97,16 @@ describe('training days on Parent home', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Thu' }));
     fireEvent.click(within(card).getByRole('button', { name: 'Save days' }));
     expect((await within(card).findByRole('alert')).textContent).toMatch(/Wed and Thu are back to back/);
+    expect(within(card).getByText('Fri: Quick feet, strong arms')).toBeTruthy();
+  });
+
+  it("shows the server's message when the days could not be saved, and keeps the old days", async () => {
+    render(<App fetchImpl={fakeServer('parent', { saveFails: true }).fetchImpl} />);
+    const card = await control();
+    fireEvent.click(within(card).getByRole('button', { name: 'Fri' }));
+    fireEvent.click(within(card).getByRole('button', { name: 'Sat' }));
+    fireEvent.click(within(card).getByRole('button', { name: 'Save days' }));
+    expect((await within(card).findByRole('alert')).textContent).toMatch(/Couldn't save the training days\. Try again\./);
     expect(within(card).getByText('Fri: Quick feet, strong arms')).toBeTruthy();
   });
 

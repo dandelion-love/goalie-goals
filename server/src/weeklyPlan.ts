@@ -119,6 +119,11 @@ export class WeeklyPlan implements TrainingPlan {
   load(changes: readonly ScheduleChange[]): void {
     this.changes = changes.map((c) => ({ from: c.from, days: [...c.days] }));
   }
+
+  /** A copy of the change history the plan holds, oldest first. */
+  changeLog(): ScheduleChange[] {
+    return this.changes.map((c) => ({ from: c.from, days: [...c.days] }));
+  }
 }
 
 // --- Plan rules ---------------------------------------------------------------------------

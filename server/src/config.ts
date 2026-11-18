@@ -12,6 +12,16 @@ export interface Config {
   roleSeed: string;
   /** Which role store to use. Only `memory` is wired in the walking skeleton. */
   roleStore: 'memory';
+  /**
+   * Where the parent's training days live: `firestore` (the default with NODE_ENV=production)
+   * or `memory` (the default otherwise: tests and the demo). Unset means memory.
+   */
+  scheduleStore?: 'memory' | 'firestore';
+  /**
+   * Firestore database id; empty means the project's default database. The project comes from
+   * the runtime's credentials (or GOOGLE_CLOUD_PROJECT), never from the repo.
+   */
+  firestoreDatabase?: string;
   port: number;
   /** Folder holding the built web app; empty means the API only. */
   webRoot: string;
@@ -53,6 +63,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (roleStore !== 'memory') {
     throw new ConfigError(`ROLE_STORE=${roleStore} is not wired yet; use memory.`);
   }
+  const scheduleStore = (env.SCHEDULE_STORE ?? (production ? 'firestore' : 'memory')).trim();
+  if (scheduleStore !== 'memory' && scheduleStore !== 'firestore') {
+    throw new ConfigError('SCHEDULE_STORE must be memory or firestore.');
+  }
+  if (scheduleStore === 'memory' && production) {
+    throw new ConfigError('SCHEDULE_STORE=memory is set while NODE_ENV=production: the training days would not survive a restart.');
+  }
   const port = Number(env.PORT ?? 8080);
   if (!Number.isInteger(port) || port <= 0) {
     throw new ConfigError('PORT must be a positive integer.');
@@ -63,6 +80,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     devMockAccount: (env.GOALIE_DEV_AS ?? 'kai@example.com').trim(),
     roleSeed: env.GOALIE_ROLES ?? '',
     roleStore,
+    scheduleStore,
+    firestoreDatabase: (env.FIRESTORE_DATABASE ?? '').trim(),
     port,
     webRoot: env.WEB_ROOT ?? '',
     contentRoot: env.CONTENT_ROOT ?? '',

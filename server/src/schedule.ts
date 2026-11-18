@@ -7,9 +7,11 @@ import { randomUUID } from 'node:crypto';
 import type { AuditLog } from './approvals.js';
 import type { ContentLibrary } from './content.js';
 import type { Role } from './roles.js';
+import { DATE_RE } from './training.js';
 import {
   checkPlanRules,
   checkTrainingDays,
+  isWeekday,
   layOut,
   sortWeekdays,
   weekdaysText,
@@ -36,9 +38,82 @@ export class MemoryScheduleStore implements ScheduleStore {
   }
 }
 
+/**
+ * The slice of the Firestore client this store uses. The real `Firestore` class from
+ * `@google-cloud/firestore` satisfies it; tests pass a fake. The project and database come
+ * from the client's own configuration (src/config.ts), never from the repo.
+ */
+export interface ScheduleDb {
+  collection(path: string): { doc(id: string): ScheduleDocRef };
+  runTransaction<T>(update: (tx: ScheduleTransaction) => Promise<T>): Promise<T>;
+}
+export interface ScheduleDocRef {
+  get(): Promise<ScheduleSnapshot>;
+}
+export interface ScheduleSnapshot {
+  exists: boolean;
+  get(field: string): unknown;
+}
+export interface ScheduleTransaction {
+  get(ref: ScheduleDocRef): Promise<ScheduleSnapshot>;
+  set(ref: ScheduleDocRef, data: { changes: ScheduleChange[] }): unknown;
+}
+
+export const SCHEDULE_COLLECTION = 'schedules';
+/** The household's one schedule document. */
+export const SCHEDULE_DOC = 'household';
+
+/** Keep only well-formed changes: a date and three weekdays, nothing else. */
+function readChanges(value: unknown): ScheduleChange[] {
+  if (!Array.isArray(value)) return [];
+  const out: ScheduleChange[] = [];
+  for (const c of value as unknown[]) {
+    if (!c || typeof c !== 'object') continue;
+    const { from, days } = c as { from?: unknown; days?: unknown };
+    if (typeof from !== 'string' || !DATE_RE.test(from)) continue;
+    if (!Array.isArray(days) || checkTrainingDays(days) !== null || !days.every(isWeekday)) continue;
+    out.push({ from, days: [...days] });
+  }
+  return out;
+}
+
+/**
+ * The training days in Firestore: one document, `schedules/household`, holding only the list of
+ * changes, each the date it takes effect and its three weekdays, in the order they were made.
+ * An append is a transaction, so a change is never lost to another writer.
+ */
+export class FirestoreScheduleStore implements ScheduleStore {
+  constructor(
+    private readonly db: ScheduleDb,
+    private readonly collection = SCHEDULE_COLLECTION,
+  ) {}
+
+  private ref(): ScheduleDocRef {
+    return this.db.collection(this.collection).doc(SCHEDULE_DOC);
+  }
+
+  async list(): Promise<ScheduleChange[]> {
+    const snap = await this.ref().get();
+    return snap.exists ? readChanges(snap.get('changes')) : [];
+  }
+
+  async append(change: ScheduleChange): Promise<void> {
+    const ref = this.ref();
+    await this.db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const changes = snap.exists ? readChanges(snap.get('changes')) : [];
+      changes.push({ from: change.from, days: [...change.days] });
+      tx.set(ref, { changes: changes.map((c) => ({ from: c.from, days: [...c.days] })) });
+    });
+  }
+}
+
+/** Shown to the parent when the store could not keep a change. */
+export const SAVE_FAILED = "Couldn't save the training days. Try again.";
+
 export class ScheduleError extends Error {
   constructor(
-    readonly code: 'forbidden' | 'invalid',
+    readonly code: 'forbidden' | 'invalid' | 'unavailable',
     message: string,
   ) {
     super(message);
@@ -96,8 +171,21 @@ export class ScheduleService {
     const broken = checkPlanRules(layOut(this.plan.pack, chosen), this.content());
     if (broken.length) throw new ScheduleError('invalid', broken[0]);
 
-    await this.store.append({ from: date, days: chosen });
-    await this.load();
+    // Write first; the plan in memory moves only once the store has the change.
+    const change: ScheduleChange = { from: date, days: chosen };
+    try {
+      await this.store.append(change);
+    } catch {
+      // The error itself (its stack, any resource names) stays out of the audit.
+      await this.log(actor, 'refused', 'the training days', 'The change could not be saved');
+      throw new ScheduleError('unavailable', SAVE_FAILED);
+    }
+    try {
+      await this.load();
+    } catch {
+      // The store has the change; if it cannot be read back now, apply it to what was loaded.
+      this.plan.load([...this.plan.changeLog(), change]);
+    }
     await this.log(actor, 'changed', `the training days (${weekdaysText(chosen)})`, null);
     return chosen;
   }

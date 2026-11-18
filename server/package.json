@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@fastify/static": "^10.1.11",
+    "@google-cloud/firestore": "^9.4.1",
     "fastify": "^5.12.8",
     "google-auth-library": "^11.3.4"
   },

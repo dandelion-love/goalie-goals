@@ -25,7 +25,7 @@ import { registerProgressRoutes } from './progressRoutes.js';
 import { MemoryPainStore, PainService } from './pain.js';
 import { registerPainRoutes } from './painRoutes.js';
 import { WeeklyPlan } from './weeklyPlan.js';
-import { MemoryScheduleStore, ScheduleService } from './schedule.js';
+import { FirestoreScheduleStore, MemoryScheduleStore, ScheduleService, type ScheduleStore } from './schedule.js';
 import { registerScheduleRoutes } from './scheduleRoutes.js';
 
 declare module 'fastify' {
@@ -46,8 +46,13 @@ export interface AppDeps {
   progress?: ProgressService;
   /** Pain reports and the training pause; in memory, on the approvals audit log, unless given. */
   pain?: PainService;
-  /** The parent's training days; in memory, on the weekly plan, unless given. */
+  /**
+   * The parent's training days, on the weekly plan, unless given. The store follows
+   * `config.scheduleStore`: Firestore in production, in memory otherwise.
+   */
   schedule?: ScheduleService;
+  /** The store for the training days when no `schedule` is given (tests pass a fake). */
+  scheduleStore?: ScheduleStore;
   logger?: boolean;
   /** Send log lines here (tests read them); implies the logger at every level. */
   logStream?: { write(line: string): void };
@@ -68,6 +73,15 @@ function cookie(header: string | undefined, name: string): string | undefined {
   return undefined;
 }
 
+/** Firestore when configured (production), else in memory; the client loads only when used. */
+async function defaultScheduleStore(config: Config): Promise<ScheduleStore> {
+  if (config.scheduleStore !== 'firestore') return new MemoryScheduleStore();
+  const { Firestore } = await import('@google-cloud/firestore');
+  // Application default credentials; the project comes from the runtime, the database from config.
+  const db = new Firestore(config.firestoreDatabase ? { databaseId: config.firestoreDatabase } : {});
+  return new FirestoreScheduleStore(db);
+}
+
 export async function buildApp({
   config,
   verifier,
@@ -77,6 +91,7 @@ export async function buildApp({
   progress,
   pain,
   schedule,
+  scheduleStore,
   logger = false,
   logStream,
 }: AppDeps): Promise<FastifyInstance> {
@@ -131,7 +146,7 @@ export async function buildApp({
     schedule ??
     (trainingService.plan instanceof WeeklyPlan
       ? new ScheduleService({
-          store: new MemoryScheduleStore(),
+          store: scheduleStore ?? (await defaultScheduleStore(config)),
           plan: trainingService.plan,
           audit: approvalService.audit,
           content: () => trainingService.library,

@@ -57,9 +57,11 @@ export async function saveTrainingDays(
     headers: { ...HEADERS, 'Content-Type': 'application/json' },
     body: JSON.stringify({ days, date: localDate(now) }),
   });
-  if (res.status === 400) {
+  // 400: the days break a rule. 503: the server could not save them; the old days stay.
+  if (res.status === 400 || res.status === 503) {
     const body = (await res.json().catch(() => ({}))) as { message?: unknown };
-    throw new DaysRefused(typeof body.message === 'string' ? body.message : "Those days can't be used.");
+    const fallback = res.status === 400 ? "Those days can't be used." : "Couldn't save the training days. Try again.";
+    throw new DaysRefused(typeof body.message === 'string' ? body.message : fallback);
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return parse(await res.json());
