@@ -39,7 +39,8 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
   the whole pack, each session and its cards, to the parent. The card's credit line comes from the
   figure's entry in `content/credits.json`, built as `tools/content_check.py` builds it. The
   `approved` flag in a card file is ignored: approval lives in the approvals service.
-  Versions are kept in memory next to the in-memory approval store (`MemorySnapshotStore`).
+  Versions are rebuilt in memory from `content/` at startup (`MemorySnapshotStore`); the
+  approvals that name them are stored with the household's data.
   The app runs the themed week (`WeeklyPlan`, `src/weeklyPlan.ts`) everywhere, the local
   dev mock and the demo included; `SingleSessionPlan` (the starter session every day) is
   kept for tests. The fallback's "approved maintenance session" rung is not built yet, so
@@ -60,7 +61,8 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
   extra session the same day or a session on a rest day. A safety stop (`stopped` or
   `hurt`) earns the same credit as finishing and counts as a kept day. Planned rest and a
   pause hold every streak; a missed planned day ends the run, which is kept as a completed
-  run with no repair. Records sit behind `ProgressStore` (`MemoryProgressStore` for now);
+  run with no repair. Records sit behind `ProgressStore` (`FirestoreProgressStore` in
+  production, `MemoryProgressStore` in tests and the demo; see "The household's data");
   pauses come in through `PauseSource`. Not built yet: spare days and the habit-strength
   score from the Decision, and a solo path in the player (the content has no safe-solo flag
   yet, so the player records a together session).
@@ -80,7 +82,8 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
   `paused` and `cleared`), with roles and the body area only, never the note. The report is
   stored in the app's data only: no handler logs it, errors answer with a code and no echo,
   and Fastify never logs request bodies (`test/pain.test.ts` reads every log line). Reports
-  sit behind `PainStore` (`MemoryPainStore` for now). Not built yet: the clearance details
+  sit behind `PainStore` (`FirestorePainStore` in production, `MemoryPainStore` in tests and
+  the demo). Not built yet: the clearance details
   from the Decision (rest days taken, a professional seen, a stepped return plan) and push to
   the parent's phone; the in-app inbox and badge stand in.
 - Every other path that is not `/api/...` gets the web app (`WEB_ROOT`), with
@@ -94,7 +97,7 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
 | `IAP_AUDIENCE` | Expected audience of the signed header. Required unless the dev mock is on; there is no default. |
 | `GOALIE_ROLES` | Role seed for the in-memory store: `account=keeper;account=parent`. |
 | `ROLE_STORE` | `memory` (the only store wired so far). |
-| `SCHEDULE_STORE` | Where the parent's training days and the session history (story 113) live: `firestore` (the default, and the only choice, with `NODE_ENV=production`) or `memory` (the default otherwise). |
+| `SCHEDULE_STORE` | Where the household's data lives (below): `firestore` (the default, and the only choice, with `NODE_ENV=production`) or `memory` (the default otherwise). |
 | `FIRESTORE_DATABASE` | Firestore database id; unset means the project's default database. The project comes from the runtime's credentials or `GOOGLE_CLOUD_PROJECT`. |
 | `WEB_ROOT` | Folder of the built web app; unset means API only. |
 | `PORT` | Default 8080. |
@@ -103,14 +106,64 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
 | `CONTENT_ROOT` | The `content` folder; unset means the one two levels above `src`/`dist`. |
 | `GOALIE_DEMO_SEED` | `1` seeds the demo household at startup (below). Needs the mock identity; refused with `NODE_ENV=production`. |
 
-Roles sit behind a `RoleStore` interface. `MemoryRoleStore` serves the walking skeleton;
-`FirestoreRoleStore` reads `members/{account}.role` through a minimal interface the
-Firestore client satisfies, and is tested against a fake. It is not wired in yet.
+Roles sit behind a `RoleStore` interface and stay seeded from `GOALIE_ROLES`, in production
+too: the two accounts are set at deploy time with the rest of the environment, which a
+restart never wipes, and the app has no screen to manage members. `FirestoreRoleStore` reads
+`members/{account}.role` and is tested against a fake, but stays unwired: an empty `members`
+collection on the first deploy would lock both people out, and nothing writes it yet.
 
-Approval sits behind `ApprovalStore` and `AuditLog` (`src/approvals.ts`), with in-memory
-implementations; `FirestoreApprovalStore` and `FirestoreAuditLog` are stubs that refuse to
-run until a later story wires them. The audit log has `append` and `list` only. The clock is
-injected so tests can move time.
+Approval sits behind `ApprovalStore` and `AuditLog` (`src/approvals.ts`). The audit log has
+`append` and `list` only. The clock is injected so tests can move time.
+
+### The household's data
+
+With `SCHEDULE_STORE=firestore` (production) every store keeps the household's data in
+Firestore, so a deploy or a scale to zero loses nothing (story 118). Only the server reaches
+these documents, with the runtime's own service account; the web app never talks to
+Firestore. The stores read through a small slice of the client (`src/firestoreDb.ts`) and are
+tested against a fake in memory (`test/fakeFirestore.ts`).
+
+| Data | Store | Documents |
+| --- | --- | --- |
+| Approval requests | `FirestoreApprovalStore` | `approvalRequests/{id}`; an answer and an undo are transactions, so a final state is final |
+| Audit log | `FirestoreAuditLog` | `auditEvents/{id}`, created once, never written again |
+| Day results (XP, streaks) | `FirestoreProgressStore` | `progressRecords/{id}`, the device's finish id, created once |
+| Pain reports and pauses | `FirestorePainStore` | `painReports/household`, one document; each write is a transaction, so a report is kept once and a pause takes one mistake note |
+| Started sessions | `FirestoreStartedStore` | `startedSessions/household`: the item versions a started session used |
+| Training days | `FirestoreScheduleStore` | `schedules/household` |
+| Session history | `FirestoreHistoryStore` | `sessionHistory/{id}` |
+| Write order | | `householdCounters/{collection}`: the next sequence number, so requests, events and results list in the order they were written |
+
+The started marker is stored, rather than inferred from a day result, because a history
+record (story 113) can arrive before the finish, or after a stop that records nothing, and
+because it also keeps an approval a started session uses from being undone after a restart.
+The server runs as one instance (`max_instance_count = 1`), so it reads the marker at startup
+and writes each start to the store before it counts.
+
+An open pause is never lost: if the store cannot be read, the pause routes, today's session,
+a start and the summary answer with an error, never as unpaused, and a stored report that
+cannot be read is an error too. A server that cannot read the store at startup does not start.
+The in-app inbox and badge stay in memory and count again, at startup, the requests waiting
+and an open pause.
+
+A pain report keeps the keeper's optional typed note. With these stores the note is kept in
+the household's data (`painReports/household`) until the household is deleted; before story
+118 it lasted only until a restart. It is never logged, never sent in the audit log, and the
+keeper's device gets report ids only.
+
+Deleting the household (`app.household.deleteAll()`, also run by the dev-only demo reset)
+deletes every document above, the typed notes included. Roles are config, not data, and stay.
+
+Infrastructure needs no change for these stores: the runtime account's `roles/datastore.user`
+(`infra/app/main.tf`) covers their reads, writes, transactions and deletes, and every query
+uses equality filters only, so no composite index is needed. `infra/` ships no Firestore
+security rules; only the server's service account reaches the database, and an explicit
+deny-all ruleset for client access is a possible follow-up.
+
+**First deploy with these stores.** Approvals, the audit log, progress and pauses were in
+memory until this change, so the first deploy after it starts from empty stores once: XP,
+streaks and the approval history start again, and the app asks the parent to approve the
+cards and sessions once more. From then on approvals, results and pauses survive deploys.
 
 Notifications go through `Notifier` (`src/notifier.ts`). `InAppNotifier` is the mock for
 push: it keeps unread notifications in memory for the badge and sends nothing. A later story

@@ -13,6 +13,7 @@
 import type { ApprovalRequest, ApprovalService, ItemContent } from './approvals.js';
 import type { Role } from './roles.js';
 import { itemVersion } from './approvals.js';
+import { asObject, type FsDb } from './firestoreDb.js';
 import { cardSeconds, doseText, type CardSource, type ContentLibrary, type ExerciseCard } from './content.js';
 
 /** A timed, low-risk move in a warm-up or cool-down (no equipment, no jumping). */
@@ -175,7 +176,10 @@ function sessionMinutes(template: SessionTemplate, cards: CardSnapshot[]): numbe
   return Math.max(1, Math.round((moves + work) / 60));
 }
 
-/** Versions are kept in memory with the in-memory approval store; a later story persists them. */
+/**
+ * Versions, rebuilt in memory from the content at startup; the approvals that name them, and the
+ * started marker (`StartedStore`, story 118), are stored with the household's data.
+ */
 export class MemorySnapshotStore {
   readonly cards = new Map<string, CardSnapshot>();
   readonly sessions = new Map<string, SessionSnapshot>();
@@ -188,11 +192,81 @@ export class MemorySnapshotStore {
 
 const versionKey = (itemId: string, version: string) => `${itemId}@${version}`;
 
+/**
+ * The started-session marker, kept so it outlives a restart (story 118): the item versions a
+ * started session used (`itemId@itemVersion`), the same keys as `MemorySnapshotStore.started`.
+ * After a restart, a session started before it still cannot have its approval undone, still keeps
+ * its stars cap, and can still have its history record accepted once (story 113).
+ */
+export interface StartedStore {
+  list(): Promise<string[]>;
+  /** Add these keys; a key that is there already stays once. */
+  add(keys: string[]): Promise<void>;
+}
+
+export class MemoryStartedStore implements StartedStore {
+  #keys = new Set<string>();
+  async list(): Promise<string[]> {
+    return [...this.#keys];
+  }
+  async add(keys: string[]): Promise<void> {
+    for (const k of keys) this.#keys.add(k);
+  }
+  async deleteAll(): Promise<void> {
+    this.#keys.clear();
+  }
+}
+
+export const STARTED_COLLECTION = 'startedSessions';
+/** The household's one marker document. */
+export const STARTED_DOC = 'household';
+
+/**
+ * The marker in Firestore: one document, `startedSessions/household`, holding only the list of
+ * keys. A key names a version, and versions change only when content does, so the list stays
+ * short. An add is a transaction, so a key is never lost to another writer.
+ */
+export class FirestoreStartedStore implements StartedStore {
+  constructor(
+    private readonly db: FsDb,
+    private readonly collection = STARTED_COLLECTION,
+  ) {}
+
+  private ref() {
+    return this.db.collection(this.collection).doc(STARTED_DOC);
+  }
+
+  private static read(snap: { exists: boolean; data(): unknown }): string[] {
+    const keys = snap.exists ? asObject(snap.data())?.keys : [];
+    return Array.isArray(keys) ? keys.filter((k): k is string => typeof k === 'string') : [];
+  }
+
+  async list(): Promise<string[]> {
+    return FirestoreStartedStore.read(await this.ref().get());
+  }
+
+  async add(keys: string[]): Promise<void> {
+    const ref = this.ref();
+    await this.db.runTransaction(async (tx) => {
+      const have = FirestoreStartedStore.read(await tx.get(ref));
+      const next = [...new Set([...have, ...keys])];
+      if (next.length !== have.length) tx.set(ref, { keys: next });
+    });
+  }
+
+  /** Delete the marker with the household. */
+  async deleteAll(): Promise<void> {
+    await this.ref().delete();
+  }
+}
+
 export interface TrainingServiceDeps {
   approvals: ApprovalService;
   content: ContentLibrary;
   plan?: TrainingPlan;
   snapshots?: MemorySnapshotStore;
+  /** Where the started marker outlives a restart (story 118); in memory only when not given. */
+  started?: StartedStore;
 }
 
 export class TrainingService {
@@ -200,12 +274,33 @@ export class TrainingService {
   private content: ContentLibrary;
   readonly plan: TrainingPlan;
   private readonly snapshots: MemorySnapshotStore;
+  private readonly startedStore: StartedStore | undefined;
 
-  constructor({ approvals, content, plan = new SingleSessionPlan(), snapshots = new MemorySnapshotStore() }: TrainingServiceDeps) {
+  constructor({
+    approvals,
+    content,
+    plan = new SingleSessionPlan(),
+    snapshots = new MemorySnapshotStore(),
+    started,
+  }: TrainingServiceDeps) {
     this.approvals = approvals;
     this.content = content;
     this.plan = plan;
     this.snapshots = snapshots;
+    this.startedStore = started;
+  }
+
+  /** Read the stored started marker (startup, story 118). The server runs as one instance. */
+  async loadStarted(): Promise<void> {
+    if (!this.startedStore) return;
+    for (const k of await this.startedStore.list()) this.snapshots.started.add(k);
+  }
+
+  /** Mark a session and its cards started: the store first, so a start is never only in memory. */
+  private async rememberStarted(snap: SessionSnapshot): Promise<void> {
+    const keys = [versionKey(snap.itemId, snap.itemVersion), ...snap.cards.map((c) => versionKey(c.itemId, c.itemVersion))];
+    await this.startedStore?.add(keys);
+    for (const k of keys) this.snapshots.started.add(k);
   }
 
   /** The exercise cards the sessions are built from. */
@@ -334,8 +429,7 @@ export class TrainingService {
   async markStarted(itemId: string, version: string): Promise<boolean> {
     const snap = this.snapshots.sessions.get(version);
     if (!snap || snap.itemId !== itemId || !(await this.playable(snap))) return false;
-    this.snapshots.started.add(versionKey(snap.itemId, snap.itemVersion));
-    for (const c of snap.cards) this.snapshots.started.add(versionKey(c.itemId, c.itemVersion));
+    await this.rememberStarted(snap);
     return true;
   }
 
@@ -366,8 +460,7 @@ export class TrainingService {
     }
     // A resend of the same start is recorded once.
     const already = this.hasStarted(snap);
-    this.snapshots.started.add(versionKey(snap.itemId, snap.itemVersion));
-    for (const c of snap.cards) this.snapshots.started.add(versionKey(c.itemId, c.itemVersion));
+    await this.rememberStarted(snap);
     if (!already) for (const r of undone) await this.approvals.logLateStart(r, actor);
     return true;
   }

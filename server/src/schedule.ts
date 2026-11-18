@@ -54,6 +54,8 @@ export interface ScheduleDb {
 }
 export interface ScheduleDocRef {
   get(): Promise<ScheduleSnapshot>;
+  /** Deletes the document; the real client has it (household deletion, story 118). */
+  delete?(): Promise<unknown>;
 }
 export interface ScheduleSnapshot {
   exists: boolean;
@@ -110,6 +112,13 @@ export class FirestoreScheduleStore implements ScheduleStore {
       changes.push({ from: change.from, days: [...change.days] });
       tx.set(ref, { changes: changes.map((c) => ({ from: c.from, days: [...c.days] })) });
     });
+  }
+
+  /** Delete the training days with the household (story 118). */
+  async deleteAll(): Promise<void> {
+    const ref = this.ref();
+    if (!ref.delete) throw new Error('This Firestore client cannot delete documents.');
+    await ref.delete();
   }
 }
 

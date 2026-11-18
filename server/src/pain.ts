@@ -2,13 +2,14 @@
 // (parent-approval Decision, section 7; training-rules Decision, warning signs).
 //
 // The report is stored in the app's data only. Nothing here logs it, and the audit log keeps
-// the roles and the body area, never the note. The store sits behind an interface, with an
-// in-memory implementation, as approvals do.
+// the roles and the body area, never the note. The store sits behind an interface, as approvals
+// do: in memory for tests and the demo, the household's Firestore data in production (story 118).
 
 import type { AuditLog } from './approvals.js';
+import { asDate, asObject, type FsDb } from './firestoreDb.js';
 import type { Notifier } from './notifier.js';
 import type { PauseSource } from './progress.js';
-import type { Role } from './roles.js';
+import { isRole, type Role } from './roles.js';
 
 /** A short fixed list: one tap, no free-text body area. */
 export const BODY_AREAS = [
@@ -125,6 +126,130 @@ export class MemoryPainStore implements PainStore {
     r.mistakeAt = new Date(at);
     r.mistakeId = mistakeId;
     return copy(r);
+  }
+}
+
+/**
+ * Pain reports in Firestore (story 118): the household's one document, `painReports/household`,
+ * holds every report, as the training days' document holds their changes. Each write is one
+ * transaction on that document, so a report sent twice is kept once, one clear closes every open
+ * report, and a pause takes one mistake note, even with two writers. A report is a few hundred
+ * bytes, so the document holds well over a thousand of them.
+ */
+export const PAIN_COLLECTION = 'painReports';
+export const PAIN_DOC = 'household';
+
+/** A stored report back to a report; null (left out) when it is not well formed. */
+export function readPainReport(value: unknown): PainReport | null {
+  const r = asObject(value);
+  if (!r || typeof r.id !== 'string' || !isBodyArea(r.bodyArea) || typeof r.date !== 'string' || !isRole(r.reportedBy)) {
+    return null;
+  }
+  const at = asDate(r.at);
+  const clearedAt = r.clearedAt == null ? null : asDate(r.clearedAt);
+  const mistakeAt = r.mistakeAt == null ? null : asDate(r.mistakeAt);
+  // A clear or a note that cannot be read is never dropped: the report is left out instead, and
+  // the store refuses to answer (see `reports`), so an open pause is never lost.
+  if (!at || (r.clearedAt != null && !clearedAt) || (r.mistakeAt != null && !mistakeAt)) return null;
+  return {
+    id: r.id,
+    bodyArea: r.bodyArea,
+    note: typeof r.note === 'string' ? r.note : null,
+    date: r.date,
+    at,
+    reportedBy: r.reportedBy,
+    clearedAt,
+    clearedOn: typeof r.clearedOn === 'string' ? r.clearedOn : null,
+    mistakeAt,
+    mistakeId: typeof r.mistakeId === 'string' ? r.mistakeId : null,
+  };
+}
+
+function painData(r: PainReport): Record<string, unknown> {
+  return {
+    id: r.id,
+    bodyArea: r.bodyArea,
+    note: r.note,
+    date: r.date,
+    at: new Date(r.at),
+    reportedBy: r.reportedBy,
+    clearedAt: r.clearedAt ? new Date(r.clearedAt) : null,
+    clearedOn: r.clearedOn,
+    mistakeAt: r.mistakeAt ? new Date(r.mistakeAt) : null,
+    mistakeId: r.mistakeId,
+  };
+}
+
+export class FirestorePainStore implements PainStore {
+  constructor(
+    private readonly db: FsDb,
+    private readonly collection = PAIN_COLLECTION,
+  ) {}
+
+  private ref() {
+    return this.db.collection(this.collection).doc(PAIN_DOC);
+  }
+
+  /**
+   * The reports in a snapshot. A stored report that cannot be read is an error, never a gap: a
+   * pause the app could not read must not show the keeper as free to train.
+   */
+  private reports(snap: { exists: boolean; data(): unknown }): PainReport[] {
+    if (!snap.exists) return [];
+    const list = asObject(snap.data())?.reports;
+    if (!Array.isArray(list)) throw new Error('The pain reports could not be read.');
+    const reports = list.map(readPainReport);
+    if (reports.some((r) => r === null)) throw new Error('A pain report could not be read.');
+    return reports as PainReport[];
+  }
+
+  private async update<T>(change: (reports: PainReport[]) => { reports?: PainReport[]; result: T }): Promise<T> {
+    const ref = this.ref();
+    return this.db.runTransaction(async (tx) => {
+      const { reports, result } = change(this.reports(await tx.get(ref)));
+      if (reports) tx.set(ref, { reports: reports.map(painData) });
+      return result;
+    });
+  }
+
+  async create(report: PainReport): Promise<PainReport> {
+    return this.update((reports) => {
+      const existing = reports.find((r) => r.id === report.id);
+      if (existing) return { result: copy(existing) };
+      return { reports: [...reports, copy(report)], result: copy(report) };
+    });
+  }
+
+  async list(): Promise<PainReport[]> {
+    return this.reports(await this.ref().get()).sort((a, b) => a.at.getTime() - b.at.getTime());
+  }
+
+  async clearOpen(at: Date, on: string): Promise<PainReport[]> {
+    return this.update((reports) => {
+      const cleared: PainReport[] = [];
+      const next = reports.map((r) => {
+        if (r.clearedAt) return r;
+        const done = { ...r, clearedAt: new Date(at), clearedOn: on };
+        cleared.push(copy(done));
+        return done;
+      });
+      return { reports: cleared.length ? next : undefined, result: cleared };
+    });
+  }
+
+  async markMistake(reportId: string, mistakeId: string, at: Date): Promise<PainReport | null> {
+    return this.update((reports) => {
+      const r = reports.find((x) => x.id === reportId);
+      // One note per pause: none while any open report already has one.
+      if (!r || r.clearedAt || r.mistakeAt || reports.some((x) => !x.clearedAt && x.mistakeAt)) return { result: null };
+      const marked = { ...r, mistakeAt: new Date(at), mistakeId };
+      return { reports: reports.map((x) => (x.id === reportId ? marked : x)), result: copy(marked) };
+    });
+  }
+
+  /** Delete the household's reports. A parent clears a pause with `clearOpen`, never this. */
+  async deleteAll(): Promise<void> {
+    await this.ref().delete();
   }
 }
 
@@ -318,6 +443,21 @@ export class PainService implements PauseSource {
     // A fresh nudge: the parent checks in, then clears. The clear withdraws it.
     await this.notifier.notify({ to: 'parent', ref: PAUSE_REF, title: 'Training paused: marked as a mistake' });
     return marked;
+  }
+
+  /**
+   * Tell the parent again about an open pause (startup, story 118): the in-app inbox and badge
+   * are in memory, the pause is in the store, so a restart never leaves it silent.
+   */
+  async renotify(): Promise<void> {
+    const { open } = await this.status();
+    if (!open.length) return;
+    const marked = open.some((r) => r.mistakeAt);
+    await this.notifier.notify({
+      to: 'parent',
+      ref: PAUSE_REF,
+      title: marked ? 'Training paused: marked as a mistake' : 'Training paused: something hurts',
+    });
   }
 
   /** For streaks: each report pauses from its date to the clear date, both included. */

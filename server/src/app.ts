@@ -12,29 +12,61 @@ import {
   type IdentityVerifier,
 } from './identity.js';
 import { MemoryRoleStore, type Role, type RoleStore } from './roles.js';
-import { ApprovalService, MemoryApprovalStore, MemoryAuditLog } from './approvals.js';
+import {
+  ApprovalService,
+  FirestoreApprovalStore,
+  FirestoreAuditLog,
+  MemoryApprovalStore,
+  MemoryAuditLog,
+} from './approvals.js';
 import { hasBadge, registerApprovalRoutes } from './approvalRoutes.js';
 import { seedDemoRequests, seedDemoSession } from './demoData.js';
 import { DemoAuditLog, DemoRefused, DemoWeeklyPlan, localDate, resetDemoHousehold, seedDemoHousehold, type DemoTarget } from './demo.js';
 import { loadContent } from './content.js';
-import { TrainingService, utcDate } from './training.js';
+import { FirestoreStartedStore, TrainingService, utcDate } from './training.js';
 import { registerTrainingRoutes } from './trainingRoutes.js';
 import { InAppNotifier } from './notifier.js';
-import { MemoryProgressStore, ProgressService } from './progress.js';
+import { FirestoreProgressStore, MemoryProgressStore, ProgressService, type ProgressStore } from './progress.js';
 import { registerProgressRoutes } from './progressRoutes.js';
-import { MemoryPainStore, PainService } from './pain.js';
+import { FirestorePainStore, MemoryPainStore, PainService, type PainStore } from './pain.js';
 import { registerPainRoutes } from './painRoutes.js';
 import { WeeklyPlan } from './weeklyPlan.js';
 import { FirestoreScheduleStore, MemoryScheduleStore, ScheduleService, type ScheduleStore } from './schedule.js';
 import { registerScheduleRoutes } from './scheduleRoutes.js';
 import { FirestoreHistoryStore, HistoryService, MemoryHistoryStore, type HistoryStore } from './history.js';
 import { registerHistoryRoutes } from './historyRoutes.js';
+import type { FsDb } from './firestoreDb.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
     identity?: Identity;
   }
+  interface FastifyInstance {
+    /** The household's data, as one thing to delete (story 113, story 118). */
+    household: Household;
+  }
 }
+
+/** A store that holds some of the household's data and can delete all of it. */
+export interface HouseholdPart {
+  deleteAll(): Promise<void>;
+}
+
+/**
+ * Everything the household keeps in the app's own stores: approvals and their audit log,
+ * progress, pain reports, the started marker, the training days and the session history.
+ * Deleting the household deletes every one of them (story 118). Roles stay in config.
+ */
+export class Household {
+  constructor(private readonly parts: readonly HouseholdPart[]) {}
+
+  async deleteAll(): Promise<void> {
+    for (const p of this.parts) await p.deleteAll();
+  }
+}
+
+const isPart = (v: unknown): v is HouseholdPart =>
+  !!v && typeof (v as { deleteAll?: unknown }).deleteAll === 'function';
 
 export interface AppDeps {
   config: Config;
@@ -62,6 +94,13 @@ export interface AppDeps {
   history?: HistoryService;
   /** The store for the session history when no `history` is given (tests pass a fake). */
   historyStore?: HistoryStore;
+  /**
+   * The household's Firestore database when `config.scheduleStore` is `firestore` (story 118):
+   * approvals, the audit log, progress, pain pauses and the started marker live there, beside
+   * the training days and the history. Made from the runtime's credentials unless given (tests
+   * pass a fake). With `memory`, every store is in memory, as tests and the demo use.
+   */
+  firestore?: FsDb;
   logger?: boolean;
   /** Send log lines here (tests read them); implies the logger at every level. */
   logStream?: { write(line: string): void };
@@ -82,21 +121,16 @@ function cookie(header: string | undefined, name: string): string | undefined {
   return undefined;
 }
 
-/** Firestore when configured (production), else in memory; the client loads only when used. */
-async function defaultScheduleStore(config: Config): Promise<ScheduleStore> {
-  if (config.scheduleStore !== 'firestore') return new MemoryScheduleStore();
+/**
+ * The household's database: Firestore when configured (production), else none and every store
+ * in memory. One client for every store; the library loads only when used.
+ */
+async function householdDb(config: Config, given: FsDb | undefined): Promise<FsDb | undefined> {
+  if (config.scheduleStore !== 'firestore') return undefined;
+  if (given) return given;
   const { Firestore } = await import('@google-cloud/firestore');
   // Application default credentials; the project comes from the runtime, the database from config.
-  const db = new Firestore(config.firestoreDatabase ? { databaseId: config.firestoreDatabase } : {});
-  return new FirestoreScheduleStore(db);
-}
-
-/** The session history's store, chosen as the training days' store is (story 113). */
-async function defaultHistoryStore(config: Config): Promise<HistoryStore> {
-  if (config.scheduleStore !== 'firestore') return new MemoryHistoryStore();
-  const { Firestore } = await import('@google-cloud/firestore');
-  const db = new Firestore(config.firestoreDatabase ? { databaseId: config.firestoreDatabase } : {});
-  return new FirestoreHistoryStore(db);
+  return new Firestore(config.firestoreDatabase ? { databaseId: config.firestoreDatabase } : {});
 }
 
 export async function buildApp({
@@ -111,6 +145,7 @@ export async function buildApp({
   scheduleStore,
   history,
   historyStore,
+  firestore,
   logger = false,
   logStream,
 }: AppDeps): Promise<FastifyInstance> {
@@ -137,22 +172,26 @@ export async function buildApp({
       verifier = new ProxyJwtVerifier(config.audience, proxyPublicKeys());
     }
   }
+  // Roles stay seeded from config (GOALIE_ROLES), also with Firestore: see server/README.md.
   const ownRoles = roles ? undefined : MemoryRoleStore.fromSeed(config.roleSeed);
   const roleStore: RoleStore = roles ?? ownRoles!;
   const verify = verifier;
-  // The app's own in-memory stores, kept by name so the dev-only demo reset can reach them.
+  const db = await householdDb(config, firestore);
+  // The app's own stores, kept by name so the dev-only demo reset can reach the in-memory ones.
+  // With Firestore (production), the household's approvals and audit log live there (story 118).
   const own = approvals
     ? undefined
     : {
-        store: new MemoryApprovalStore(),
+        store: db ? new FirestoreApprovalStore(db) : new MemoryApprovalStore(),
         // The dev mock's log can start again on a demo reset; each log is append-only.
-        audit: config.devMockIdentity ? new DemoAuditLog() : new MemoryAuditLog(),
+        audit: db ? new FirestoreAuditLog(db) : config.devMockIdentity ? new DemoAuditLog() : new MemoryAuditLog(),
         notifier: new InAppNotifier(),
       };
   const approvalService = approvals ?? new ApprovalService(own!);
   // The get-stronger pack, three themed sessions a week (src/weeklyPlan.ts), in local
   // development and the demo too (story 116). The dev mock's copy lets the demo seed start the
   // themes on today (src/demo.ts); unseeded, it keeps the real Monday-first order.
+  const startedStore = !training && db ? new FirestoreStartedStore(db) : undefined;
   const ownPlan = training ? undefined : config.devMockIdentity ? new DemoWeeklyPlan() : new WeeklyPlan();
   const trainingService =
     training ??
@@ -160,16 +199,23 @@ export async function buildApp({
       approvals: approvalService,
       content: loadContent(config.contentRoot || undefined),
       plan: ownPlan!,
+      // Story 118: a session started before a restart is still started after it.
+      started: startedStore,
     });
+  if (!training) await trainingService.loadStarted();
   // The app's own in-memory store for the training days, kept by name for the demo seed.
   const ownScheduleStore =
     !schedule && !scheduleStore && config.scheduleStore !== 'firestore' ? new MemoryScheduleStore() : undefined;
+  const usedScheduleStore: ScheduleStore | undefined =
+    schedule || !(trainingService.plan instanceof WeeklyPlan)
+      ? undefined
+      : (scheduleStore ?? ownScheduleStore ?? (db ? new FirestoreScheduleStore(db) : new MemoryScheduleStore()));
   // The parent sets the training days in the app, when the plan is the weekly pack.
   const scheduleService =
     schedule ??
-    (trainingService.plan instanceof WeeklyPlan
+    (trainingService.plan instanceof WeeklyPlan && usedScheduleStore
       ? new ScheduleService({
-          store: scheduleStore ?? ownScheduleStore ?? (await defaultScheduleStore(config)),
+          store: usedScheduleStore,
           plan: trainingService.plan,
           audit: approvalService.audit,
           content: () => trainingService.library,
@@ -237,15 +283,27 @@ export async function buildApp({
     started: async (request) => trainingService.hasStarted(request),
   });
 
-  const ownPain = pain ? undefined : new MemoryPainStore();
+  const ownPain: PainStore | undefined = pain ? undefined : db ? new FirestorePainStore(db) : new MemoryPainStore();
   const painService =
     pain ?? new PainService({ store: ownPain!, audit: approvalService.audit, notifier: approvalService.notifier });
+  if (db && own) {
+    // The in-app inbox and badge are in memory: after a restart they count again what the
+    // household's stores hold, so a waiting request or an open pause is never silent.
+    for (const r of await approvalService.pending()) {
+      await approvalService.notifier.notify({ to: 'parent', ref: r.id, title: r.content.title });
+    }
+    await painService.renotify();
+  }
   registerPainRoutes(app, { pain: painService, roles: roleStore });
 
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused() });
   if (scheduleService) registerScheduleRoutes(app, { schedule: scheduleService, roles: roleStore });
 
-  const ownProgress = progress ? undefined : new MemoryProgressStore();
+  const ownProgress: ProgressStore | undefined = progress
+    ? undefined
+    : db
+      ? new FirestoreProgressStore(db)
+      : new MemoryProgressStore();
   const progressService =
     progress ??
     new ProgressService({
@@ -257,20 +315,33 @@ export async function buildApp({
   registerProgressRoutes(app, { progress: progressService, roles: roleStore });
 
   const historyService =
-    history ?? new HistoryService({ store: historyStore ?? (await defaultHistoryStore(config)), training: trainingService });
+    history ??
+    new HistoryService({
+      store: historyStore ?? (db ? new FirestoreHistoryStore(db) : new MemoryHistoryStore()),
+      training: trainingService,
+    });
   registerHistoryRoutes(app, { history: historyService, roles: roleStore });
+
+  // Every store the app made or was given that can delete its part of the household.
+  const parts: HouseholdPart[] = [];
+  for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store]) {
+    if (isPart(p)) parts.push(p);
+  }
+  const household = new Household(parts);
+  app.decorate('household', household);
 
   // The demo household (src/demo.ts): only on the app's own in-memory stores, with the mock on.
   const demo: DemoTarget | undefined =
     config.devMockIdentity &&
     own &&
+    own.store instanceof MemoryApprovalStore &&
     own.audit instanceof DemoAuditLog &&
     ownRoles &&
     ownPlan instanceof DemoWeeklyPlan &&
     scheduleService &&
     ownScheduleStore &&
-    ownPain &&
-    ownProgress
+    ownPain instanceof MemoryPainStore &&
+    ownProgress instanceof MemoryProgressStore
       ? {
           production: config.production,
           devMockIdentity: config.devMockIdentity,
@@ -300,8 +371,9 @@ export async function buildApp({
       try {
         const today = localDate();
         await resetDemoHousehold(target, today);
-        // The household's session history goes with it (story 113).
-        await historyService.deleteHousehold();
+        // The household's session history goes with it (story 113), and every other store
+        // that can delete its part (story 118).
+        await household.deleteAll();
         req.log.info('demo household reset');
         return { ok: true, date: today };
       } catch (e) {

@@ -16,6 +16,7 @@ import {
   type ProposeInput,
 } from '../src/approvals.js';
 import { InAppNotifier, type Notifier } from '../src/notifier.js';
+import { FakeFirestore } from './fakeFirestore.js';
 
 // Fixtures: the invented cast and invented training content only.
 const AUDIENCE = '/test/audience/goalie-goals';
@@ -242,10 +243,15 @@ describe('in-app notifier, the mock for push (AC4)', () => {
   });
 });
 
+// Story 118 wired the Firestore adapters; test/persistence.test.ts covers them in full.
 describe('Firestore adapters', () => {
-  it('are stubs that refuse to run until wired', async () => {
-    await expect(new FirestoreApprovalStore().list()).rejects.toThrow(/not wired/);
-    await expect(new FirestoreAuditLog().list()).rejects.toThrow(/not wired/);
+  it('run the same request lifecycle as the in-memory store', async () => {
+    const db = new FakeFirestore();
+    const s = new ApprovalService({ store: new FirestoreApprovalStore(db), audit: new FirestoreAuditLog(db), notifier: new InAppNotifier() });
+    const r = await s.propose(PLAN);
+    await s.approve(r.id, { account: SAM, role: 'parent' });
+    expect(await s.isApproved(r.itemId, r.itemVersion)).toBe(true);
+    expect((await s.audit.list()).map((e) => e.action)).toEqual(['requested', 'approved']);
   });
 });
 

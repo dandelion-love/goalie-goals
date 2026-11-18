@@ -1,10 +1,12 @@
 // Recording finished sessions and reading XP and streaks. The rules are the pure functions in
 // progression.ts; this service only gathers their inputs. Records sit behind `ProgressStore`
-// with an in-memory implementation, as approvals do; a later story persists them.
+// with an in-memory implementation for tests and the demo, and in the household's Firestore
+// data in production (story 118).
 
 import { randomUUID } from 'node:crypto';
-import type { Role } from './roles.js';
-import type { TrainingPlan } from './training.js';
+import { asDate, asObject, createOrdered, deleteCollection, seqOf, type FsDb } from './firestoreDb.js';
+import { isRole, type Role } from './roles.js';
+import { DATE_RE, type TrainingPlan } from './training.js';
 import {
   NO_CREDIT,
   PEOPLE,
@@ -60,6 +62,73 @@ export class MemoryProgressStore implements ProgressStore {
   /** Dev-only demo reset (src/demo.ts). */
   clear(): void {
     this.records.length = 0;
+  }
+}
+
+/** Day results in Firestore (story 118): `progressRecords/{id}`, one per finished session. */
+export const PROGRESS_COLLECTION = 'progressRecords';
+
+const RECORD_OUTCOMES: readonly Outcome[] = ['done', 'stopped', 'hurt'];
+const CREDIT_KEYS = ['session', 'stars', 'form', 'total'] as const;
+
+/** A stored document back to a record; null (left out) when it is not well formed. */
+export function readSessionRecord(id: string, value: unknown): SessionRecord | null {
+  const r = asObject(value);
+  const credit = asObject(r?.credit);
+  if (!r || !credit) return null;
+  const outcome = RECORD_OUTCOMES.find((o) => o === r.outcome);
+  const at = asDate(r.at);
+  const recordedBy = isRole(r.recordedBy) ? r.recordedBy : null;
+  if (!outcome || !at || !recordedBy || typeof r.date !== 'string' || !DATE_RE.test(r.date)) return null;
+  if (typeof r.itemId !== 'string' || typeof r.itemVersion !== 'string' || typeof r.warmUpLogged !== 'boolean') return null;
+  if (typeof r.praisedSets !== 'number' || typeof r.plannedSets !== 'number' || !Array.isArray(r.present)) return null;
+  if (!CREDIT_KEYS.every((k) => typeof credit[k] === 'number')) return null;
+  const present = PEOPLE.filter((p) => (r.present as unknown[]).includes(p));
+  return {
+    id,
+    date: r.date,
+    itemId: r.itemId,
+    itemVersion: r.itemVersion,
+    outcome,
+    warmUpLogged: r.warmUpLogged,
+    praisedSets: r.praisedSets,
+    plannedSets: r.plannedSets,
+    present,
+    recordedBy,
+    at,
+    credit: { session: credit.session as number, stars: credit.stars as number, form: credit.form as number, total: credit.total as number },
+  };
+}
+
+/**
+ * Day results in Firestore, one document per record keyed by its id, created once in a
+ * transaction: a finish resent from the device's outbox is kept once, even across writers. They
+ * list in the order they were recorded (src/firestoreDb.ts).
+ */
+export class FirestoreProgressStore implements ProgressStore {
+  constructor(
+    private readonly db: FsDb,
+    private readonly collection = PROGRESS_COLLECTION,
+  ) {}
+
+  async add(record: SessionRecord): Promise<void> {
+    const { id, ...data } = structuredClone(record);
+    // A resend racing the first finds it there; the first one stands.
+    await createOrdered(this.db, this.collection, id, { ...data, at: new Date(record.at) });
+  }
+
+  async list(): Promise<SessionRecord[]> {
+    const snap = await this.db.collection(this.collection).get();
+    return snap.docs
+      .map((d) => ({ seq: seqOf(d.data()), r: readSessionRecord(d.id, d.data()) }))
+      .filter((x): x is { seq: number; r: SessionRecord } => x.r !== null)
+      .sort((a, b) => a.seq - b.seq || a.r.at.getTime() - b.r.at.getTime())
+      .map((x) => x.r);
+  }
+
+  /** Delete every record with the household. */
+  async deleteAll(): Promise<void> {
+    await deleteCollection(this.db, this.collection);
   }
 }
 

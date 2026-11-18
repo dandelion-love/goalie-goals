@@ -1,11 +1,12 @@
 // Parent approval: requests, approvals bound to one version of one item, and the audit log.
 // Per the parent-approval Decision: silence is never consent, a request lapses after 7 days,
-// and only a parent can approve. Nothing here talks to the network; the store and the audit
-// log sit behind interfaces so a Firestore adapter can replace the in-memory ones.
+// and only a parent can approve. The store and the audit log sit behind interfaces: in memory
+// for tests and the demo, in the household's Firestore data in production (story 118).
 
 import { createHash, randomUUID } from 'node:crypto';
+import { asDate, asObject, createOrdered, deleteCollection, seqOf, type FsDb, type FsDocSnap } from './firestoreDb.js';
 import type { Notifier } from './notifier.js';
-import type { Role } from './roles.js';
+import { isRole, type Role } from './roles.js';
 
 export type RequestKind = 'plan' | 'exercise' | 'harder_version';
 export type RequestState = 'pending' | 'approved' | 'declined' | 'expired';
@@ -231,40 +232,208 @@ export class MemoryAuditLog implements AuditLog {
 }
 
 /**
- * Firestore adapters: stubs behind the same interfaces, not wired in yet. A later story maps
- * requests to `approvalRequests/{id}` and the audit log to `auditEvents/{id}` (create-only
- * security rules, so the database refuses updates and deletes too).
+ * Firestore adapters (story 118): requests are `approvalRequests/{id}` and the audit log is
+ * `auditEvents/{id}`, each with a sequence number so they list in the order they were written.
+ * Only the server reaches them (src/firestoreDb.ts).
  */
+export const APPROVALS_COLLECTION = 'approvalRequests';
+export const AUDIT_COLLECTION = 'auditEvents';
+
+const REQUEST_STATES: readonly RequestState[] = ['pending', 'approved', 'declined', 'expired'];
+
+function readRequest(id: string, value: unknown): ApprovalRequest | null {
+  const r = asObject(value);
+  const content = asObject(r?.content);
+  if (!r || !content || typeof content.title !== 'string' || typeof content.detail !== 'string') return null;
+  const kind = REQUEST_KINDS.find((k) => k === r.kind);
+  const state = REQUEST_STATES.find((k) => k === r.state);
+  const createdAt = asDate(r.createdAt);
+  const decidedAt = r.decidedAt === null ? null : asDate(r.decidedAt);
+  if (!kind || !state || !createdAt || (r.decidedAt !== null && !decidedAt)) return null;
+  if (typeof r.itemId !== 'string' || typeof r.itemVersion !== 'string') return null;
+  return {
+    id,
+    kind,
+    itemId: r.itemId,
+    itemVersion: r.itemVersion,
+    content: { title: content.title, detail: content.detail },
+    state,
+    createdAt,
+    decidedAt,
+    decidedBy: typeof r.decidedBy === 'string' ? r.decidedBy : null,
+    reason: typeof r.reason === 'string' ? r.reason : null,
+  };
+}
+
+function requestData(r: ApprovalRequest): Record<string, unknown> {
+  return {
+    kind: r.kind,
+    itemId: r.itemId,
+    itemVersion: r.itemVersion,
+    // The words the parent approves only; the binding is hashed into the version, never stored.
+    content: { title: r.content.title, detail: r.content.detail },
+    state: r.state,
+    createdAt: new Date(r.createdAt),
+    decidedAt: r.decidedAt ? new Date(r.decidedAt) : null,
+    decidedBy: r.decidedBy,
+    reason: r.reason,
+  };
+}
+
+/** Well-formed requests from a listing, in the order they were made. */
+function readRequests(docs: FsDocSnap[]): ApprovalRequest[] {
+  return docs
+    .map((d) => ({ seq: seqOf(d.data()), r: readRequest(d.id, d.data()) }))
+    .filter((x): x is { seq: number; r: ApprovalRequest } => x.r !== null)
+    .sort((a, b) => a.r.createdAt.getTime() - b.r.createdAt.getTime() || a.seq - b.seq)
+    .map((x) => x.r);
+}
+
 export class FirestoreApprovalStore implements ApprovalStore {
-  private notWired(): never {
-    throw new Error('FirestoreApprovalStore is not wired yet; use MemoryApprovalStore.');
+  constructor(
+    private readonly db: FsDb,
+    private readonly collection = APPROVALS_COLLECTION,
+  ) {}
+
+  async create(request: ApprovalRequest): Promise<void> {
+    if (!(await createOrdered(this.db, this.collection, request.id, requestData(request)))) {
+      throw new Error('Request id already exists.');
+    }
   }
-  async create(): Promise<void> {
-    this.notWired();
+
+  async get(id: string): Promise<ApprovalRequest | null> {
+    const snap = await this.db.collection(this.collection).doc(id).get();
+    return snap.exists ? readRequest(id, snap.data()) : null;
   }
-  async get(): Promise<ApprovalRequest | null> {
-    this.notWired();
+
+  async list(filter: { state?: RequestState } = {}): Promise<ApprovalRequest[]> {
+    const all = this.db.collection(this.collection);
+    const snap = await (filter.state ? all.where('state', '==', filter.state) : all).get();
+    return readRequests(snap.docs).filter((r) => !filter.state || r.state === filter.state);
   }
-  async list(): Promise<ApprovalRequest[]> {
-    this.notWired();
+
+  /** A transaction, so two answers to one request never both land: a final state is final. */
+  async decide(id: string, decision: Decision): Promise<ApprovalRequest | null> {
+    return this.change(id, 'pending', (r) => ({
+      ...r,
+      state: decision.state,
+      decidedAt: new Date(decision.decidedAt),
+      decidedBy: decision.decidedBy,
+      reason: decision.reason,
+    }));
   }
-  async decide(): Promise<ApprovalRequest | null> {
-    this.notWired();
+
+  async approvedVersion(itemId: string, version: string): Promise<ApprovalRequest | null> {
+    const snap = await this.db
+      .collection(this.collection)
+      .where('state', '==', 'approved')
+      .where('itemId', '==', itemId)
+      .where('itemVersion', '==', version)
+      .get();
+    return (
+      readRequests(snap.docs).find((r) => r.state === 'approved' && r.itemId === itemId && r.itemVersion === version) ??
+      null
+    );
   }
-  async approvedVersion(): Promise<ApprovalRequest | null> {
-    this.notWired();
+
+  async reopen(id: string): Promise<ApprovalRequest | null> {
+    return this.change(id, 'approved', (r) => ({ ...r, state: 'pending', decidedAt: null, decidedBy: null, reason: null }));
   }
-  async reopen(): Promise<ApprovalRequest | null> {
-    this.notWired();
+
+  /** Delete every request: the household is deleted. `ApprovalStore` itself has no delete. */
+  async deleteAll(): Promise<void> {
+    await deleteCollection(this.db, this.collection);
+  }
+
+  private async change(
+    id: string,
+    from: RequestState,
+    next: (r: ApprovalRequest) => ApprovalRequest,
+  ): Promise<ApprovalRequest | null> {
+    const ref = this.db.collection(this.collection).doc(id);
+    return this.db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.exists ? snap.data() : undefined;
+      const r = data ? readRequest(id, data) : null;
+      if (!r || r.state !== from) return null;
+      const done = next(r);
+      tx.set(ref, { ...requestData(done), seq: seqOf(data) });
+      return copy(done);
+    });
   }
 }
 
+const AUDIT_ACTIONS: readonly AuditAction[] = [
+  'requested',
+  'approved',
+  'declined',
+  'expired',
+  'refused',
+  'paused',
+  'cleared',
+  'marked',
+  'changed',
+  'undone',
+  'started',
+];
+const AUDIT_KINDS: readonly AuditEvent['kind'][] = [...REQUEST_KINDS, 'pause', 'schedule'];
+const AUDIT_TEXT = ['actor', 'requestId', 'itemId', 'itemVersion', 'title'] as const;
+
+function readEvent(id: string, value: unknown): AuditEvent | null {
+  const e = asObject(value);
+  if (!e) return null;
+  const action = AUDIT_ACTIONS.find((a) => a === e.action);
+  const kind = AUDIT_KINDS.find((k) => k === e.kind);
+  const actorRole = e.actorRole === 'system' ? 'system' : isRole(e.actorRole) ? e.actorRole : null;
+  const at = asDate(e.at);
+  if (!action || !kind || !actorRole || !at) return null;
+  if (!AUDIT_TEXT.every((f) => typeof e[f] === 'string')) return null;
+  return Object.freeze({
+    id,
+    at,
+    action,
+    actorRole,
+    actor: e.actor as string,
+    requestId: e.requestId as string,
+    kind,
+    itemId: e.itemId as string,
+    itemVersion: e.itemVersion as string,
+    title: e.title as string,
+    reason: typeof e.reason === 'string' ? e.reason : null,
+  });
+}
+
+/**
+ * The audit log in Firestore: append-only, one document per event, created once and never
+ * written again. The interface has no update and no delete; only `deleteAll`, when the household
+ * itself is deleted, removes the log, and always the whole of it.
+ */
 export class FirestoreAuditLog implements AuditLog {
-  async append(): Promise<AuditEvent> {
-    throw new Error('FirestoreAuditLog is not wired yet; use MemoryAuditLog.');
+  constructor(
+    private readonly db: FsDb,
+    private readonly collection = AUDIT_COLLECTION,
+  ) {}
+
+  async append(event: Omit<AuditEvent, 'id'>): Promise<AuditEvent> {
+    const id = randomUUID();
+    const data = { ...event, at: new Date(event.at) };
+    if (!(await createOrdered(this.db, this.collection, id, data))) throw new Error('Audit event id already exists.');
+    return Object.freeze({ ...data, id });
   }
+
   async list(): Promise<readonly AuditEvent[]> {
-    throw new Error('FirestoreAuditLog is not wired yet; use MemoryAuditLog.');
+    const snap = await this.db.collection(this.collection).get();
+    const events = snap.docs
+      .map((d) => ({ seq: seqOf(d.data()), e: readEvent(d.id, d.data()) }))
+      .filter((x): x is { seq: number; e: AuditEvent } => x.e !== null)
+      .sort((a, b) => a.seq - b.seq || a.e.at.getTime() - b.e.at.getTime())
+      .map((x) => x.e);
+    return Object.freeze(events);
+  }
+
+  /** Delete the whole log with the household; never a single event. */
+  async deleteAll(): Promise<void> {
+    await deleteCollection(this.db, this.collection);
   }
 }
 

@@ -13,8 +13,10 @@ export interface Config {
   /** Which role store to use. Only `memory` is wired in the walking skeleton. */
   roleStore: 'memory';
   /**
-   * Where the parent's training days live: `firestore` (the default with NODE_ENV=production)
-   * or `memory` (the default otherwise: tests and the demo). Unset means memory.
+   * Where the household's data lives (training days, history, and since story 118 approvals,
+   * the audit log, progress, pain pauses and the started marker): `firestore` (the default
+   * with NODE_ENV=production) or `memory` (the default otherwise: tests and the demo). Unset
+   * means memory.
    */
   scheduleStore?: 'memory' | 'firestore';
   /**
@@ -68,7 +70,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new ConfigError('SCHEDULE_STORE must be memory or firestore.');
   }
   if (scheduleStore === 'memory' && production) {
-    throw new ConfigError('SCHEDULE_STORE=memory is set while NODE_ENV=production: the training days would not survive a restart.');
+    throw new ConfigError('SCHEDULE_STORE=memory is set while NODE_ENV=production: the household data would not survive a restart.');
   }
   const port = Number(env.PORT ?? 8080);
   if (!Number.isInteger(port) || port <= 0) {
