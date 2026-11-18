@@ -8,13 +8,24 @@ import {
   type TrainingDays as Days,
   type Weekday,
 } from './schedule';
+import { Skeleton, useSettled } from './Loading';
 
 /**
  * Parent home only: pick the three training days. The themes move with the days; the server
  * refuses back-to-back days and says why. Shows nothing where the plan has no such setting.
  */
-export function TrainingDays({ fetchImpl, onChange }: { fetchImpl?: typeof fetch; onChange?: () => void }) {
+export function TrainingDays({
+  fetchImpl,
+  onChange,
+  onSettled,
+}: {
+  fetchImpl?: typeof fetch;
+  onChange?: () => void;
+  onSettled?: () => void;
+}) {
   const [saved, setSaved] = useState<Days | null>(null);
+  const [load, setLoad] = useState<'loading' | 'ready' | 'none'>('loading');
+  useSettled(load !== 'loading', onSettled);
   const [chosen, setChosen] = useState<Weekday[]>([]);
   const [message, setMessage] = useState<{ kind: 'alert' | 'status'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -26,13 +37,23 @@ export function TrainingDays({ fetchImpl, onChange }: { fetchImpl?: typeof fetch
         if (!live) return;
         setSaved(d);
         setChosen(d.days);
+        setLoad('ready');
       })
-      .catch(() => {});
+      .catch(() => live && setLoad('none'));
     return () => {
       live = false;
     };
   }, [fetchImpl]);
 
+  // While loading, the card holds its place: the heading, the week of toggles, the themes.
+  if (load === 'loading') {
+    return (
+      <article className="card" aria-labelledby="training-days-title" aria-busy="true">
+        <h2 id="training-days-title">Training days</h2>
+        <Skeleton lines={6} className="skeleton-days" />
+      </article>
+    );
+  }
   if (!saved) return null;
 
   const toggle = (day: Weekday) => {

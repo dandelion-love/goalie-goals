@@ -89,6 +89,30 @@ export async function fetchToday(fetchImpl: typeof fetch = fetch, now: Date = ne
   };
 }
 
+/**
+ * Tell the server the keeper started this session, so its approval can no longer be undone.
+ * `refused`: the version is no longer approved (the parent just undid it). Offline or any other
+ * answer: `unknown`, and the session runs from the device as approved when it was loaded.
+ */
+export async function markStarted(
+  session: Pick<Session, 'itemId' | 'itemVersion'>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<'ok' | 'refused' | 'unknown'> {
+  try {
+    const res = await fetchImpl('/api/training/started', {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: session.itemId, itemVersion: session.itemVersion }),
+    });
+    if (res.ok) return 'ok';
+    return res.status === 409 ? 'refused' : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 /** What a finished session hands on: XP and streaks are recorded from here (progress.ts). */
 export interface SessionResult {
   itemId: string;

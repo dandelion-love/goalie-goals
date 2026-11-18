@@ -138,9 +138,12 @@ approved sessions. If training is paused for pain, the fallback is rest only.
 
 - An append-only event log in the document database: event id, time, actor role and
   internal account reference, action (requested, approved, approved lower, declined,
-  expired, paused, cleared, role granted, role removed, refused by server), item reference
+  expired, paused, cleared, approval undone, role granted, role removed, refused by server), item reference
   and content hash, before-and-after diff, reason.
 - No event is edited or deleted; a correction is a new event.
+- A parent may undo an approval for 30 seconds (`UNDO_WINDOW_MS`), unless the keeper has
+  already started that session; the request goes back to the inbox and the undo is its own
+  event.
 - Parent and keeper both see the full history, so oversight is visible to the
   keeper.[^baseline][^ico-aadc][^opc-youth]
 - The log keeps only what the decision needs, is kept while the account is used, and is

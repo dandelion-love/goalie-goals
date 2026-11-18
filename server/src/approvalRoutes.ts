@@ -29,6 +29,8 @@ export interface ClientRequest {
 
 export interface ClientAuditEvent {
   id: string;
+  /** The request (or pain report) the event is about. */
+  requestId: string;
   at: string;
   action: AuditEvent['action'];
   actorRole: AuditEvent['actorRole'];
@@ -37,6 +39,11 @@ export interface ClientAuditEvent {
   itemVersion: string;
   title: string;
   reason: string | null;
+  /**
+   * On an approval the parent may still undo: milliseconds left in the undo window, as of this
+   * response. 0 everywhere else, and always 0 for the keeper.
+   */
+  undoForMs: number;
 }
 
 function toClient(r: ApprovalRequest, service: ApprovalService): ClientRequest {
@@ -55,9 +62,10 @@ function toClient(r: ApprovalRequest, service: ApprovalService): ClientRequest {
 }
 
 /** Accounts stay on the server: clients see the actor's role only. */
-function toClientEvent(e: AuditEvent): ClientAuditEvent {
+function toClientEvent(e: AuditEvent, undoForMs = 0): ClientAuditEvent {
   return {
     id: e.id,
+    requestId: e.requestId,
     at: e.at.toISOString(),
     action: e.action,
     actorRole: e.actorRole,
@@ -66,6 +74,7 @@ function toClientEvent(e: AuditEvent): ClientAuditEvent {
     itemVersion: e.itemVersion,
     title: e.title,
     reason: e.reason,
+    undoForMs,
   };
 }
 
@@ -74,11 +83,24 @@ const STATUS: Record<ApprovalError['code'], number> = {
   not_found: 404,
   not_pending: 409,
   invalid: 400,
+  too_late: 409,
+  started: 409,
 };
 
 export function registerApprovalRoutes(
   app: FastifyInstance,
-  { service, roles, badge }: { service: ApprovalService; roles: RoleStore; badge?: BadgeSource },
+  {
+    service,
+    roles,
+    badge,
+    started = async () => false,
+  }: {
+    service: ApprovalService;
+    roles: RoleStore;
+    badge?: BadgeSource;
+    /** Whether the keeper has started a session that uses this approved version. */
+    started?: (request: ApprovalRequest) => Promise<boolean>;
+  },
 ): void {
   /** The caller's role if it is one of `allowed`; otherwise a 403 has been sent. */
   async function requireRole(req: FastifyRequest, reply: FastifyReply, allowed: Role[]): Promise<Role | null> {
@@ -106,7 +128,7 @@ export function registerApprovalRoutes(
         verb === 'approve'
           ? await service.approve(req.params.id, actor)
           : await service.decline(req.params.id, actor, reason);
-      return { request: toClient(done, service) };
+      return { request: toClient(done, service), undoForMs: service.undoForMs(done) };
     } catch (e) {
       if (e instanceof ApprovalError) return reply.code(STATUS[e.code]).send({ error: e.code });
       throw e;
@@ -130,6 +152,20 @@ export function registerApprovalRoutes(
     async (req, reply) => answer(req, reply, 'decline'),
   );
 
+  // Undo an approval within the window, unless the keeper has started that session. Both
+  // roles reach the service so a keeper's attempt is refused there and logged.
+  app.post<{ Params: { id: string } }>('/api/approvals/:id/undo', async (req, reply) => {
+    const role = await requireRole(req, reply, ['parent', 'keeper']);
+    if (!role) return reply;
+    try {
+      const reopened = await service.undoApproval(req.params.id, { account: req.identity!.account, role }, started);
+      return { request: toClient(reopened, service) };
+    } catch (e) {
+      if (e instanceof ApprovalError) return reply.code(STATUS[e.code]).send({ error: e.code });
+      throw e;
+    }
+  });
+
   // What the keeper may train with: approved versions only. `waiting` says how many changes
   // wait for the parent, without showing them.
   app.get('/api/training/approved', async (req, reply) => {
@@ -151,10 +187,23 @@ export function registerApprovalRoutes(
 
   // The audit log: both roles read the full history. There is no route to change it.
   app.get('/api/audit', async (req, reply) => {
-    if (!(await requireRole(req, reply, ['keeper', 'parent']))) return reply;
+    const role = await requireRole(req, reply, ['keeper', 'parent']);
+    if (!role) return reply;
     await service.expireDue();
     const events = await service.audit.list();
-    return { events: events.map(toClientEvent) };
+    // The parent may undo an approval from its History entry: the approval that decided a
+    // request still approved and inside the window. Never offered to the keeper.
+    const undo = new Map<string, number>();
+    if (role === 'parent') {
+      const lastApproval = new Map<string, string>();
+      for (const e of events) if (e.action === 'approved') lastApproval.set(e.requestId, e.id);
+      for (const [requestId, eventId] of lastApproval) {
+        const r = await service.store.get(requestId);
+        const ms = r ? service.undoForMs(r) : 0;
+        if (ms > 0) undo.set(eventId, ms);
+      }
+    }
+    return { events: events.map((e) => toClientEvent(e, undo.get(e.id) ?? 0)) };
   });
 
   // The in-app badge, standing in for push notifications.

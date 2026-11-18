@@ -33,6 +33,23 @@ export function registerTrainingRoutes(
     return { ...today, paused: false };
   });
 
+  // The keeper starts a session. Recorded so an approval it uses can no longer be undone; a
+  // version that is no longer approved (the parent just undid it) is refused with 409.
+  app.post<{ Body: { itemId?: unknown; itemVersion?: unknown } | undefined }>(
+    '/api/training/started',
+    async (req, reply) => {
+      reply.header('cache-control', 'no-store');
+      if (!(await allowed(req.identity!.account))) return reply.code(403).send({ error: 'forbidden' });
+      const { itemId, itemVersion } = req.body ?? {};
+      if (typeof itemId !== 'string' || typeof itemVersion !== 'string') {
+        return reply.code(400).send({ error: 'invalid' });
+      }
+      if (await isPaused()) return reply.code(409).send({ error: 'paused' });
+      if (!(await training.markStarted(itemId, itemVersion))) return reply.code(409).send({ error: 'not_approved' });
+      return { ok: true };
+    },
+  );
+
   // The keeper's card library: the latest approved version of each card.
   app.get('/api/training/cards', async (req, reply) => {
     reply.header('cache-control', 'no-store');

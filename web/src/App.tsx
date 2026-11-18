@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchMe, reconnect, type MeResult } from './api';
+import { fetchMe, reconnect, type MeResult, type Role } from './api';
 import { useLayout, type Layout } from './layout';
 import { ApprovedTraining, History, ParentInbox } from './ApprovalScreens';
 import { TodayPanel } from './LessonPath';
@@ -9,10 +9,13 @@ import { PainReportForm, PausedPanel } from './PainScreens';
 import { TrainingDays } from './TrainingDays';
 import { fetchProgress, isDoneForToday, recordSession, type FinishProgress } from './progress';
 import { flushPause, LocalPauseStore, startPause, syncPause, type BodyArea, type LocalPause, type PauseStore } from './pain';
-import type { Session, SessionResult } from './training';
+import { markStarted, type Session, type SessionResult } from './training';
 import { createWakeLock, type WakeLockController } from './wakeLock';
+import { LocalOfflineStore, useOnline, type OfflineStore } from './offline';
+import { Reveal } from './Loading';
 
-type View = { kind: 'loading' } | MeResult;
+/** `offline`: the server could not be reached, so the home shows what this device has saved. */
+type View = { kind: 'loading' } | MeResult | { kind: 'offline'; role: Role };
 
 export interface AppProps {
   /** Injected in tests; the browser's fetch otherwise. */
@@ -26,22 +29,52 @@ export interface AppProps {
   pauseStore?: PauseStore;
   /** Injected in tests; the device clock otherwise. */
   now?: () => Date;
+  /** What the device keeps for an offline start (role, today's approved session); localStorage otherwise. */
+  offlineStore?: OfflineStore;
 }
 
-export function App({ fetchImpl, onReconnect = () => reconnect(), wakeLock, onSessionFinish, pauseStore, now }: AppProps) {
+export function App({
+  fetchImpl,
+  onReconnect = () => reconnect(),
+  wakeLock,
+  onSessionFinish,
+  pauseStore,
+  now,
+  offlineStore,
+}: AppProps) {
   const layout = useLayout();
   const wake = useMemo(() => wakeLock ?? createWakeLock(), [wakeLock]);
   const store = useMemo(() => pauseStore ?? new LocalPauseStore(), [pauseStore]);
+  const cache = useMemo(() => offlineStore ?? new LocalOfflineStore(), [offlineStore]);
   const [view, setView] = useState<View>({ kind: 'loading' });
+  const [epoch, setEpoch] = useState(0);
+  const online = useOnline();
 
   const load = useCallback(async () => {
-    setView({ kind: 'loading' });
-    setView(await fetchMe(fetchImpl));
-  }, [fetchImpl]);
+    setView((v) => (v.kind === 'offline' ? v : { kind: 'loading' }));
+    const me = await fetchMe(fetchImpl);
+    if (me.kind === 'signed-in') {
+      cache.writeRole(me.role);
+      // Panels already on screen (an offline start) load again; a session in progress stays.
+      setEpoch((n) => n + 1);
+    }
+    // Unreachable, but this device has been signed in before: open its home from what it saved.
+    const role = me.kind === 'error' ? cache.readRole() : null;
+    setView(role ? { kind: 'offline', role } : me);
+  }, [fetchImpl, cache]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Back online after an offline start: check the sign-in and load the home afresh.
+  useEffect(() => {
+    if (online && view.kind === 'offline') void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
+
+  const offline = view.kind === 'offline' || (!online && view.kind === 'signed-in');
+  const role = view.kind === 'offline' ? view.role : view.kind === 'signed-in' ? view.role : null;
 
   return (
     <div className="app" data-layout={layout}>
@@ -49,8 +82,9 @@ export function App({ fetchImpl, onReconnect = () => reconnect(), wakeLock, onSe
         <span className="brand">Goalie Goals</span>
       </header>
       <main className="app-main">
+        {offline && <OfflineNotice role={role} onRetry={load} />}
         <Screen
-          view={view}
+          view={view.kind === 'offline' ? { kind: 'signed-in', role: view.role } : view}
           layout={layout}
           fetchImpl={fetchImpl}
           onReconnect={onReconnect}
@@ -58,9 +92,27 @@ export function App({ fetchImpl, onReconnect = () => reconnect(), wakeLock, onSe
           wakeLock={wake}
           onSessionFinish={onSessionFinish}
           pauseStore={store}
+          offlineStore={cache}
+          epoch={epoch}
           now={now}
         />
       </main>
+    </div>
+  );
+}
+
+/** Shown while the app runs from the device: what still works, and a way to check again. */
+function OfflineNotice({ role, onRetry }: { role: Role | null; onRetry: () => void }) {
+  return (
+    <div className="offline-notice" role="status">
+      <p>
+        {role === 'parent'
+          ? "You're offline. Approvals need a connection."
+          : "You're offline. Today's session and the pause still work on this device."}
+      </p>
+      <button type="button" className="secondary" onClick={onRetry}>
+        Retry
+      </button>
     </div>
   );
 }
@@ -74,6 +126,8 @@ function Screen({
   wakeLock,
   onSessionFinish,
   pauseStore,
+  offlineStore,
+  epoch,
   now,
 }: {
   view: View;
@@ -84,9 +138,13 @@ function Screen({
   wakeLock: WakeLockController;
   onSessionFinish?: (result: SessionResult) => void;
   pauseStore: PauseStore;
+  offlineStore: OfflineStore;
+  epoch: number;
   now?: () => Date;
 }) {
   switch (view.kind) {
+    case 'offline':
+      return null;
     case 'loading':
       return <p className="status" role="status">Loading…</p>;
     case 'expired':
@@ -108,7 +166,7 @@ function Screen({
             <h1 id="error-title">Can't reach the app</h1>
             <p>Check the connection and try again.</p>
             <button type="button" className="primary" onClick={onRetry}>
-              Try again
+              Retry
             </button>
           </section>
         </>
@@ -121,10 +179,12 @@ function Screen({
             wakeLock={wakeLock}
             onSessionFinish={onSessionFinish}
             pauseStore={pauseStore}
+            offlineStore={offlineStore}
+            epoch={epoch}
             now={now}
           />
         );
-      if (view.role === 'parent') return <ParentHome layout={layout} fetchImpl={fetchImpl} />;
+      if (view.role === 'parent') return <ParentHome layout={layout} fetchImpl={fetchImpl} epoch={epoch} />;
       return <NotSetUp />;
   }
 }
@@ -188,6 +248,8 @@ function KeeperHome({
   wakeLock,
   onSessionFinish,
   pauseStore,
+  offlineStore,
+  epoch = 0,
   now = () => new Date(),
 }: {
   layout: Layout;
@@ -195,6 +257,9 @@ function KeeperHome({
   wakeLock: WakeLockController;
   onSessionFinish?: (result: SessionResult) => void;
   pauseStore: PauseStore;
+  offlineStore?: OfflineStore;
+  /** Changes when the app reconnects: every panel loads again. */
+  epoch?: number;
   now?: () => Date;
 }) {
   const [playing, setPlaying] = useState<Session | null>(null);
@@ -203,8 +268,14 @@ function KeeperHome({
   const [progress, setProgress] = useState<FinishProgress | 'saving' | 'unsaved' | null>(null);
   const [recorded, setRecorded] = useState(0);
   const [reporting, setReporting] = useState(false);
+  const [changed, setChanged] = useState(0);
+  const [settled, setSettled] = useState({ today: false, progress: false, training: false });
   const { pause, start, send, flush, sent } = usePause(pauseStore, fetchImpl);
   const doneToday = finishedHere || recordedToday;
+  const settle = useCallback((panel: keyof typeof settled) => () => setSettled((s) => ({ ...s, [panel]: true })), []);
+  const onToday = useMemo(() => settle('today'), [settle]);
+  const onProgress = useMemo(() => settle('progress'), [settle]);
+  const onTraining = useMemo(() => settle('training'), [settle]);
 
   // A session already recorded today (on this device or another, before a reload) means
   // today is done: the home offers nothing more to train until tomorrow.
@@ -217,7 +288,7 @@ function KeeperHome({
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchImpl, recorded]);
+  }, [fetchImpl, recorded, epoch]);
 
   const finish = useCallback(
     (result: SessionResult) => {
@@ -254,8 +325,23 @@ function KeeperHome({
 
   // Paused: show the pause, and offer nothing to train.
   const tryStart = (session: Session) => {
-    if (!pauseStore.read()) setPlaying(session);
+    if (pauseStore.read()) return;
+    setPlaying(session);
+    // Tell the server, so the parent can no longer undo this approval. If the parent undid it
+    // a moment ago, the server refuses: the session closes before the first set and today
+    // loads again. Offline, the session runs as approved when it was loaded.
+    void markStarted(session, fetchImpl).then((answer) => {
+      if (answer !== 'refused') return;
+      setPlaying((p) => (p === session ? null : p));
+      setChanged((n) => n + 1);
+    });
   };
+
+  // Each panel shows once every panel above it has settled, so nothing on screen moves as
+  // the home fills in (story #80 AC1).
+  const todaySettled = !!pause || settled.today;
+  const progressSettled = todaySettled && settled.progress;
+  const trainingSettled = progressSettled && (!!pause || settled.training);
 
   return (
     <section className="home" aria-labelledby="home-title">
@@ -281,28 +367,67 @@ function KeeperHome({
           <PainReportForm onSend={send} />
         </article>
       )}
-      {pause ? <PausedPanel /> : <TodayPanel fetchImpl={fetchImpl} onStart={tryStart} doneToday={doneToday} />}
-      <ProgressPanel fetchImpl={fetchImpl} refresh={recorded} />
-      <div className={layout === 'expanded' ? 'panes' : 'stack'}>
-        {!pause && <ApprovedTraining fetchImpl={fetchImpl} />}
-        <History fetchImpl={fetchImpl} refresh={recorded + sent} />
-      </div>
+      {changed > 0 && !pause && (
+        <p className="meta" role="status">
+          Today's session changed. Check it again.
+        </p>
+      )}
+      {pause ? (
+        <PausedPanel />
+      ) : (
+        <TodayPanel
+          fetchImpl={fetchImpl}
+          onStart={tryStart}
+          doneToday={doneToday}
+          cache={offlineStore}
+          refresh={changed + epoch}
+          onSettled={onToday}
+          now={now}
+        />
+      )}
+      <Reveal open={todaySettled}>
+        <ProgressPanel fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onProgress} />
+      </Reveal>
+      <Reveal open={progressSettled}>
+        <div className={layout === 'expanded' ? 'panes' : 'stack'}>
+          {!pause && <ApprovedTraining fetchImpl={fetchImpl} refresh={changed + epoch} onSettled={onTraining} />}
+          <Reveal open={trainingSettled}>
+            <History fetchImpl={fetchImpl} refresh={recorded + sent + epoch} />
+          </Reveal>
+        </div>
+      </Reveal>
     </section>
   );
 }
 
-function ParentHome({ layout, fetchImpl }: { layout: Layout; fetchImpl?: typeof fetch }) {
-  // Answering a request adds to the history, so the history reloads after each answer.
+function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl?: typeof fetch; epoch?: number }) {
+  // Answering a request, or undoing an approval, adds to the history and changes the inbox,
+  // so both reload after each.
   const [answered, setAnswered] = useState(0);
+  const [settled, setSettled] = useState({ progress: false, days: false, inbox: false });
+  const onProgress = useCallback(() => setSettled((s) => ({ ...s, progress: true })), []);
+  const onDays = useCallback(() => setSettled((s) => ({ ...s, days: true })), []);
+  const onInbox = useCallback(() => setSettled((s) => ({ ...s, inbox: true })), []);
+  const changed = useCallback(() => setAnswered((n) => n + 1), []);
+  // Each panel shows once every panel above it has settled (story #80 AC1).
+  const daysOpen = settled.progress;
+  const inboxOpen = daysOpen && settled.days;
+  const historyOpen = inboxOpen && settled.inbox;
   return (
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Parent home</h1>
-      <ProgressPanel fetchImpl={fetchImpl} refresh={answered} />
-      <TrainingDays fetchImpl={fetchImpl} onChange={() => setAnswered((n) => n + 1)} />
-      <div className={layout === 'expanded' ? 'panes' : 'stack'}>
-        <ParentInbox fetchImpl={fetchImpl} onChange={() => setAnswered((n) => n + 1)} />
-        <History fetchImpl={fetchImpl} refresh={answered} />
-      </div>
+      <ProgressPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onProgress} />
+      <Reveal open={daysOpen}>
+        <TrainingDays fetchImpl={fetchImpl} onChange={changed} onSettled={onDays} />
+      </Reveal>
+      <Reveal open={inboxOpen}>
+        <div className={layout === 'expanded' ? 'panes' : 'stack'}>
+          <ParentInbox fetchImpl={fetchImpl} onChange={changed} refresh={answered + epoch} onSettled={onInbox} />
+          <Reveal open={historyOpen}>
+            <History fetchImpl={fetchImpl} refresh={answered + epoch} onChange={changed} />
+          </Reveal>
+        </div>
+      </Reveal>
     </section>
   );
 }

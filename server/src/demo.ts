@@ -189,5 +189,6 @@ export async function resetDemoHousehold(target: DemoTarget, today: string = loc
   target.notifier.clear();
   target.progressStore.clear();
   target.pain.clear();
+  target.training.clearStarted();
   await populate(target, today);
 }

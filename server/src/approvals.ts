@@ -15,6 +15,14 @@ export const REQUEST_KINDS: readonly RequestKind[] = ['plan', 'exercise', 'harde
 /** A request lapses to "not approved (expired)" after this long without an answer. */
 export const REQUEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * How long a parent may undo an approval: 30 seconds, long enough to catch a mistaken tap
+ * from the toast or the History entry, short enough that the keeper is unlikely to have
+ * started the session yet. An undo after this, or once the session has started, is refused;
+ * a later change of mind is a new request, never an edit of the past.
+ */
+export const UNDO_WINDOW_MS = 30 * 1000;
+
 /** Injected so tests can move time; the system clock otherwise. */
 export type Clock = () => Date;
 export const systemClock: Clock = () => new Date();
@@ -63,6 +71,12 @@ export interface ApprovalStore {
   decide(id: string, decision: Decision): Promise<ApprovalRequest | null>;
   /** The approved request for exactly this item version, or null. */
   approvedVersion(itemId: string, itemVersion: string): Promise<ApprovalRequest | null>;
+  /**
+   * Undo an approval: move an approved request back to pending, the one way a final state
+   * changes. Returns the reopened request, or null when it was not approved. The service
+   * checks the undo window first; the audit log keeps the approval and the undo.
+   */
+  reopen(id: string): Promise<ApprovalRequest | null>;
 }
 
 export type AuditAction =
@@ -73,7 +87,9 @@ export type AuditAction =
   | 'refused'
   | 'paused'
   | 'cleared'
-  | 'changed';
+  | 'changed'
+  /** The parent undid an approval within `UNDO_WINDOW_MS`: its own event, never an edit. */
+  | 'undone';
 
 export interface AuditEvent {
   id: string;
@@ -157,6 +173,16 @@ export class MemoryApprovalStore implements ApprovalStore {
     return null;
   }
 
+  async reopen(id: string): Promise<ApprovalRequest | null> {
+    const r = this.requests.get(id);
+    if (!r || r.state !== 'approved') return null;
+    r.state = 'pending';
+    r.decidedAt = null;
+    r.decidedBy = null;
+    r.reason = null;
+    return copy(r);
+  }
+
   /** Dev-only demo reset (src/demo.ts). `ApprovalStore` itself has no delete. */
   clear(): void {
     this.requests.clear();
@@ -201,6 +227,9 @@ export class FirestoreApprovalStore implements ApprovalStore {
   async approvedVersion(): Promise<ApprovalRequest | null> {
     this.notWired();
   }
+  async reopen(): Promise<ApprovalRequest | null> {
+    this.notWired();
+  }
 }
 
 export class FirestoreAuditLog implements AuditLog {
@@ -214,7 +243,7 @@ export class FirestoreAuditLog implements AuditLog {
 
 export class ApprovalError extends Error {
   constructor(
-    readonly code: 'not_found' | 'not_pending' | 'forbidden' | 'invalid',
+    readonly code: 'not_found' | 'not_pending' | 'forbidden' | 'invalid' | 'too_late' | 'started',
     message: string,
   ) {
     super(message);
@@ -344,6 +373,40 @@ export class ApprovalService {
     await this.log(done, state, actor.role, actor.account, reason);
     await this.notifier.withdraw(done.id);
     return done;
+  }
+
+  /** Milliseconds left to undo this approval; 0 when it is not approved or the window has passed. */
+  undoForMs(request: ApprovalRequest): number {
+    if (request.state !== 'approved' || !request.decidedAt) return 0;
+    return Math.max(0, request.decidedAt.getTime() + UNDO_WINDOW_MS - this.clock().getTime());
+  }
+
+  /**
+   * The parent undoes an approval within `UNDO_WINDOW_MS`. The request goes back to the inbox,
+   * so the keeper no longer sees that version, and the undo is its own audit event. Refused
+   * once the keeper has started a session that uses this version (`started` says so): a
+   * session in progress is never pulled.
+   */
+  async undoApproval(
+    id: string,
+    actor: { account: string; role: Role },
+    started: (request: ApprovalRequest) => Promise<boolean> = async () => false,
+  ): Promise<ApprovalRequest> {
+    const request = await this.store.get(id);
+    if (actor.role !== 'parent') {
+      if (request) await this.log(request, 'refused', actor.role, actor.account, `The ${actor.role} may not undo`);
+      throw new ApprovalError('forbidden', 'Only a parent can undo an approval.');
+    }
+    if (!request) throw new ApprovalError('not_found', 'No such request.');
+    if (request.state !== 'approved') throw new ApprovalError('not_pending', `This request is ${request.state}.`);
+    if (this.undoForMs(request) <= 0) throw new ApprovalError('too_late', 'The undo window has passed.');
+    if (await started(request)) throw new ApprovalError('started', 'The keeper has already started this session.');
+    const reopened = await this.store.reopen(id);
+    if (!reopened) throw new ApprovalError('not_pending', 'This request is no longer approved.');
+    await this.log(reopened, 'undone', actor.role, actor.account, null);
+    // It waits in the inbox again, so the badge counts it again.
+    await this.notifier.notify({ to: 'parent', ref: reopened.id, title: reopened.content.title });
+    return reopened;
   }
 
   /** True only when this exact version of the item was approved. */

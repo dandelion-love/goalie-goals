@@ -221,10 +221,11 @@ describe('the pause holds offline (AC2)', () => {
     expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
     cleanup();
 
-    // The app opens again with the network still off: the paused state shows from the device.
+    // The app opens again with the network still off: the keeper's home opens from the device
+    // with the offline notice (story #80), and the paused state shows from the device.
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} pauseStore={new LocalPauseStore()} />);
-    expect(await screen.findByRole('heading', { name: "Can't reach the app" })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Training is paused' })).toBeTruthy();
+    expect(await screen.findByText(/You're offline/)).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Training is paused' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
     expect(server.state.reports).toHaveLength(0);
     cleanup();

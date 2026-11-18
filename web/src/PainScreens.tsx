@@ -84,22 +84,40 @@ function formatDay(date: string): string {
  * The urgent item at the top of the parent's inbox: what the keeper reported and the only way
  * to clear the pause. The server refuses a clear from anyone but a parent.
  */
-export function PauseInboxItem({ fetchImpl, onChange }: { fetchImpl?: typeof fetch; onChange?: () => void }) {
-  const [status, setStatus] = useState<PauseStatus | null>(null);
+export function PauseInboxItem({
+  fetchImpl,
+  onChange,
+  status: given,
+  onReload,
+}: {
+  fetchImpl?: typeof fetch;
+  onChange?: () => void;
+  /** The pause status when the inbox loads it with the requests; loaded here otherwise. */
+  status?: PauseStatus | null;
+  onReload?: () => Promise<void>;
+}) {
+  const controlled = given !== undefined;
+  const [own, setOwn] = useState<PauseStatus | null>(null);
+  const status = controlled ? given : own;
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
-    try {
-      setStatus(await fetchPauseStatus(fetchImpl));
-    } catch {
-      setStatus(null);
+    if (controlled) {
+      await onReload?.();
+      return;
     }
-  }, [fetchImpl]);
+    try {
+      setOwn(await fetchPauseStatus(fetchImpl));
+    } catch {
+      setOwn(null);
+    }
+  }, [fetchImpl, controlled, onReload]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!controlled) void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchImpl, controlled]);
 
   if (!status?.paused) return null;
 

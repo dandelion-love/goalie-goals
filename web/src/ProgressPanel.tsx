@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSettled } from './Loading';
 import { fetchProgress, type FinishProgress, type ProgressSummary, type Run } from './progress';
 
 // Gain framing only (progression Decision): what the pair has built, never what they could
@@ -34,6 +35,24 @@ function Streaks({ summary }: { summary: ProgressSummary }) {
   );
 }
 
+/** The streak tiles at their final size, values not yet known. */
+function StreaksSkeleton() {
+  return (
+    <div role="status" aria-label="Loading">
+      <dl className="streaks skeleton">
+        {['Team streak', "Keeper's streak", "Parent's streak", 'Team XP'].map((label, i) => (
+          <div key={label} className={i === 0 ? 'streak team' : 'streak'}>
+            <dt>{label}</dt>
+            <dd>
+              <span className="skeleton-line" aria-hidden="true" />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 function RunLine({ run }: { run: Run }) {
   return (
     <li>
@@ -43,10 +62,19 @@ function RunLine({ run }: { run: Run }) {
 }
 
 /** XP and streaks on both homes. Rest and pause days hold every streak. */
-export function ProgressPanel({ fetchImpl, refresh = 0 }: { fetchImpl?: typeof fetch; refresh?: number }) {
+export function ProgressPanel({
+  fetchImpl,
+  refresh = 0,
+  onSettled,
+}: {
+  fetchImpl?: typeof fetch;
+  refresh?: number;
+  onSettled?: () => void;
+}) {
   const [state, setState] = useState<{ kind: 'loading' } | { kind: 'ready'; data: ProgressSummary } | { kind: 'error' }>({
     kind: 'loading',
   });
+  useSettled(state.kind !== 'loading', onSettled);
 
   useEffect(() => {
     let live = true;
@@ -59,9 +87,14 @@ export function ProgressPanel({ fetchImpl, refresh = 0 }: { fetchImpl?: typeof f
   }, [fetchImpl, refresh]);
 
   return (
-    <article className="card progress" aria-labelledby="progress-title">
+    <article className="card progress" aria-labelledby="progress-title" aria-busy={state.kind === 'loading'}>
       <h2 id="progress-title">Together so far</h2>
-      {state.kind === 'loading' && <p role="status">Loading…</p>}
+      {state.kind === 'loading' && (
+        <>
+          <StreaksSkeleton />
+          <p className="meta">Rest days and pauses never break a streak.</p>
+        </>
+      )}
       {state.kind === 'error' && <p>Progress will show here after your next session.</p>}
       {state.kind === 'ready' && (
         <>

@@ -106,12 +106,14 @@ describe('finish screen (AC1, AC2)', () => {
     expect(within(earned).getByText('+12 XP')).toBeTruthy();
     expect(within(earned).getByText('Team streak').nextSibling?.textContent).toBe('4 training days');
     expect(results.map((r) => r.outcome)).toEqual(['stopped']);
-    expect(server.posts).toHaveLength(1);
-    expect(server.posts[0]).toMatchObject({
+    // Start tells the server the session began (story #80); the finish sends the result once.
+    expect(server.posts.map((p) => p.url)).toEqual(['/api/training/started', '/api/progress/sessions']);
+    const sent = server.posts[1];
+    expect(sent).toMatchObject({
       url: '/api/progress/sessions',
       body: { itemId: 'session-starter', outcome: 'stopped', warmUpLogged: true, praised: ['Keep breathing'] },
     });
     // No sets, reps or minutes are sent for credit.
-    expect(Object.keys(server.posts[0].body as object)).not.toContain('setsDone');
+    expect(Object.keys(sent.body as object)).not.toContain('setsDone');
   });
 });

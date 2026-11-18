@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { fetchToday, type Session, type Today } from './training';
+import { fetchToday, localDate, type Session, type Today } from './training';
+import { LoadError, Skeleton, useSettled } from './Loading';
+import type { OfflineStore } from './offline';
 
-type Load = { kind: 'loading' } | { kind: 'ready'; data: Today } | { kind: 'error' };
+type Load = { kind: 'loading' } | { kind: 'ready'; data: Today; saved?: boolean } | { kind: 'error' };
 
 /** Today's session as a path of steps: warm-up, each card, cool-down, finish. */
 export function LessonPath({ session, label }: { session: Session; label: string }) {
@@ -52,30 +54,72 @@ export function TodayPanel({
   fetchImpl,
   onStart,
   doneToday = false,
+  cache,
+  refresh = 0,
+  onSettled,
+  now = () => new Date(),
 }: {
   fetchImpl?: typeof fetch;
   onStart: (session: Session) => void;
   doneToday?: boolean;
+  /** The device's copy of today's approved session: shown offline, and while loading. */
+  cache?: OfflineStore;
+  /** Load again when this changes. */
+  refresh?: number;
+  onSettled?: () => void;
+  now?: () => Date;
 }) {
   const [state, setState] = useState<Load>({ kind: 'loading' });
   const [resting, setResting] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const date = localDate(now());
+  const saved = cache?.readToday(date) ?? null;
+  useSettled(state.kind !== 'loading', onSettled);
 
   useEffect(() => {
     let live = true;
-    fetchToday(fetchImpl)
-      .then((data) => live && setState({ kind: 'ready', data }))
-      .catch(() => live && setState({ kind: 'error' }));
+    fetchToday(fetchImpl, now())
+      .then((data) => {
+        cache?.writeToday(data);
+        if (live) setState({ kind: 'ready', data });
+      })
+      .catch(() => {
+        if (!live) return;
+        // Offline or the server is down: the device's copy of today's approved session.
+        const copy = cache?.readToday(localDate(now()));
+        setState(copy ? { kind: 'ready', data: copy, saved: true } : { kind: 'error' });
+      });
     return () => {
       live = false;
     };
-  }, [fetchImpl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchImpl, cache, refresh, attempt]);
 
   return (
-    <article className="card today" aria-labelledby="today-title">
+    <article className="card today" aria-labelledby="today-title" aria-busy={state.kind === 'loading'}>
       <h2 id="today-title">Today</h2>
-      {state.kind === 'loading' && <p role="status">Loading…</p>}
-      {state.kind === 'error' && <p>Couldn't load today's session. Rest is always a fine choice.</p>}
-      {state.kind === 'ready' && <TodayBody today={state.data} doneToday={doneToday} resting={resting} onRest={() => setResting(true)} onStart={onStart} />}
+      {state.kind === 'loading' &&
+        (saved ? (
+          // The saved copy holds the panel's final size; Start waits for the fresh answer.
+          <TodayBody today={saved} doneToday={doneToday} resting={resting} onRest={() => {}} onStart={() => {}} disabled />
+        ) : (
+          <Skeleton lines={6} className="skeleton-today" />
+        ))}
+      {state.kind === 'error' && (
+        <LoadError
+          message="Couldn't load today's session. Rest is always a fine choice."
+          onRetry={() => {
+            setState({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+          }}
+        />
+      )}
+      {state.kind === 'ready' && (
+        <>
+          <TodayBody today={state.data} doneToday={doneToday} resting={resting} onRest={() => setResting(true)} onStart={onStart} />
+          {state.saved && <p className="meta">Saved on this device.</p>}
+        </>
+      )}
     </article>
   );
 }
@@ -86,12 +130,14 @@ function TodayBody({
   resting,
   onRest,
   onStart,
+  disabled = false,
 }: {
   today: Today;
   doneToday: boolean;
   resting: boolean;
   onRest: () => void;
   onStart: (session: Session) => void;
+  disabled?: boolean;
 }) {
   if (today.paused) return <p className="done-today">Training is paused until your parent clears it. Rest today.</p>;
   if (doneToday)
@@ -109,7 +155,7 @@ function TodayBody({
     return (
       <>
         <LessonPath session={session} label="Today's session" />
-        <button type="button" className="primary session-control wide" onClick={() => onStart(session)}>
+        <button type="button" className="primary session-control wide" disabled={disabled} onClick={() => onStart(session)}>
           Start session
         </button>
       </>
@@ -128,11 +174,11 @@ function TodayBody({
       {last && <LessonPath session={last} label="Last approved version" />}
       <div className="actions">
         {last && (
-          <button type="button" className="primary session-control" onClick={() => onStart(last)}>
+          <button type="button" className="primary session-control" disabled={disabled} onClick={() => onStart(last)}>
             Do last version
           </button>
         )}
-        <button type="button" className="secondary session-control" onClick={onRest}>
+        <button type="button" className="secondary session-control" disabled={disabled} onClick={onRest}>
           Rest today
         </button>
       </div>

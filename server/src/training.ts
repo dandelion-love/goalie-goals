@@ -167,7 +167,14 @@ function sessionMinutes(template: SessionTemplate, cards: CardSnapshot[]): numbe
 export class MemorySnapshotStore {
   readonly cards = new Map<string, CardSnapshot>();
   readonly sessions = new Map<string, SessionSnapshot>();
+  /**
+   * Item versions a started session used (`itemId@itemVersion`): the session and each of its
+   * cards. An approval of one of these can no longer be undone.
+   */
+  readonly started = new Set<string>();
 }
+
+const versionKey = (itemId: string, version: string) => `${itemId}@${version}`;
 
 export interface TrainingServiceDeps {
   approvals: ApprovalService;
@@ -303,6 +310,29 @@ export class TrainingService {
     const snap = this.snapshots.sessions.get(version);
     if (!snap || !(await this.playable(snap))) return null;
     return snap.cards.reduce((s, c) => s + c.source.card.dose.sets, 0);
+  }
+
+  /**
+   * The keeper started this session version. Recorded only when it is still playable (every
+   * version in it approved); false otherwise, so a session whose approval was just undone does
+   * not start.
+   */
+  async markStarted(itemId: string, version: string): Promise<boolean> {
+    const snap = this.snapshots.sessions.get(version);
+    if (!snap || snap.itemId !== itemId || !(await this.playable(snap))) return false;
+    this.snapshots.started.add(versionKey(snap.itemId, snap.itemVersion));
+    for (const c of snap.cards) this.snapshots.started.add(versionKey(c.itemId, c.itemVersion));
+    return true;
+  }
+
+  /** Whether a started session used this item version (the session itself or one of its cards). */
+  hasStarted(item: { itemId: string; itemVersion: string }): boolean {
+    return this.snapshots.started.has(versionKey(item.itemId, item.itemVersion));
+  }
+
+  /** Dev-only demo reset (src/demo.ts): forget which sessions were started. */
+  clearStarted(): void {
+    this.snapshots.started.clear();
   }
 
   /** The latest approved version of each card: the keeper's card library. */

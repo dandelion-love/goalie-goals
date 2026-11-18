@@ -197,6 +197,7 @@ export async function buildApp({
     service: approvalService,
     roles: roleStore,
     badge: hasBadge(approvalService.notifier) ? approvalService.notifier : undefined,
+    started: async (request) => trainingService.hasStarted(request),
   });
 
   const ownPain = pain ? undefined : new MemoryPainStore();

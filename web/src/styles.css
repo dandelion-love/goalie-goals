@@ -680,3 +680,116 @@ button.danger {
   margin: 0 0 12px;
   padding-left: 20px;
 }
+
+/* Story #80: loading skeletons, errors with Retry, the offline notice and the undo toast. */
+html {
+  /* The scrollbar appearing as a home fills in must not shift everything sideways. */
+  scrollbar-gutter: stable;
+}
+
+.reveal[hidden] {
+  display: none;
+}
+
+.skeleton {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.skeleton-line {
+  display: block;
+  height: 1em;
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.skeleton-line:nth-child(3n + 2) {
+  width: 80%;
+}
+
+.skeleton-line:nth-child(3n) {
+  width: 55%;
+}
+
+.streaks.skeleton {
+  display: grid;
+  padding: 0;
+}
+
+.streaks.skeleton .skeleton-line {
+  width: 7em;
+  height: 1.15em;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+}
+
+/* The size of one inbox request, so the inbox holds its place while it loads. */
+.skeleton-request {
+  min-height: 180px;
+}
+
+/* About the size of today's session path and its Start button. */
+.skeleton-today {
+  min-height: 360px;
+}
+
+/* About the size of the Training days card's text, toggles, themes and Save. */
+.skeleton-days {
+  min-height: 200px;
+}
+
+.load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.load-error p {
+  margin: 0;
+}
+
+.offline-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border-left: 6px solid var(--accent);
+}
+
+.offline-notice p {
+  margin: 0;
+  color: var(--text);
+}
+
+.history .undo {
+  margin-left: 8px;
+}
+
+/* Fixed, so it never moves the page as it comes and goes. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  padding: 8px 8px 8px 16px;
+  border-radius: var(--radius);
+  background: var(--brand);
+  color: #fff;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+}
+
+.toast button.secondary {
+  color: #fff;
+  border-color: #fff;
+}

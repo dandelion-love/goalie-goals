@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { offlineShell, workboxOptions } from './src/pwaConfig';
 
 export default defineConfig({
   plugins: [
@@ -25,14 +26,12 @@ export default defineConfig({
           { src: 'icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
-      workbox: {
-        // Live navigations always go to the network so the sign-in proxy's redirect can run:
-        // the HTML shell is not precached and there is no navigation fallback.
-        globPatterns: ['**/*.{js,css,svg}'],
-        navigateFallback: null,
-        runtimeCaching: [],
-      },
+      // Live navigations always go to the network so the sign-in proxy's redirect can run; only
+      // when the network fails does the precached offline copy of the shell answer
+      // (src/pwaConfig.ts). No API answer is ever cached by the worker.
+      workbox: workboxOptions,
     }),
+    offlineShell(),
   ],
   server: {
     proxy: {
