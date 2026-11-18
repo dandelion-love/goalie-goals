@@ -11,7 +11,7 @@ export const DEMO_REQUESTS: readonly ProposeInput[] = [
     itemId: 'plan-starter',
     content: {
       title: 'Starter plan: three short sessions a week',
-      detail: 'About 10 minutes each, never on consecutive days, using only approved cards.',
+      detail: 'About 10 minutes each, never on consecutive days, using only approved exercises.',
     },
   },
   {
@@ -19,7 +19,7 @@ export const DEMO_REQUESTS: readonly ProposeInput[] = [
     itemId: 'squat-to-box',
     content: {
       title: 'Squat to box',
-      detail: 'Bodyweight only, 2 sets of 10, 60 s rest (see content/exercises/squat-to-box.spec.md).',
+      detail: 'Bodyweight only, 2 sets of 10, 60 s rest.',
     },
   },
   {
@@ -27,7 +27,7 @@ export const DEMO_REQUESTS: readonly ProposeInput[] = [
     itemId: 'lateral-shuffle',
     content: {
       title: 'Lateral shuffle',
-      detail: '2 sets of 3 efforts over 4 m (see content/exercises/lateral-shuffle.spec.md).',
+      detail: '2 sets of 3 efforts over 4 m.',
     },
   },
   {
@@ -35,9 +35,7 @@ export const DEMO_REQUESTS: readonly ProposeInput[] = [
     itemId: 'pogo-hops',
     content: {
       title: 'Low pogo hops, a step harder',
-      detail:
-        'Small hops forward and back over a line, same 3 sets of 6 contacts, after every rep ' +
-        'is clean in two sessions in a row (see content/exercises/pogo-hops.spec.md).',
+      detail: 'Small hops forward and back over a line. Same 3 sets of 6 contacts. Starts once every rep is clean two sessions running.',
     },
   },
 ];

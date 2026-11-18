@@ -65,7 +65,7 @@ export function ParentInbox({ fetchImpl, onChange }: { fetchImpl?: typeof fetch;
       </h2>
       <PauseInboxItem fetchImpl={fetchImpl} onChange={onChange} />
       {state.kind === 'loading' && <p role="status">Loading…</p>}
-      {state.kind === 'error' && <p role="alert">Couldn't load the inbox. Pull to refresh or try again later.</p>}
+      {state.kind === 'error' && <p role="alert">Couldn't load the inbox. Try again later.</p>}
       {failed && <p role="alert">That answer didn't go through. It is still waiting.</p>}
       {state.kind === 'ready' && state.data.requests.length === 0 && <p>Nothing to approve.</p>}
       {state.kind === 'ready' && state.data.requests.length > 0 && (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useEffect, useId, useRef, useState, type MutableRefObject } from 'react';
 
 /** With no wake lock, a running timer asks for a tap this often, which also keeps the screen awake. */
 export const KEEP_AWAKE_TAP_MS = 50_000;
@@ -6,7 +6,7 @@ const TICK_MS = 250;
 
 export interface CountdownProps {
   seconds: number;
-  /** What is being timed, read out with the time: "Hold", "Rest", a move's name. */
+  /** What is being timed, shown above the timer and read as its description: "Hold", "Rest", a move's name. */
   label: string;
   onDone: () => void;
   /** Wake-lock fallback: pause until tapped once KEEP_AWAKE_TAP_MS passes without a tap. */
@@ -38,6 +38,7 @@ export function Countdown({ seconds, label, onDone, needsTaps = false, lastTap: 
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
   const holding = paused || waitingForTap;
+  const labelId = useId();
 
   useEffect(() => {
     lastTick.current = Date.now();
@@ -69,18 +70,23 @@ export function Countdown({ seconds, label, onDone, needsTaps = false, lastTap: 
 
   return (
     <div className="countdown">
-      <button
-        type="button"
-        className="timer-face session-control"
-        onClick={tap}
-        aria-label={`${label}, ${mmss(remaining)} left${waitingForTap ? ', tap to keep going' : ''}`}
-      >
-        <span className="timer-label">{label}</span>
-        <span className="timer-time" aria-hidden="true">
-          {mmss(remaining)}
-        </span>
-        {waitingForTap && <span className="timer-hint">Tap to keep going</span>}
-      </button>
+      {/*
+        The button's name is exactly the text on it ("45 left"); what is timed is its
+        description. Both stay short, so a screen reader says what the keeper sees.
+      */}
+      <div className="timer">
+        <p className="timer-label" id={labelId}>
+          {label}
+        </p>
+        <button type="button" className="timer-face session-control" onClick={tap} aria-describedby={labelId}>
+          <span className="timer-time">{mmss(remaining)}</span> <span className="timer-unit">left</span>
+        </button>
+        {waitingForTap && (
+          <p className="timer-hint" role="status">
+            Tap the timer to keep going.
+          </p>
+        )}
+      </div>
       <button type="button" className="secondary session-control" onClick={() => {
           tap();
           setPaused((p) => !p);

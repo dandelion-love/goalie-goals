@@ -49,7 +49,18 @@ function fakeServer(role: 'keeper' | 'parent', init: { reports?: Report[] } = {}
     }
     if (url === '/api/pain' && method === 'POST') {
       const b = JSON.parse(String(req?.body)) as Report;
-      if (!state.reports.some((r) => r.id === b.id)) state.reports.push(b);
+      if (!state.reports.some((r) => r.id === b.id)) {
+        state.reports.push(b);
+        state.audit.push({
+          id: `e-${b.id}`,
+          at: '2026-01-07T17:00:00Z',
+          action: 'paused',
+          actorRole: 'keeper',
+          kind: 'pause',
+          title: `something hurts (${b.bodyArea})`,
+          reason: null,
+        });
+      }
       return json({ paused: true, report: { id: b.id, date: b.date } });
     }
     if (url === '/api/pain/clear' && method === 'POST') {
@@ -120,6 +131,21 @@ describe('"Something hurts" is on every session screen (AC1)', () => {
   });
 });
 
+describe('History after a report', () => {
+  it('shows the report on the keeper home at once, without a reload', async () => {
+    const server = fakeServer('keeper');
+    render(<App fetchImpl={server.fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
+    const history = await screen.findByRole('article', { name: 'History' });
+    expect(await within(history).findByText('Nothing yet.')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Something hurts' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Knee' }));
+    click('Tell my parent');
+    expect(await screen.findByText(/Your parent has been told/)).toBeTruthy();
+    expect(await within(history).findByText(/Keeper reported something hurts \(knee\); training paused/)).toBeTruthy();
+  });
+});
+
 describe('a pain report in a session (AC1)', () => {
   it('ends the session, pauses on the device at once, and sends the report to the app only', async () => {
     const logs = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => vi.spyOn(console, m));
@@ -158,7 +184,7 @@ describe('a pain report in a session (AC1)', () => {
 
     click('Done for today');
     expect(await screen.findByRole('heading', { name: 'Training is paused' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Start session|Do the last approved version/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Start session|Do last version/ })).toBeNull();
     expect(screen.queryByRole('article', { name: 'Your training' })).toBeNull();
   });
 
@@ -227,7 +253,7 @@ describe('while paused (AC4)', () => {
     expect(await screen.findByRole('heading', { name: 'Training is paused' })).toBeTruthy();
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByRole('heading', { name: 'Today' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Start session|Do the last approved version|Rest today/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Start session|Do last version|Rest today/ })).toBeNull();
     expect(store.value).not.toBeNull();
   });
 

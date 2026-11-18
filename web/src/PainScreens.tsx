@@ -42,16 +42,27 @@ export function PainReportForm({ onSend }: { onSend: (area: BodyArea, note: stri
         Anything else? (optional)
         <textarea value={note} maxLength={500} rows={3} onChange={(e) => setNote(e.target.value)} />
       </label>
-      <button type="submit" className="primary session-control wide" disabled={!area || state === 'sending'}>
+      <button
+        type="submit"
+        className="primary session-control wide"
+        disabled={!area || state === 'sending'}
+        aria-describedby={area ? undefined : 'pain-hint'}
+      >
         Tell my parent
       </button>
+      {!area && (
+        <p id="pain-hint" className="meta">
+          Choose where it hurts first.
+        </p>
+      )}
     </form>
   );
 }
 
-const SEE_SOMEONE =
-  'After a knock to the head, chest pain, fainting, swelling, or pain that changes how you move, ' +
-  'see a health professional before training again.';
+/** The red flags, in two short sentences (quality rubric CT1: at most 20 words each). */
+export const SEE_SOMEONE =
+  'See a health professional before training again after a knock to the head, chest pain, fainting or swelling. ' +
+  'The same goes for pain that changes how you move.';
 
 /** The keeper's home while paused: rest, and nothing to train. */
 export function PausedPanel() {

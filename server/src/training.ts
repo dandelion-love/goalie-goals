@@ -121,21 +121,35 @@ interface SessionSnapshot {
 export const cardItemId = (cardId: string) => `card-${cardId}`;
 export const sessionItemId = (templateId: string) => `session-${templateId}`;
 
-function shortHash(hex: string): string {
-  return hex.slice(0, 8);
+/** The rubric's limit for a sentence the parent reads (quality rubric, CT1). */
+export const DETAIL_SENTENCE_WORDS = 20;
+
+const words = (sentence: string) => sentence.split(/\s+/).filter(Boolean).length;
+
+/** True when every sentence of `text` is within the rubric's word limit. */
+export function withinWordLimit(text: string, limit = DETAIL_SENTENCE_WORDS): boolean {
+  return text.split(/(?<=[.!?])\s+/).every((s) => words(s) <= limit);
 }
 
+/**
+ * What the parent reads about a card: why it helps, when that is short enough, and its dose,
+ * in plain words. The card's hash binds the version without being shown.
+ */
 function cardSnapshot(source: CardSource): CardSnapshot {
   const { card } = source;
+  const dose = `Dose: ${doseText(card.dose)}.`;
   const content: ItemContent = {
-    title: `${card.name} (exercise card)`,
-    detail: `${card.why} Dose: ${doseText(card.dose)}. Card version ${shortHash(source.contentHash)}.`,
+    title: card.name,
+    detail: withinWordLimit(card.why) ? `${card.why} ${dose}` : dose,
+    binding: `card ${card.id} ${source.contentHash}`,
   };
   return { source, itemId: cardItemId(card.id), itemVersion: itemVersion(content), content };
 }
 
+/** "6 moves, 5 min": the exact moves are bound to the version, not listed for the parent. */
 function movesText(moves: Move[]): string {
-  return moves.map((m) => `${m.name} ${m.seconds} s`).join(', ');
+  const minutes = Math.max(1, Math.round(moves.reduce((s, m) => s + m.seconds, 0) / 60));
+  return `${moves.length} ${moves.length === 1 ? 'move' : 'moves'}, ${minutes} min`;
 }
 
 function sessionMinutes(template: SessionTemplate, cards: CardSnapshot[]): number {
@@ -188,11 +202,20 @@ export class TrainingService {
     const minutes = sessionMinutes(template, cards);
     const content: ItemContent = {
       title: `Session: ${template.title}`,
-      detail:
-        `About ${minutes} minutes. Warm-up: ${movesText(template.warmUp)}. ` +
-        `Then ${cards.map((c) => `${c.source.card.name}, ${doseText(c.source.card.dose)}`).join('; ')}. ` +
-        `Cool-down: ${movesText(template.coolDown)}. ` +
-        `Card versions: ${cards.map((c) => `${c.source.card.id} ${shortHash(c.source.contentHash)}`).join(', ')}.`,
+      detail: [
+        `About ${minutes} minutes.`,
+        template.warmUp.length > 0 ? `Warm-up: ${movesText(template.warmUp)}.` : '',
+        ...cards.map((c) => `${c.source.card.name}: ${doseText(c.source.card.dose)}.`),
+        template.coolDown.length > 0 ? `Cool-down: ${movesText(template.coolDown)}.` : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+      // The exact moves and card versions, so any change to them is a new version to approve.
+      binding: JSON.stringify({
+        warmUp: template.warmUp,
+        coolDown: template.coolDown,
+        cards: cards.map((c) => c.itemVersion),
+      }),
     };
     const snap: SessionSnapshot = {
       template: structuredClone(template),

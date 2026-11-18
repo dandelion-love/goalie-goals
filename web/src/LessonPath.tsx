@@ -129,7 +129,7 @@ function TodayBody({
       <div className="actions">
         {last && (
           <button type="button" className="primary session-control" onClick={() => onStart(last)}>
-            Do the last approved version
+            Do last version
           </button>
         )}
         <button type="button" className="secondary session-control" onClick={onRest}>

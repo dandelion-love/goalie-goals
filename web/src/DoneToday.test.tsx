@@ -31,7 +31,7 @@ describe('Done for today (#52)', () => {
     renderKeeper(() => 'together');
     expect(await screen.findByText('Done for today')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /last approved version/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /last version/i })).toBeNull();
   });
 
   it('AC1: a solo session counts as done too', async () => {

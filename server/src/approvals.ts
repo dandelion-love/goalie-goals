@@ -23,6 +23,11 @@ export const systemClock: Clock = () => new Date();
 export interface ItemContent {
   title: string;
   detail: string;
+  /**
+   * Internal: what else the version is bound to (card hashes, exact moves) that the plain
+   * words leave out. Hashed into `itemVersion`, never stored with the request or shown.
+   */
+  binding?: string;
 }
 
 export interface ApprovalRequest {
@@ -86,7 +91,11 @@ export interface AuditLog {
 
 /** Content hash of an item: any edit gives a new version, which needs a new approval. */
 export function itemVersion(content: ItemContent): string {
-  const canonical = JSON.stringify({ title: content.title, detail: content.detail });
+  const canonical = JSON.stringify(
+    content.binding === undefined
+      ? { title: content.title, detail: content.detail }
+      : { title: content.title, detail: content.detail, binding: content.binding },
+  );
   return `sha256:${createHash('sha256').update(canonical).digest('hex').slice(0, 32)}`;
 }
 

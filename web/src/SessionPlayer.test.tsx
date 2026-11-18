@@ -88,7 +88,7 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
 
     // Warm-up.
     expect(screen.getByRole('heading', { name: 'March on the spot' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: /^March on the spot, 1:00 left/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '1:00 left', description: 'March on the spot' })).toBeTruthy();
     click('Next');
     click('Next');
 
@@ -101,14 +101,14 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
     expect(screen.getByRole('heading', { name: 'Cues' })).toBeTruthy();
     expect(screen.getByText(/Hips sagging toward the floor/)).toBeTruthy();
     click('Start set 1');
-    expect(screen.getByRole('button', { name: /^Hold, set 1 of 2, 20 left/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '20 left', description: 'Hold, set 1 of 2' })).toBeTruthy();
     click('End set');
 
     // Immediate feedback names the cue, never the person.
     expect(screen.getByRole('heading', { name: 'How did set 1 look?' })).toBeTruthy();
     click('Straight like a board');
     expect(screen.getByRole('status').textContent).toBe('Straight like a board: nice');
-    expect(screen.getByRole('button', { name: /^Rest, 45 left/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '45 left', description: 'Rest' })).toBeTruthy();
     click('Skip rest');
     click('End set');
     click('Skip');
@@ -116,8 +116,13 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
     // Glute bridge: a rep counter up to the set's target.
     expect(screen.getByRole('heading', { name: 'Glute bridge', level: 1 })).toBeTruthy();
     click('Start set 1');
-    for (let i = 0; i < 14; i += 1) click('+1');
-    expect(screen.getByText('12 / 12')).toBeTruthy();
+    expect(screen.getByText('reps left').closest('.counter')!.textContent).toBe('Set 1 of 2, 12 reps left');
+    click('+1');
+    expect(screen.getByText('reps left').closest('.counter')!.querySelector('.counter-value')!.textContent).toBe('11');
+    for (let i = 0; i < 13; i += 1) click('+1');
+    // The counter shows reps left, down to 0.
+    const counter = screen.getByText('reps left').closest('.counter')!;
+    expect(counter.querySelector('.counter-value')!.textContent).toBe('0');
     expect((screen.getByRole('button', { name: '+1' }) as HTMLButtonElement).disabled).toBe(true);
     click('Set done');
     click('Push through the heels');
@@ -199,10 +204,10 @@ describe('wake lock in the player (AC2)', () => {
     expect(screen.getByText(WAKE_FALLBACK_TEXT)).toBeTruthy();
 
     act(() => vi.advanceTimersByTime(KEEP_AWAKE_TAP_MS - 1_000));
-    expect(screen.getByRole('button', { name: /^March on the spot, 11 left$/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '11 left', description: 'March on the spot' })).toBeTruthy();
     act(() => vi.advanceTimersByTime(2_000));
-    const waiting = screen.getByRole('button', { name: /^March on the spot, 1[01] left, tap to keep going$/ });
-    expect(within(waiting).getByText('Tap to keep going')).toBeTruthy();
+    const waiting = screen.getByRole('button', { name: /^1[01] left$/, description: 'March on the spot' });
+    expect(screen.getByText('Tap the timer to keep going.')).toBeTruthy();
     act(() => vi.advanceTimersByTime(30_000));
     expect(screen.getByRole('heading', { name: 'March on the spot' })).toBeTruthy();
 
@@ -236,7 +241,7 @@ describe('wake lock in the player (AC2)', () => {
     expect(screen.getByRole('heading', { name: 'How did set 1 look?' })).toBeTruthy();
     click('Keep breathing');
     act(() => vi.advanceTimersByTime(46_000));
-    expect(screen.getByRole('button', { name: /^Hold, set 2 of 2/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /left$/, description: 'Hold, set 2 of 2' })).toBeTruthy();
   });
 });
 
@@ -252,7 +257,7 @@ describe('AC3: no approved session for today', () => {
     expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Rest today' })).toBeTruthy();
 
-    click('Do the last approved version');
+    click('Do last version');
     expect(screen.getByText('Step 1 of 3')).toBeTruthy();
     click('Next');
     click('Next');
@@ -264,7 +269,7 @@ describe('AC3: no approved session for today', () => {
     render(<App fetchImpl={server.fetchImpl} wakeLock={fakeWake('active')} />);
     expect(await screen.findByText(/Rest today: recovery counts too\./)).toBeTruthy();
     expect(screen.queryByRole('list', { name: /^Steps in/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Start session|Do the last approved version/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Start session|Do last version/ })).toBeNull();
     click('Rest today');
     expect(screen.getByText('Rest day chosen. Recovery is part of training.')).toBeTruthy();
   });

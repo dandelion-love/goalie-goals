@@ -140,6 +140,8 @@ function NotSetUp() {
 /** The training pause on this device: set at once, kept offline, synced when online. */
 function usePause(store: PauseStore, fetchImpl?: typeof fetch) {
   const [pause, setPause] = useState<LocalPause | null>(() => store.read());
+  /** Counts sends that reached the server, so the history can show the report at once. */
+  const [sent, setSent] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -160,19 +162,23 @@ function usePause(store: PauseStore, fetchImpl?: typeof fetch) {
       const current = store.read() ?? startPause(store);
       store.write({ ...current, report: { bodyArea, note } });
       setPause(store.read());
-      const sent = await flushPause(store, fetchImpl);
+      const ok = await flushPause(store, fetchImpl);
       setPause(store.read());
-      return sent;
+      if (ok) setSent((n) => n + 1);
+      return ok;
     },
     [store, fetchImpl],
   );
 
   /** Send whatever is waiting (a report left without details goes as "not said"). */
   const flush = useCallback(() => {
-    void flushPause(store, fetchImpl).then(() => setPause(store.read()));
+    void flushPause(store, fetchImpl).then((ok) => {
+      setPause(store.read());
+      if (ok) setSent((n) => n + 1);
+    });
   }, [store, fetchImpl]);
 
-  return { pause, start, send, flush };
+  return { pause, start, send, flush, sent };
 }
 
 function KeeperHome({
@@ -196,7 +202,7 @@ function KeeperHome({
   const [progress, setProgress] = useState<FinishProgress | 'saving' | 'unsaved' | null>(null);
   const [recorded, setRecorded] = useState(0);
   const [reporting, setReporting] = useState(false);
-  const { pause, start, send, flush } = usePause(pauseStore, fetchImpl);
+  const { pause, start, send, flush, sent } = usePause(pauseStore, fetchImpl);
   const doneToday = finishedHere || recordedToday;
 
   // A session already recorded today (on this device or another, before a reload) means
@@ -278,7 +284,7 @@ function KeeperHome({
       <ProgressPanel fetchImpl={fetchImpl} refresh={recorded} />
       <div className={layout === 'expanded' ? 'panes' : 'stack'}>
         {!pause && <ApprovedTraining fetchImpl={fetchImpl} />}
-        <History fetchImpl={fetchImpl} refresh={recorded} />
+        <History fetchImpl={fetchImpl} refresh={recorded + sent} />
       </div>
     </section>
   );

@@ -15,7 +15,7 @@ The installable web app: TypeScript, React, Vite and
     **History**.
 - **Today** (`src/LessonPath.tsx`): today's approved session as a path of steps (warm-up,
   each card, cool-down, finish) with **Start session**. When today's session is not
-  approved it offers **Do the last approved version** (if the server sent one) or **Rest
+  approved it offers **Do last version** (the last approved one, if the server sent it) or **Rest
   today**, never an unapproved session. A planned rest day says so.
 - **Session player** (`src/SessionPlayer.tsx`, flow in `src/player.ts`): about 10 minutes.
   Warm-up moves on a countdown, then each card with its figure and credit line, steps, cues,

@@ -5,6 +5,7 @@ import { initialState, reduce, repTarget, stepsOf, stepTitle, type Outcome, type
 import type { Card, Session, SessionResult } from './training';
 import { useWakeLock, type WakeLockController } from './wakeLock';
 import { FinishProgressView } from './ProgressPanel';
+import { SEE_SOMEONE } from './PainScreens';
 import type { FinishProgress } from './progress';
 
 export interface SessionPlayerProps {
@@ -226,10 +227,9 @@ function CardStep({
             Set {p.set} of {dose.sets}
             {sideText}
           </span>
-          <span className="counter-value">
-            {p.reps} / {target}
-          </span>
-          <span className="counter-label">{unit}</span>
+          <span className="sr-only">,</span>{' '}
+          <span className="counter-value">{Math.max(0, target - p.reps)}</span>{' '}
+          <span className="counter-label">{unit} left</span>
         </p>
         <div className="actions">
           <button type="button" className="primary session-control" onClick={onRep} disabled={p.reps >= target}>
@@ -328,7 +328,7 @@ function CardStep({
 const FINISH: Record<Outcome, { title: string; body: string }> = {
   done: {
     title: 'Session done',
-    body: 'Great work, both of you. That is today done: rest and recovery come next.',
+    body: 'Every set is logged. Rest and recovery come next.',
   },
   stopped: {
     title: 'Good call',
@@ -336,10 +336,7 @@ const FINISH: Record<Outcome, { title: string; body: string }> = {
   },
   hurt: {
     title: 'Good call stopping',
-    body:
-      'Tell an adult now and rest. After a knock to the head, chest pain, fainting, swelling, ' +
-      'or pain that changes how you move, see a health professional before training again. ' +
-      'If someone collapses, call the local emergency number.',
+    body: `Tell an adult now and rest. ${SEE_SOMEONE} If someone collapses, call the local emergency number.`,
   },
 };
 

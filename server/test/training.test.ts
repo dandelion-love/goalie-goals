@@ -100,6 +100,56 @@ describe('content', () => {
   });
 });
 
+describe('request text the parent reads', () => {
+  const REPO_WORDS = /content\/|\.spec\.md|\.json|card version|exercise card|sha256|[0-9a-f]{8}/i;
+  const sentences = (text: string) => text.split(/(?<=[.!?])\s+/);
+  const wordCount = (s: string) => s.split(/\s+/).filter(Boolean).length;
+
+  it('names each card plainly, with no repo path, card version or hash', async () => {
+    await training.proposeFor(DATE);
+    const pending = await approvals.pending();
+    expect(pending.map((r) => r.content.title)).toEqual(['Front plank', 'Glute bridge', 'Session: Strong middle']);
+    for (const r of pending) {
+      expect(r.content.title).not.toMatch(REPO_WORDS);
+      expect(r.content.detail).not.toMatch(REPO_WORDS);
+    }
+    expect(pending[0].content.detail).toBe(
+      'A strong, stiff middle lets you dive and land without the body folding. Dose: 2 sets of 20 s hold, rest 45 s.',
+    );
+  });
+
+  it('keeps every sentence of every card, session and demo request within 20 words', async () => {
+    const all = [...CONTENT.cards.keys()];
+    plan.template = { ...STARTER_SESSION, cardIds: all };
+    await training.proposeFor(DATE);
+    const texts = (await approvals.pending()).map((r) => r.content.detail);
+    texts.push(...DEMO_REQUESTS.map((r) => r.content.detail));
+    expect(texts.length).toBe(all.length + 1 + DEMO_REQUESTS.length);
+    for (const text of texts) {
+      expect(text).not.toMatch(REPO_WORDS);
+      for (const s of sentences(text)) expect(wordCount(s), s).toBeLessThanOrEqual(20);
+    }
+  });
+
+  it("drops a card's reason when it runs over the limit, keeping the dose", async () => {
+    plan.template = { ...STARTER_SESSION, cardIds: ['squat-to-box'] };
+    await training.proposeFor(DATE);
+    const card = (await approvals.pending()).find((r) => r.itemId === 'card-squat-to-box')!;
+    expect(card.content.detail).toBe('Dose: 2 sets of 10 reps, rest 60 s.');
+  });
+
+  it('still binds the version to the card: an edit the words do not show needs a new approval', async () => {
+    await training.proposeFor(DATE);
+    const before = (await approvals.pending()).find((r) => r.itemId === 'card-plank')!;
+    training.setContent(withEditedCard(CONTENT, 'plank', 'An edited last step.'));
+    await training.proposeFor(DATE);
+    const after = (await approvals.pending()).filter((r) => r.itemId === 'card-plank');
+    expect(after).toHaveLength(2);
+    expect(after[1].content).toEqual(before.content);
+    expect(after[1].itemVersion).not.toBe(before.itemVersion);
+  });
+});
+
 describe("today's session", () => {
   it('proposes the session and each of its cards to the parent', async () => {
     await training.proposeFor(DATE);
@@ -109,7 +159,10 @@ describe("today's session", () => {
       ['exercise', 'card-glute-bridge'],
       ['plan', 'session-starter'],
     ]);
-    expect(pending[2].content.detail).toMatch(/About 10 minutes\. Warm-up: March on the spot 60 s/);
+    expect(pending[2].content.detail).toBe(
+      'About 10 minutes. Warm-up: 6 moves, 5 min. Front plank: 2 sets of 20 s hold, rest 45 s. ' +
+        'Glute bridge: 2 sets of 12 reps, rest 45 s. Cool-down: 1 move, 1 min.',
+    );
     // Asking again is idempotent while the same versions wait.
     await training.proposeFor(DATE);
     expect(await approvals.pending()).toHaveLength(3);
