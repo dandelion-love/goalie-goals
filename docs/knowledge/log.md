@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Added**: CC0 media research: CC0 rigged characters and animation sets with a per-pack licence table, open tools to pose and render them, and a feasibility note with one rendered sample pose and a comparison with the parametric vector figure.
 * **Added**: exercise-media research: open databases, icon and illustration sets, video and animation, drawn figures and storage format, with the media Decision.
 * **Added**: exercise-app research: open-source and commercial apps, how they explain an exercise, licences, and the content-reuse Decision.
 * **Added**: equipment research: a bodyweight minimum, home and outdoor options and substitutions, with the equipment-model Decision.

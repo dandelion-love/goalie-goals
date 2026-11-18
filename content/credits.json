@@ -186,6 +186,16 @@
       "checked": "2026-11-17"
     },
     {
+      "path": "content/figures/samples/kenney-keeper-set-position.webp",
+      "title": "Goalkeeper set position, sample render from a CC0 character",
+      "author": "Kenney (character model, CC0); posed and rendered by the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "rendered for this repo from Model/characterMedium.fbx in Animated Characters Protagonists 1.1, https://kenney.nl/assets/animated-characters-protagonists (model licence CC0-1.0, on the page and in the pack's License.txt)",
+      "checked": "2026-11-18",
+      "adapted": true,
+      "changes": "posed in a goalkeeper set position, textures replaced by one flat fill with ink outlines, rendered in Blender, cropped, ground line added, saved as WebP without metadata"
+    },
+    {
       "path": "content/figures/side-plank.svg",
       "title": "Side plank figure",
       "author": "the goalie-goals contributors",
