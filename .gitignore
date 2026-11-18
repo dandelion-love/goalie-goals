@@ -20,6 +20,8 @@ __pycache__/
 *.pyc
 .venv/
 dist/
+dev-dist/
+*.tsbuildinfo
 build/
 coverage/
 .DS_Store

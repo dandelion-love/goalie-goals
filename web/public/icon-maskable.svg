@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Original drawing for goalie-goals, MIT (see /LICENSE). Full-bleed, art inside the safe zone. -->
+  <rect width="512" height="512" fill="#0f2a1d"/>
+  <path d="M136 320V184h240v136" fill="none" stroke="#ffffff" stroke-width="22" stroke-linejoin="round"/>
+  <path d="M164 214h184M164 244h184M164 274h184M196 190v130M256 190v130M316 190v130" stroke="#2f9e5b" stroke-width="6"/>
+  <circle cx="256" cy="336" r="42" fill="#ffffff"/>
+  <path d="M256 315l18 13-7 21h-22l-7-21z" fill="#0f2a1d"/>
+</svg>

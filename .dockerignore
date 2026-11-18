@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+.git
+.claude
+.codex
+.agents
+.gtd
+.githooks
+docs
+content
+infra
+tests
+tools
+*.tfvars
+.env
+.env.*
