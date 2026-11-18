@@ -4,8 +4,12 @@
 // `button.secondary { min-height: 44px }` that outranks `.session-control { min-height: 56px }`
 // is caught here, where a test of class names alone would miss it.
 //
+// Sizes held in tokens (`var(--target-session)`) are resolved from src/tokens.css.
+//
 // It reads top-level rules only. Rules inside @media and @container blocks are skipped: in this
 // stylesheet they change colours and column counts, never sizes.
+
+import tokensCss from './tokens.css?raw';
 
 interface Rule {
   selectors: string[];
@@ -84,8 +88,32 @@ export function cascaded(rules: Rule[], el: Element, property: string): string |
   return best?.value ?? null;
 }
 
-/** A declared size in px (`56px`), or 0 when it is not set in px. */
+/** The custom properties set on `:root` at the top level of `css` (the light theme's tokens). */
+export function rootTokens(css: string): Map<string, string> {
+  const tokens = new Map<string, string>();
+  for (const rule of parseRules(css)) {
+    if (!rule.selectors.includes(':root')) continue;
+    for (const [name, value] of rule.declarations) if (name.startsWith('--')) tokens.set(name, value);
+  }
+  return tokens;
+}
+
+const TOKENS = rootTokens(tokensCss);
+
+/** `value` with every `var(--name)` replaced by the token's value from src/tokens.css. */
+export function resolveTokens(value: string, tokens: Map<string, string> = TOKENS): string {
+  let out = value;
+  for (let i = 0; i < 10 && out.includes('var('); i++) {
+    out = out.replace(/var\((--[\w-]+)\)/g, (whole, name: string) => tokens.get(name) ?? whole);
+  }
+  return out;
+}
+
+/**
+ * A declared size in px (`56px`, or a token such as `var(--target-session)` that holds one), or
+ * 0 when it is not set in px.
+ */
 export function px(value: string | null): number {
-  const m = value?.match(/^(\d+(?:\.\d+)?)px$/);
+  const m = (value === null ? null : resolveTokens(value))?.match(/^(\d+(?:\.\d+)?)px$/);
   return m ? Number(m[1]) : 0;
 }

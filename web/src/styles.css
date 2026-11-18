@@ -1,36 +1,78 @@
-:root {
-  --bg: #f4f7f5;
-  --surface: #ffffff;
-  --text: #13221a;
-  --muted: #4d6157;
-  --brand: #0f2a1d;
-  --accent: #2f9e5b;
-  --radius: 14px;
-  color-scheme: light dark;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b1510;
-    --surface: #14241b;
-    --text: #e6efe9;
-    --muted: #a5b8ad;
-  }
-}
+/*
+ * Every colour, size, space, radius and shadow here comes from src/tokens.css (story #76).
+ * No literals: src/tokens.test.ts fails on one.
+ */
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  /* The scrollbar appearing as a home fills in must not shift everything sideways. */
+  scrollbar-gutter: stable;
 }
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: var(--weight-body);
+  line-height: var(--leading-md);
+}
+
+/* The type scale: screen titles, section headings, list titles. */
+h1,
+h2,
+h3 {
+  font-weight: var(--weight-bold);
+}
+
+h1 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+}
+
+h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+}
+
+h3 {
+  margin: var(--space-1) 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+}
+
+strong,
+b {
+  font-weight: var(--weight-bold);
+}
+
+p {
+  color: var(--muted);
+}
+
+ul,
+ol {
+  padding-left: var(--space-5);
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: var(--focus-width) solid var(--action-ink);
+  outline-offset: var(--focus-offset);
 }
 
 .app {
-  min-height: 100dvh;
+  min-height: var(--viewport-height);
   display: flex;
   flex-direction: column;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
@@ -38,46 +80,48 @@ body {
 }
 
 .app-bar {
-  background: var(--brand);
-  color: #fff;
-  padding: 12px 16px;
-  font-weight: 600;
+  background: var(--action);
+  color: var(--action-on);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: var(--weight-display);
 }
 
 .app-main {
   flex: 1;
   width: 100%;
   margin: 0 auto;
-  padding: 16px;
+  padding: var(--space-4);
   container-type: inline-size;
 }
 
 /* compact: below 600 px, one column */
 .app[data-layout='compact'] .app-main {
-  max-width: 600px;
+  max-width: var(--measure-compact);
 }
 
 /* medium: 600 to 899 px, one wide column */
 .app[data-layout='medium'] .app-main {
-  max-width: 820px;
-  padding: 24px;
+  max-width: var(--measure-medium);
+  padding: var(--space-5);
 }
 
 /* expanded: 900 px and up, two panes */
 .app[data-layout='expanded'] .app-main {
-  max-width: 1200px;
-  padding: 32px;
+  max-width: var(--measure-expanded);
+  padding: var(--space-6);
 }
 
 .stack {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .panes {
   display: grid;
   grid-template-columns: 3fr 2fr;
-  gap: 24px;
+  gap: var(--space-5);
 }
 
 /* A narrow window inside an expanded layout (Split View) falls back to one column. */
@@ -90,66 +134,121 @@ body {
 .card,
 .notice {
   background: var(--surface);
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  border: var(--hairline) solid var(--card-line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-1);
+}
+
+/* On a phone the card gives its width to the content (seven day toggles in a row). */
+.app[data-layout='compact'] .card {
+  padding: var(--space-4);
 }
 
 .notice {
-  max-width: 520px;
-  margin: 10vh auto 0;
+  max-width: var(--measure-notice);
+  margin: var(--offset-notice) auto 0;
   text-align: center;
 }
 
-h1 {
-  margin-top: 0;
-}
-
-h2 {
-  margin: 0 0 8px;
-  font-size: 1.1rem;
-}
-
-p {
-  color: var(--muted);
-}
-
-button.primary {
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0 24px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 600;
+/* Buttons: every one at least 44 px; anything tapped mid-session at least 56 px. */
+button {
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0 var(--space-4);
+  font-weight: var(--weight-bold);
   cursor: pointer;
+}
+
+/* The pressable edge: the role's darker edge below the fill (a border, not a shadow). */
+button.primary {
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-bottom: var(--press-depth) solid var(--action-edge);
+  border-radius: var(--radius-md);
+  background: var(--action);
+  color: var(--action-on);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+button.secondary {
+  min-height: var(--target);
+  padding: 0 var(--space-5);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+button.danger {
+  min-height: var(--target-session);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-bottom: var(--press-depth) solid var(--stop-edge);
+  border-radius: var(--radius-md);
+  background: var(--stop);
+  color: var(--stop-on);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+/* `button.` so it outranks `button.primary` and `button.secondary`, which set 44 px. */
+button.session-control {
+  --press-depth: var(--press-depth-session);
+  min-height: var(--target-session);
+  min-width: var(--target-session);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+}
+
+button.wide {
+  width: 100%;
+  margin-top: var(--space-3);
+}
+
+button:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+}
+
+/* Pressed: the button moves down onto its edge, only when motion is welcome. */
+@media (prefers-reduced-motion: no-preference) {
+  button.primary:active:not(:disabled),
+  button.danger:active:not(:disabled) {
+    transform: translateY(var(--press-depth));
+    border-bottom-color: transparent;
+  }
 }
 
 .status {
   text-align: center;
-  margin-top: 20vh;
+  margin-top: var(--offset-status);
 }
 
 /* Parent approval: the inbox, the keeper's approved training and the history. */
 .with-badge {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .badge {
   display: inline-grid;
   place-items: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: #c2410c;
-  color: #fff;
-  font-size: 0.85rem;
-  font-weight: 700;
+  min-width: var(--space-6);
+  min-height: var(--space-6);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--action);
+  color: var(--action-on);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: var(--weight-bold);
 }
 
 .requests {
@@ -157,83 +256,54 @@ button.primary {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .request {
-  border: 1px solid rgb(127 127 127 / 25%);
-  border-radius: 12px;
-  padding: 14px;
-}
-
-.request h3 {
-  margin: 4px 0;
-  font-size: 1rem;
+  border: var(--hairline) solid var(--line);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
 }
 
 .request p {
-  margin: 4px 0;
+  margin: var(--space-1) 0;
 }
 
 .kind {
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--accent);
-}
-
-.meta {
-  font-size: 0.85rem;
+  letter-spacing: var(--tracking-caps);
+  color: var(--muted);
 }
 
 /* Phone first: two thumb-sized buttons side by side, full width. */
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-button.secondary {
-  min-height: 44px;
-  padding: 0 24px;
-  border: 1px solid var(--muted);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text);
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: default;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
 
 .history {
   margin: 0;
-  padding-left: 18px;
   color: var(--muted);
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 /* Today and the lesson path. */
 .home {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .lesson-title {
-  margin: 2px 0;
-  font-size: 1.4rem;
+  margin: var(--space-1) 0;
 }
 
 .path {
   list-style: none;
-  margin: 12px 0 16px;
+  margin: var(--space-3) 0 var(--space-4);
   padding: 0;
   display: grid;
   gap: 0;
@@ -243,87 +313,63 @@ button:disabled {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 52px;
-  font-weight: 600;
+  gap: var(--space-3);
+  min-height: var(--space-7);
+  font-weight: var(--weight-bold);
 }
 
-/* The line joining the steps of the path. */
+/* The line joining the steps of the path: from this node's centre to the next one's. */
 .path-step:not(:last-child)::after {
   content: '';
   position: absolute;
-  left: 15px;
-  top: 38px;
-  bottom: -14px;
-  width: 4px;
-  border-radius: 2px;
-  background: rgb(47 158 91 / 35%);
+  left: calc((var(--path-node) - var(--path-line)) / 2);
+  top: 50%;
+  bottom: -50%;
+  width: var(--path-line);
+  border-radius: var(--radius-pill);
+  background: var(--line);
 }
 
 .path-node {
+  position: relative;
+  z-index: 1;
   flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: inset 0 -4px 0 rgb(0 0 0 / 18%);
+  width: var(--path-node);
+  height: var(--path-node);
+  border-radius: var(--radius-pill);
+  background: var(--action);
 }
 
 .finish-node .path-node {
-  background: #e0a526;
+  background: var(--warning);
 }
 
 .fallback .actions,
 .today .actions {
-  margin-top: 14px;
+  margin-top: var(--space-4);
 }
 
 .done-today {
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   color: var(--text);
 }
 
 .done-today .done-title {
-  margin: 0 0 0.25rem;
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--accent, var(--text));
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: var(--weight-bold);
+  color: var(--success-ink);
 }
 
-/* Every button is at least 44 px; anything tapped mid-session is at least 56 px. */
-button {
-  min-height: 44px;
-  min-width: 44px;
-}
-
-/* `button.` so it outranks `button.primary` and `button.secondary`, which set 44 px. */
-button.session-control {
-  min-height: 56px;
-  min-width: 56px;
-  font-size: 1.1rem;
-}
-
-button.wide {
-  width: 100%;
-  margin-top: 12px;
-}
-
-button.danger {
-  min-height: 56px;
-  padding: 0 20px;
-  border: 0;
-  border-radius: 999px;
-  background: #b42318;
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-/* The session player: designed for the floor, read from a few metres. */
+/* The session player: designed for the floor, read from a few metres. Nothing in it is
+ * smaller than the lead size, and secondary text keeps the full text colour (AAA). */
 .player {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  --muted: var(--text);
 }
 
 .player-bar {
@@ -331,18 +377,22 @@ button.danger {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .player-title {
-  margin: 2px 0 0;
-  font-size: 1.8rem;
+  margin: var(--space-1) 0 0;
 }
 
 .player-bar-actions {
   display: flex;
   /* Stop sits well away from Something hurts (at least 24 px), so one is not tapped for the other. */
-  gap: 32px;
+  gap: var(--space-6);
+}
+
+/* Narrower sides, so the bar keeps to one line in portrait and the controls stay in view. */
+.player-bar-actions button {
+  padding: 0 var(--space-4);
 }
 
 .player[hidden] {
@@ -351,35 +401,36 @@ button.danger {
 
 .wake-notice {
   margin: 0;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: rgb(224 165 38 / 18%);
-  color: var(--text);
-  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--warning);
+  color: var(--warning-on);
+  font-weight: var(--weight-bold);
 }
 
 .feedback {
   margin: 0;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: var(--accent);
-  color: #fff;
-  font-size: 1.3rem;
-  font-weight: 700;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--success);
+  color: var(--success-on);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: var(--weight-bold);
   text-align: center;
 }
 
 /* medium (iPad portrait): one wide column, drill above the controls. */
 .player-stack {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* expanded (iPad landscape): drill and timer left, steps and set log right. */
 .player-panes {
   display: grid;
   grid-template-columns: 3fr 2fr;
-  gap: 24px;
+  gap: var(--space-5);
   align-items: start;
 }
 
@@ -409,121 +460,120 @@ button.danger {
 .player-controls,
 .player-side {
   background: var(--surface);
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+  border: var(--hairline) solid var(--card-line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-1);
 }
 
 .player-side h2 {
-  margin-top: 12px;
+  margin-top: var(--space-3);
 }
 
 .player-side ol,
 .player-side ul {
-  padding-left: 20px;
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .drill-figure {
   margin: 0;
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .drill-figure img {
   width: 100%;
-  max-height: 38vh;
+  max-height: var(--figure-max-height);
   object-fit: contain;
-  background: #fff;
-  border-radius: 12px;
+  background: var(--figure-bg);
+  border-radius: var(--radius-md);
+}
+
+.player-stack .drill-figure img {
+  max-height: var(--figure-max-height-stack);
 }
 
 .credit {
-  font-size: 0.8rem;
   color: var(--muted);
 }
 
 .dose {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   color: var(--text);
 }
 
 .move-name {
-  font-size: 2rem;
   margin: 0;
 }
 
 .cue-line {
-  font-size: 1.3rem;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
 .move-list .done {
   text-decoration: line-through;
-  opacity: 0.6;
 }
 
 .move-list [aria-current='step'] {
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   color: var(--text);
 }
 
 .countdown {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: stretch;
 }
 
 /* What is timed sits above the face; the face's own text is the time left. */
 .timer {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   align-content: start;
 }
 
 .timer-face {
   display: grid;
   justify-items: center;
-  padding: 12px;
+  padding: var(--space-3);
   border: 0;
-  border-radius: 20px;
-  background: var(--brand);
-  color: #fff;
+  border-bottom: var(--press-depth) solid var(--action-edge);
+  border-radius: var(--radius-lg);
+  background: var(--action);
+  color: var(--action-on);
   cursor: pointer;
 }
 
 .timer-label {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
-/* Readable from a few metres. */
+/* Read from two to three metres. */
 .timer-time {
-  font-size: clamp(4rem, 12vw, 7rem);
-  font-weight: 800;
-  line-height: 1;
+  font-size: var(--text-timer);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-timer);
   font-variant-numeric: tabular-nums;
 }
 
 .timer-hint {
   margin: 0;
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 
 .timer-unit {
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
 /* Read by screen readers, not shown: punctuation between visible parts of a name. */
 .sr-only {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
+  width: var(--hairline);
+  height: var(--hairline);
+  margin: calc(-1 * var(--hairline));
   padding: 0;
   overflow: hidden;
   clip-path: inset(50%);
@@ -534,77 +584,74 @@ button.danger {
 .counter {
   display: grid;
   justify-items: center;
-  margin: 8px 0;
+  margin: var(--space-2) 0;
   color: var(--text);
 }
 
 .counter-value {
-  font-size: clamp(4rem, 12vw, 7rem);
-  font-weight: 800;
-  line-height: 1;
+  font-size: var(--text-timer);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-timer);
   font-variant-numeric: tabular-nums;
 }
 
 .counter-label {
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   color: var(--muted);
 }
 
 .cue-buttons {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 .finish {
   display: grid;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .praised {
   list-style: none;
   padding: 0;
-  font-weight: 700;
-  color: var(--accent);
+  font-weight: var(--weight-bold);
+  color: var(--success-ink);
 }
 
 /* XP and streaks: gain framing only, no countdowns, no bars one step from full. */
 .streaks {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin: 8px 0;
+  grid-template-columns: repeat(auto-fit, minmax(var(--tile-min), 1fr));
+  gap: var(--space-3);
+  margin: var(--space-2) 0;
 }
 
 .streak {
   background: var(--bg);
-  border-radius: var(--radius);
-  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
 }
 
 .streak dt {
-  font-size: 0.85rem;
   color: var(--muted);
 }
 
 .streak dd {
-  margin: 4px 0 0;
-  font-size: 1.15rem;
-  font-weight: 700;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: var(--weight-bold);
 }
 
 .streak.team dd {
-  color: var(--accent);
+  color: var(--text);
 }
 
 .xp-earned {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: var(--accent);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: var(--weight-bold);
+  color: var(--success-ink);
   margin: 0;
-}
-
-.runs {
-  padding-left: 20px;
 }
 
 /* Something hurts: the pause, the report form and the parent's urgent inbox item. */
@@ -613,17 +660,17 @@ button.danger {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .card.paused,
 .card.urgent {
-  border-left: 6px solid #b3261e;
+  border-left: var(--stripe) solid var(--stop);
 }
 
 .pain-form {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .pain-form fieldset {
@@ -633,105 +680,98 @@ button.danger {
 }
 
 .pain-form legend {
-  font-weight: 700;
-  margin-bottom: 8px;
+  font-weight: var(--weight-bold);
+  margin-bottom: var(--space-2);
 }
 
 .area-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(var(--option-min), 1fr));
+  gap: var(--space-2);
 }
 
 /* Large toggles with radio semantics: one tap chooses, arrow keys move. */
 .area-option {
   display: flex;
   align-items: center;
-  min-height: 56px;
-  padding: 8px 16px;
-  border: 2px solid transparent;
-  border-radius: var(--radius);
-  background: var(--bg);
+  min-height: var(--target-session);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
   color: var(--text);
   font: inherit;
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
   text-align: left;
   cursor: pointer;
 }
 
 .area-option[aria-checked='true'] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: #fff;
+  border-color: var(--action-edge);
+  background: var(--action);
+  color: var(--action-on);
 }
 
 .pain-note {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .pain-note textarea {
-  font: inherit;
-  padding: 8px;
-  border-radius: 8px;
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
 }
 
 .pain-sent {
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 
 /* Training days on Parent home: seven toggles, exactly three on. */
 .day-toggles {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
-  margin: 8px 0 12px;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 var(--space-3);
 }
 
 .day-toggle {
   min-width: 0;
   padding: 0;
-  border: 1px solid var(--muted);
-  border-radius: 8px;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
-  font-size: 0.9rem;
   cursor: pointer;
 }
 
 .day-toggle[aria-pressed='true'] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  font-weight: 600;
+  background: var(--action);
+  border-color: var(--action-edge);
+  color: var(--action-on);
 }
 
 .themes {
-  margin: 0 0 12px;
-  padding-left: 20px;
+  margin: 0 0 var(--space-3);
 }
 
 /* Story #80: loading skeletons, errors with Retry, the offline notice and the undo toast. */
-html {
-  /* The scrollbar appearing as a home fills in must not shift everything sideways. */
-  scrollbar-gutter: stable;
-}
-
 .reveal[hidden] {
   display: none;
 }
 
 .skeleton {
   display: grid;
-  gap: 10px;
-  padding: 4px 0;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
 }
 
 .skeleton-line {
   display: block;
-  height: 1em;
-  border-radius: 6px;
+  height: var(--skeleton-line);
+  border-radius: var(--radius-sm);
   background: var(--bg);
 }
 
@@ -749,31 +789,31 @@ html {
 }
 
 .streaks.skeleton .skeleton-line {
-  width: 7em;
-  height: 1.15em;
-  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  width: var(--skeleton-stat-width);
+  height: var(--skeleton-stat-height);
+  background: var(--bg);
 }
 
 /* The size of one inbox request, so the inbox holds its place while it loads. */
 .skeleton-request {
-  min-height: 180px;
+  min-height: var(--skeleton-request);
 }
 
 /* About the size of today's session path and its Start button. */
 .skeleton-today {
-  min-height: 360px;
+  min-height: var(--skeleton-today);
 }
 
 /* About the size of the Training days card's text, toggles, themes and Save. */
 .skeleton-days {
-  min-height: 200px;
+  min-height: var(--skeleton-days);
 }
 
 .load-error {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
+  gap: var(--space-2) var(--space-4);
 }
 
 .load-error p {
@@ -785,12 +825,12 @@ html {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 16px;
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  border-radius: var(--radius);
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  border-left: 6px solid var(--accent);
+  border-left: var(--stripe) solid var(--warning);
 }
 
 .offline-notice p {
@@ -799,28 +839,29 @@ html {
 }
 
 .history .undo {
-  margin-left: 8px;
+  margin-left: var(--space-2);
 }
 
-/* Fixed, so it never moves the page as it comes and goes. */
+/* Fixed, so it never moves the page as it comes and goes. Inverse colours: the text colour
+ * as the fill. */
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(16px + env(safe-area-inset-bottom));
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 12px;
-  max-width: calc(100% - 32px);
-  padding: 8px 8px 8px 16px;
-  border-radius: var(--radius);
-  background: var(--brand);
-  color: #fff;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 25%);
+  gap: var(--space-3);
+  max-width: calc(100% - var(--space-6));
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--text);
+  color: var(--surface);
+  box-shadow: var(--shadow-2);
 }
 
 .toast button.secondary {
-  color: #fff;
-  border-color: #fff;
+  color: var(--surface);
+  border-color: var(--surface);
 }

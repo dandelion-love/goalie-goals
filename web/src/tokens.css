@@ -1,0 +1,249 @@
+/*
+ * The design tokens: the one file that holds every colour, size, space, radius and shadow
+ * (story #76; docs/knowledge/decisions/visual-identity.md). Components read them with var();
+ * src/tokens.test.ts fails on any colour, size or spacing literal outside this file, and
+ * src/contrast.test.ts checks every text and control pair below in both themes.
+ *
+ * Colour values come from the palette method's script
+ * (docs/knowledge/visual-identity/palette-method.md), run with the reviewer's margins: text
+ * at least 4.6:1 and control boundaries at least 3.1:1.
+ */
+
+/* Nunito, the variable font, self-hosted from the app's own origin (Fontsource files, OFL 1.1).
+ * Latin first; Latin Extended loads only when such a character appears. Upright only. */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url('@fontsource-variable/nunito/files/nunito-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url('@fontsource-variable/nunito/files/nunito-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light dark;
+
+  /* Type: base 18 px, ratio 1.25. */
+  --font-body: 'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --weight-body: 500;
+  --weight-bold: 800;
+  --weight-display: 900;
+  --text-sm: 0.875rem; /* captions, never during a session */
+  --text-md: 1.125rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.25rem;
+  --text-3xl: 2.75rem;
+  --text-cue: 5rem;
+  --text-timer: clamp(9.5rem, 22vmin, 15rem);
+  --leading-sm: 1.4;
+  --leading-md: 1.5;
+  --leading-lg: 1.4;
+  --leading-xl: 1.2;
+  --leading-2xl: 1.15;
+  --leading-3xl: 1.1;
+  --leading-cue: 1;
+  --leading-timer: 1;
+  --tracking-caps: 0.04em;
+
+  /* Spacing, 4 px base. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Radii. */
+  --radius-sm: 8px; /* chips, inputs */
+  --radius-md: 16px; /* buttons */
+  --radius-lg: 24px; /* cards */
+  --radius-xl: 32px; /* sheets */
+  --radius-pill: 999px;
+
+  /* Borders, depth and elevation. */
+  --border-width: 2px;
+  --hairline: 1px;
+  --stripe: 6px;
+  --press-depth: 4px;
+  --press-depth-session: 6px;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 10%), 0 12px 32px rgb(0 0 0 / 8%);
+  --card-line: transparent;
+  --disabled-opacity: 0.5;
+
+  /* Focus. */
+  --focus-width: 3px;
+  --focus-offset: 2px;
+
+  /* Targets. */
+  --target: 44px;
+  --target-session: 56px;
+
+  /* Component dimensions. */
+  --viewport-height: 100dvh;
+  --measure-compact: 600px;
+  --measure-medium: 820px;
+  --measure-expanded: 1200px;
+  --measure-notice: 520px;
+  --tile-min: 140px;
+  --option-min: 150px;
+  --path-node: 32px;
+  --path-line: 4px;
+  --figure-max-height: 38vh;
+  --figure-max-height-stack: 20vh; /* one column: the controls stay in view below it */
+  --offset-notice: 10vh;
+  --offset-status: 20vh;
+  --skeleton-line: 1em;
+  --skeleton-stat-height: 1.15em;
+  --skeleton-stat-width: 7em;
+  --skeleton-request: 180px;
+  --skeleton-today: 360px;
+  --skeleton-days: 200px;
+
+  /* Colour: light theme. */
+  --bg: #f4f7fb;
+  --surface: #ffffff;
+  --text: #131e2b;
+  --muted: #525f6f;
+  --line: #7e8792;
+  --figure-bg: #ffffff;
+
+  --action: #1f75d5;
+  --action-on: #ffffff;
+  --action-edge: #13539b;
+  --action-ink: #1c6cc6;
+  --action-tint: #edf4fe;
+
+  --success: #49de78;
+  --success-on: #131e2b;
+  --success-edge: #299f51;
+  --success-ink: #1e7d3e;
+  --success-tint: #e4fbe7;
+
+  --warning: #f0b236;
+  --warning-on: #131e2b;
+  --warning-edge: #b48426;
+  --warning-ink: #8b661b;
+  --warning-tint: #fef2de;
+
+  --stop: #d53d37;
+  --stop-on: #ffffff;
+  --stop-edge: #a41c1c;
+  --stop-ink: #ca322e;
+  --stop-tint: #fef0ee;
+
+  --rest: #c8aef9;
+  --rest-on: #131e2b;
+  --rest-edge: #a670f3;
+  --rest-ink: #854ece;
+  --rest-tint: #f5f1fe;
+}
+
+/* Dark theme: the system setting, unless the page asks for light. Keep in step with the block
+ * under [data-theme='dark'] below (src/contrast.test.ts checks they match). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --shadow-1: none;
+    --shadow-2: none;
+    --card-line: #6a727d;
+
+    --bg: #0c121a;
+    --surface: #19212b;
+    --text: #eef2f7;
+    --muted: #afb8c4;
+    --line: #6a727d;
+    --figure-bg: #ffffff;
+
+    --action: #227ee4;
+    --action-on: #0c121a;
+    --action-edge: #165ba9;
+    --action-ink: #4c98f5;
+    --action-tint: #1a2c44;
+
+    --success: #49de78;
+    --success-on: #0c121a;
+    --success-edge: #30b45d;
+    --success-ink: #2ead59;
+    --success-tint: #17321e;
+
+    --warning: #f0b236;
+    --warning-on: #0c121a;
+    --warning-edge: #c18e2a;
+    --warning-ink: #bf8d29;
+    --warning-tint: #38280a;
+
+    --stop: #e04840;
+    --stop-on: #0c121a;
+    --stop-edge: #b22020;
+    --stop-ink: #f7665b;
+    --stop-tint: #41211e;
+
+    --rest: #c8aef9;
+    --rest-on: #0c121a;
+    --rest-edge: #ab79f5;
+    --rest-ink: #ac7cf5;
+    --rest-tint: #2f2540;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --shadow-1: none;
+  --shadow-2: none;
+  --card-line: #6a727d;
+
+  --bg: #0c121a;
+  --surface: #19212b;
+  --text: #eef2f7;
+  --muted: #afb8c4;
+  --line: #6a727d;
+  --figure-bg: #ffffff;
+
+  --action: #227ee4;
+  --action-on: #0c121a;
+  --action-edge: #165ba9;
+  --action-ink: #4c98f5;
+  --action-tint: #1a2c44;
+
+  --success: #49de78;
+  --success-on: #0c121a;
+  --success-edge: #30b45d;
+  --success-ink: #2ead59;
+  --success-tint: #17321e;
+
+  --warning: #f0b236;
+  --warning-on: #0c121a;
+  --warning-edge: #c18e2a;
+  --warning-ink: #bf8d29;
+  --warning-tint: #38280a;
+
+  --stop: #e04840;
+  --stop-on: #0c121a;
+  --stop-edge: #b22020;
+  --stop-ink: #f7665b;
+  --stop-tint: #41211e;
+
+  --rest: #c8aef9;
+  --rest-on: #0c121a;
+  --rest-edge: #ab79f5;
+  --rest-ink: #ac7cf5;
+  --rest-tint: #2f2540;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}

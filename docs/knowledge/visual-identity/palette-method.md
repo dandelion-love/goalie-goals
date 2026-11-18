@@ -55,10 +55,10 @@ inputs named here.
    capped at 0.19, so colours are bold without turning neon.
 5. **Contrast targets** (WCAG 2.2, computed on the final hex values):[^wcag-contrast]
    [^wcag-nontext] [^wcag-luminance]
-   - text on a fill: at least 4.5:1 (AA for normal text, though button labels are large and
+   - text on a fill: at least 4.6:1, a margin over AA's 4.5:1 (button labels are large and
      bold);
    - role text ("ink") on page, card and its own tint: at least 4.7:1, a margin over 4.5;
-   - a fill or its pressable edge against the page: at least 3:1 where it is what shows the
+   - a fill or its pressable edge against the page: at least 3.1:1, a margin over 3:1, where it is what shows the
      control's boundary.
    For each role the script steps through lightness from 0.25 to 0.96 and keeps the
    lightest step that passes (light theme) or the darkest (dark theme), so colours stay as
@@ -77,13 +77,13 @@ text `#525f6f` (6.06:1, 6.51:1), control line `#7e8792` (3.39:1, 3.64:1).
 
 | Role | Fill | On | On / fill | Fill / page | Edge | Edge / page | Ink | Ink / page | Ink / card | Tint | Ink / tint |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| action | `#1f76d8` | `#ffffff` | 4.52 | 4.21 | `#14549d` | 7.02 | `#1c6cc6` | 4.87 | 5.24 | `#edf4fe` | 4.73 |
-| success | `#49de78` | `#131e2b` | 9.62 | 1.63 | `#2aa253` | 3.06 | `#1e7d3e` | 4.82 | 5.17 | `#e4fbe7` | 4.74 |
-| warning | `#f0b236` | `#131e2b` | 8.91 | 1.76 | `#b78727` | 3.00 | `#8b661b` | 4.87 | 5.23 | `#fef2de` | 4.73 |
-| stop | `#d73f39` | `#ffffff` | 4.51 | 4.19 | `#a61d1d` | 6.94 | `#ca322e` | 4.88 | 5.24 | `#fef0ee` | 4.72 |
-| rest | `#c8aef9` | `#131e2b` | 8.71 | 1.80 | `#a772f5` | 3.07 | `#854ece` | 4.91 | 5.28 | `#f5f1fe` | 4.75 |
+| action | `#1f75d5` | `#ffffff` | 4.60 | 4.28 | `#13539b` | 7.14 | `#1c6cc6` | 4.87 | 5.24 | `#edf4fe` | 4.73 |
+| success | `#49de78` | `#131e2b` | 9.62 | 1.63 | `#299f51` | 3.17 | `#1e7d3e` | 4.82 | 5.17 | `#e4fbe7` | 4.74 |
+| warning | `#f0b236` | `#131e2b` | 8.91 | 1.76 | `#b48426` | 3.12 | `#8b661b` | 4.87 | 5.23 | `#fef2de` | 4.73 |
+| stop | `#d53d37` | `#ffffff` | 4.61 | 4.29 | `#a41c1c` | 7.08 | `#ca322e` | 4.88 | 5.24 | `#fef0ee` | 4.72 |
+| rest | `#c8aef9` | `#131e2b` | 8.71 | 1.80 | `#a670f3` | 3.14 | `#854ece` | 4.91 | 5.28 | `#f5f1fe` | 4.75 |
 
-Bright fills are under 3:1 against the page on their own; their 3:1 edge and their label
+Bright fills are under 3:1 against the page on their own; their 3.1:1 edge and their label
 identify the control, which is what SC 1.4.11 asks for.[^wcag-nontext]
 
 # Contrast table: dark theme
@@ -94,10 +94,10 @@ carries the page colour as its text.
 
 | Role | Fill | On | On / fill | Fill / page | Edge | Edge / page | Ink | Ink / page | Ink / card | Tint | Ink / tint |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| action | `#217ce2` | `#0c121a` | 4.52 | 4.52 | `#165aa6` | 2.73 | `#4c98f5` | 6.37 | 5.50 | `#1a2c44` | 4.78 |
+| action | `#227ee4` | `#0c121a` | 4.63 | 4.63 | `#165ba9` | 2.78 | `#4c98f5` | 6.37 | 5.50 | `#1a2c44` | 4.78 |
 | success | `#49de78` | `#0c121a` | 10.75 | 10.75 | `#30b45d` | 6.99 | `#2ead59` | 6.48 | 5.59 | `#17321e` | 4.79 |
 | warning | `#f0b236` | `#0c121a` | 9.96 | 9.96 | `#c18e2a` | 6.42 | `#bf8d29` | 6.32 | 5.45 | `#38280a` | 4.78 |
-| stop | `#de463f` | `#0c121a` | 4.52 | 4.52 | `#b01f1f` | 2.74 | `#f7665b` | 6.27 | 5.42 | `#41211e` | 4.80 |
+| stop | `#e04840` | `#0c121a` | 4.63 | 4.63 | `#b22020` | 2.79 | `#f7665b` | 6.27 | 5.42 | `#41211e` | 4.80 |
 | rest | `#c8aef9` | `#0c121a` | 9.74 | 9.74 | `#ab79f5` | 6.07 | `#ac7cf5` | 6.23 | 5.38 | `#2f2540` | 4.77 |
 
 In the dark theme every fill passes 3:1 against the page by itself; the edge is
@@ -185,11 +185,11 @@ for mode, t in THEMES.items():
     for role, h in HUES.items():
         light = mode == "light"
         on = (t["text"] if role in BRIGHT else "#ffffff") if light else t["bg"]
-        fill_L = BRIGHT_L if role in BRIGHT else step(h, lambda x: ratio(on, x) >= 4.5, lightest=light)
+        fill_L = BRIGHT_L if role in BRIGHT else step(h, lambda x: ratio(on, x) >= 4.6, lightest=light)
         fill = colour(fill_L, h)
         edge_L = fill_L - 0.12
         if light:
-            edge_L = min(edge_L, step(h, lambda x: ratio(x, t["bg"]) >= 3 and luminance(x) < luminance(fill)))
+            edge_L = min(edge_L, step(h, lambda x: ratio(x, t["bg"]) >= 3.1 and luminance(x) < luminance(fill)))
         edge = colour(edge_L, h)
         tint = colour(0.965, h, cap=0.035) if light else colour(0.29, h, cap=0.05)
         ink = colour(step(h, lambda x: min(ratio(x, t["bg"]), ratio(x, t["surface"]), ratio(x, tint)) >= 4.7,

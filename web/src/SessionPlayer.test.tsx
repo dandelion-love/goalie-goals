@@ -218,8 +218,13 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
 
 describe('touch targets in the stylesheet', () => {
   it('sets 44 px for every button and 56 px for in-session controls', () => {
-    expect(css).toMatch(/\nbutton \{[^}]*min-height: 44px;[^}]*min-width: 44px;/);
-    expect(css).toMatch(/\nbutton\.session-control \{[^}]*min-height: 56px;[^}]*min-width: 56px;/);
+    // The sizes are tokens (story #76): --target and --target-session in src/tokens.css.
+    const rule = (selector: string) =>
+      rules.find((r) => r.selectors.includes(selector) && r.declarations.has('min-height'))!.declarations;
+    for (const [selector, size] of [['button', 44], ['button.session-control', 56]] as const) {
+      expect(px(rule(selector).get('min-height') ?? null), selector).toBe(size);
+      expect(px(rule(selector).get('min-width') ?? null), selector).toBe(size);
+    }
   });
 
   it('a session control stays 56 px whatever its look (AC2)', () => {

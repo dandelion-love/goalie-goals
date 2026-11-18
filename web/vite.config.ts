@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
-import { offlineShell, workboxOptions } from './src/pwaConfig';
+import { fontLicence, offlineShell, workboxOptions } from './src/pwaConfig';
 
 export default defineConfig({
   plugins: [
@@ -19,8 +19,8 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#0f2a1d',
-        theme_color: '#0f2a1d',
+        background_color: '#f4f7fb',
+        theme_color: '#1f75d5',
         icons: [
           { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           { src: 'icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
@@ -32,6 +32,7 @@ export default defineConfig({
       workbox: workboxOptions,
     }),
     offlineShell(),
+    fontLicence(),
   ],
   server: {
     proxy: {

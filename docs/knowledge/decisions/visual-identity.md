@@ -73,7 +73,7 @@ display 900; the timer uses 800, which keeps the digit counters open.[^distance]
 | Spacing (4 px base) | `--space-1` 4px, `--space-2` 8px, `--space-3` 12px, `--space-4` 16px, `--space-5` 24px, `--space-6` 32px, `--space-7` 48px, `--space-8` 64px |
 | Radii | `--radius-sm` 8px (chips, inputs), `--radius-md` 16px (buttons), `--radius-lg` 24px (cards), `--radius-xl` 32px (sheets, path nodes), `--radius-pill` 999px |
 | Borders | `--border` 2px solid `--line` on inputs and outlined controls (3:1 or better in both themes) |
-| Pressable depth | `--press-depth` 4px (6px for in-session controls): `box-shadow: 0 var(--press-depth) 0 var(--<role>-edge)`; pressed moves the button down by the depth and drops the shadow |
+| Pressable depth | `--press-depth` 4px (6px for in-session controls): `border-bottom: var(--press-depth) solid var(--<role>-edge)`; pressed moves the button down by the depth |
 | Elevation | `--shadow-1`: `0 1px 2px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%)` (cards); `--shadow-2`: `0 4px 12px rgb(0 0 0 / 10%), 0 12px 32px rgb(0 0 0 / 8%)` (sheets). The dark theme drops shadows and lifts surfaces by lightness plus a 1 px `--line` border |
 | Focus | 3px solid `--action-ink` outline, offset 2px |
 | Targets | `--target` 44px, `--target-session` 56px[^touch] |
@@ -89,21 +89,21 @@ Colour is never the only signal.
 :root {
   --bg: #f4f7fb; --surface: #ffffff; --text: #131e2b; --muted: #525f6f; --line: #7e8792;
 
-  --action: #1f76d8;  --action-on: #ffffff;  --action-edge: #14549d;  --action-ink: #1c6cc6;  --action-tint: #edf4fe;
-  --success: #49de78; --success-on: #131e2b; --success-edge: #2aa253; --success-ink: #1e7d3e; --success-tint: #e4fbe7;
-  --warning: #f0b236; --warning-on: #131e2b; --warning-edge: #b78727; --warning-ink: #8b661b; --warning-tint: #fef2de;
-  --stop: #d73f39;    --stop-on: #ffffff;    --stop-edge: #a61d1d;    --stop-ink: #ca322e;    --stop-tint: #fef0ee;
-  --rest: #c8aef9;    --rest-on: #131e2b;    --rest-edge: #a772f5;    --rest-ink: #854ece;    --rest-tint: #f5f1fe;
+  --action: #1f75d5;  --action-on: #ffffff;  --action-edge: #13539b;  --action-ink: #1c6cc6;  --action-tint: #edf4fe;
+  --success: #49de78; --success-on: #131e2b; --success-edge: #299f51; --success-ink: #1e7d3e; --success-tint: #e4fbe7;
+  --warning: #f0b236; --warning-on: #131e2b; --warning-edge: #b48426; --warning-ink: #8b661b; --warning-tint: #fef2de;
+  --stop: #d53d37;    --stop-on: #ffffff;    --stop-edge: #a41c1c;    --stop-ink: #ca322e;    --stop-tint: #fef0ee;
+  --rest: #c8aef9;    --rest-on: #131e2b;    --rest-edge: #a670f3;    --rest-ink: #854ece;    --rest-tint: #f5f1fe;
 }
 
 /* dark: under prefers-color-scheme: dark, and under [data-theme='dark'] */
 :root {
   --bg: #0c121a; --surface: #19212b; --text: #eef2f7; --muted: #afb8c4; --line: #6a727d;
 
-  --action: #217ce2;  --action-on: #0c121a;  --action-edge: #165aa6;  --action-ink: #4c98f5;  --action-tint: #1a2c44;
+  --action: #227ee4;  --action-on: #0c121a;  --action-edge: #165ba9;  --action-ink: #4c98f5;  --action-tint: #1a2c44;
   --success: #49de78; --success-on: #0c121a; --success-edge: #30b45d; --success-ink: #2ead59; --success-tint: #17321e;
   --warning: #f0b236; --warning-on: #0c121a; --warning-edge: #c18e2a; --warning-ink: #bf8d29; --warning-tint: #38280a;
-  --stop: #de463f;    --stop-on: #0c121a;    --stop-edge: #b01f1f;    --stop-ink: #f7665b;    --stop-tint: #41211e;
+  --stop: #e04840;    --stop-on: #0c121a;    --stop-edge: #b22020;    --stop-ink: #f7665b;    --stop-tint: #41211e;
   --rest: #c8aef9;    --rest-on: #0c121a;    --rest-edge: #ab79f5;    --rest-ink: #ac7cf5;    --rest-tint: #2f2540;
 }
 ```
@@ -117,6 +117,12 @@ pressable edge) are common, generic devices, set here by our own numbers.
 
 # Consequences
 
+- Built in `web/src/tokens.css` (story #76), the token file the quality rubric's VC1 names.
+  The values above come from the palette script run with the reviewer's margins (text on a
+  fill at least 4.6:1, control boundaries at least 3.1:1), which darkened the action and stop
+  fills and the light theme's edges a step; `web/src/contrast.test.ts` checks every pair.
+- Pressable depth is drawn as a bottom border in the role's edge colour, not a box shadow, so
+  the rubric's VC3 count of shadows stays at the two elevations.
 - The app's main colour moves from green to blue: action is blue under this method, and
   green now means success only. Existing `--accent` and `--brand` uses map to `--action`.
 - Every colour in components comes from a token; a lint or review check for raw hex
