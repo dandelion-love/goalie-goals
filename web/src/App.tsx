@@ -6,6 +6,7 @@ import { TodayPanel } from './LessonPath';
 import { SessionPlayer } from './SessionPlayer';
 import { ProgressPanel } from './ProgressPanel';
 import { PainReportForm, PausedPanel } from './PainScreens';
+import { TrainingDays } from './TrainingDays';
 import { fetchProgress, isDoneForToday, recordSession, type FinishProgress } from './progress';
 import { flushPause, LocalPauseStore, startPause, syncPause, type BodyArea, type LocalPause, type PauseStore } from './pain';
 import type { Session, SessionResult } from './training';
@@ -297,6 +298,7 @@ function ParentHome({ layout, fetchImpl }: { layout: Layout; fetchImpl?: typeof 
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Parent home</h1>
       <ProgressPanel fetchImpl={fetchImpl} refresh={answered} />
+      <TrainingDays fetchImpl={fetchImpl} onChange={() => setAnswered((n) => n + 1)} />
       <div className={layout === 'expanded' ? 'panes' : 'stack'}>
         <ParentInbox fetchImpl={fetchImpl} onChange={() => setAnswered((n) => n + 1)} />
         <History fetchImpl={fetchImpl} refresh={answered} />

@@ -372,16 +372,25 @@ describe('training routes', () => {
     expect(sam.json().requests).toHaveLength(DEMO_REQUESTS.length);
   });
 
-  it('asks the parent for the session at startup outside the dev mock', async () => {
+  it('asks the parent for the whole weekly pack at startup outside the dev mock', async () => {
     app = await buildApp({ config: config(), verifier: new ProxyJwtVerifier(AUDIENCE, signer.keys) });
     const sam = await app.inject({ method: 'GET', url: '/api/approvals/pending', headers: as(SAM) });
     expect(sam.json().requests.map((r: { itemId: string }) => r.itemId)).toEqual([
       'card-plank',
+      'card-side-plank',
       'card-glute-bridge',
-      'session-starter',
+      'card-pogo-hops',
+      'card-squat-to-box',
+      'card-split-squat',
+      'card-lateral-shuffle',
+      'card-broad-jump-stick',
+      'card-wall-push-up',
+      'session-strong-middle',
+      'session-spring-legs',
+      'session-quick-feet-strong-arms',
     ]);
-    const kai = await app.inject({ method: 'GET', url: '/api/training/today', headers: as(KAI) });
-    expect(kai.json()).toMatchObject({ today: null, lastApproved: null, waiting: 3 });
+    const kai = await app.inject({ method: 'GET', url: '/api/training/today?date=2026-01-05', headers: as(KAI) });
+    expect(kai.json()).toMatchObject({ planned: true, today: null, lastApproved: null, waiting: 12 });
   });
 });
 

@@ -157,6 +157,15 @@ const ACTION_TEXT: Record<AuditEntry['action'], string> = {
   refused: 'refused',
   paused: 'reported',
   cleared: 'cleared',
+  changed: 'set',
+};
+
+const REFUSED_VERB: Record<AuditEntry['kind'], string> = {
+  plan: 'answer',
+  exercise: 'answer',
+  harder_version: 'answer',
+  pause: 'clear',
+  schedule: 'change',
 };
 
 const ACTOR_TEXT: Record<AuditEntry['actorRole'], string> = {
@@ -193,7 +202,7 @@ export function History({ fetchImpl, refresh = 0 }: { fetchImpl?: typeof fetch; 
               {e.action === 'expired'
                 ? `${e.title} lapsed unanswered`
                 : e.action === 'refused'
-                  ? `${ACTOR_TEXT[e.actorRole]} tried to ${e.kind === 'pause' ? 'clear' : 'answer'} ${e.title}; refused`
+                  ? `${ACTOR_TEXT[e.actorRole]} tried to ${REFUSED_VERB[e.kind] ?? 'answer'} ${e.title}; refused`
                   : e.action === 'paused'
                     ? `${ACTOR_TEXT[e.actorRole]} reported ${e.title}; training paused`
                     : `${ACTOR_TEXT[e.actorRole]} ${ACTION_TEXT[e.action]} ${e.title}`}

@@ -649,3 +649,34 @@ button.danger {
 .pain-sent {
   font-weight: 600;
 }
+
+/* Training days on Parent home: seven toggles, exactly three on. */
+.day-toggles {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin: 8px 0 12px;
+}
+
+.day-toggle {
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--muted);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.day-toggle[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.themes {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
