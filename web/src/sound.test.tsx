@@ -238,7 +238,7 @@ describe('the sound engine', () => {
     expect(engine.play('tick')).toBe(true);
   });
 
-  it('never makes the context in a tap: an early unlock only marks sound as wanted (story 103 AC1)', async () => {
+  it('never makes the context in a tap other than Start: unlock only marks sound as wanted (story 103)', async () => {
     const audio = fakeAudio('suspended');
     const make = vi.fn(() => audio as unknown as AudioContext);
     const engine = createSoundEngine(make, () => 0, readyCues());
@@ -247,7 +247,7 @@ describe('the sound engine', () => {
     expect(engine.unlocked).toBe(false);
     expect(engine.play('start')).toBe(false);
 
-    // Made later (after the player's paint), the iPad keeps it suspended: no resume, no cue.
+    // Made later, outside a tap, the iPad keeps it suspended: no resume, no cue.
     engine.prime();
     await settle();
     expect(make).toHaveBeenCalledTimes(1);
@@ -272,6 +272,55 @@ describe('the sound engine', () => {
     // A tap asked for sound: the running context plays.
     engine.unlock();
     expect(engine.play('go')).toBe(true);
+  });
+
+  it('the Start tap makes the context when it does not exist yet, unlocks it and plays the start cue (story 103)', async () => {
+    const audio = fakeAudio('suspended');
+    const make = vi.fn(() => audio as unknown as AudioContext);
+    const engine = createSoundEngine(make, () => 0, readyCues());
+    engine.warm();
+    await settle();
+    // A quick Start: no prime yet. Made, resumed and unlocked in the tap itself.
+    engine.unlockForStart();
+    expect(make).toHaveBeenCalledTimes(1);
+    expect(audio.resumes).toBe(1);
+    expect(engine.unlocked).toBe(true);
+    expect(engine.play('start')).toBe(true);
+    // Primed already: the Start tap only resumes it.
+    engine.unlockForStart();
+    engine.prime();
+    expect(make).toHaveBeenCalledTimes(1);
+  });
+
+  it('the Start tap only resumes a context made ahead of it', () => {
+    const audio = fakeAudio('suspended');
+    const make = vi.fn(() => audio as unknown as AudioContext);
+    const engine = createSoundEngine(make, () => 0, readyCues());
+    engine.prime();
+    expect(make).toHaveBeenCalledTimes(1);
+    engine.unlockForStart();
+    expect(make).toHaveBeenCalledTimes(1);
+    expect(audio.resumes).toBe(1);
+  });
+
+  it('plays a quick Start’s cue once its samples are ready, if within START_CUE_LATE_MS, and skips it after', async () => {
+    const { START_CUE_LATE_MS } = await import('./sound');
+    for (const late of [START_CUE_LATE_MS, START_CUE_LATE_MS + 1]) {
+      const audio = fakeAudio('running');
+      let finish!: (d: Float32Array) => void;
+      const slow = new Promise<Float32Array>((resolve) => (finish = resolve));
+      let now = 0;
+      const engine = createSoundEngine(() => audio as unknown as AudioContext, () => now, readyCues({ start: slow }));
+      engine.unlockForStart();
+      expect(engine.play('start')).toBe(false);
+      expect(audio.started).toHaveLength(1); // the silent unlock buffer
+      now = late;
+      finish(new Float32Array(50));
+      await settle();
+      expect(audio.started, `${late} ms late`).toHaveLength(late <= START_CUE_LATE_MS ? 2 : 1);
+      // Only once: a later buffer for it plays nothing by itself.
+      expect(engine.ready('start')).toBe(true);
+    }
   });
 
   it('does nothing where there is no Web Audio at all', () => {
@@ -444,7 +493,7 @@ describe('the player’s sound', () => {
 
   it('unlocks sound in the Start tap, and plays nothing on the home before it', async () => {
     const plays = vi.spyOn(sound, 'play').mockReturnValue(true);
-    const unlock = vi.spyOn(sound, 'unlock').mockImplementation(() => {});
+    const unlock = vi.spyOn(sound, 'unlockForStart').mockImplementation(() => {});
     const server = keeperServer(todayWith());
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} />);
     await screen.findByRole('button', { name: 'Start session' });

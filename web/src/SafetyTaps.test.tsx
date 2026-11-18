@@ -185,6 +185,18 @@ describe('the safety taps never touch audio (story 103 AC3)', () => {
     }
   }
 
+  it('no tap in the player but Start makes a context: Next with none there makes none', async () => {
+    vi.stubGlobal('AudioContext', FakeAudioContext);
+    await keeperInPlayer();
+    await vi.waitFor(() => expect(made.length).toBeGreaterThan(0));
+    made[made.length - 1].state = 'closed';
+    const count = made.length;
+    await pressOutsideAct(screen.getByRole('button', { name: 'Next' }));
+    await microtasksOnly();
+    expect(made).toHaveLength(count);
+    await act(async () => {});
+  });
+
   it('the method catches a tap that touches audio: any other tap in the player resumes it', async () => {
     vi.stubGlobal('AudioContext', FakeAudioContext);
     await keeperInPlayer();

@@ -1,12 +1,13 @@
 // Playing the cues in the session player (story #79): one AudioContext, unlocked by the Start
 // tap, a mute remembered on the device, and the moment each state change marks.
 //
-// No tap ever makes the context (story 103): making one is a long task (~100 ms for the first
-// in a browser process). It is made on idle once the keeper's home is up, forced after
-// PRIME_TIMEOUT_MS if the page never settles. A Start tap that comes earlier only marks sound as
-// wanted, and the player makes the context after its first paint. Such a context is not unlocked
-// by a tap on the iPad, so it stays silent (the first cues are skipped) until the next tap in the
-// player resumes it. "Something hurts" and Stop never make or resume the context.
+// The context is made ahead of the Start tap where it can be (story 103): making one is a long
+// task (~100 ms for the first in a browser process). It is made in a full idle period once the
+// keeper's home is up, forced after PRIME_TIMEOUT_MS if the page never settles, and the Start tap
+// then only resumes it. A Start tap that comes before that makes it in the tap itself, the only
+// tap that may: a context made in a tap is unlocked on the iPad, so the session-start cue plays.
+// Every other tap in the player only resumes it, and "Something hurts" and Stop never make or
+// resume it.
 //
 // Sound is never the only signal: every cue fires on a change the screen also shows, and if
 // the iPad blocks audio the session runs exactly the same without it.
@@ -21,7 +22,6 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CUE_NAMES, CUE_RATE, bufferOf, prepareCues, schedule, yieldToPage, type CueName } from './cues';
 import type { PlayerState } from './player';
-import { afterPaint } from './defer';
 
 export const MUTE_KEY = 'goalie-goals.sound-muted';
 
@@ -44,6 +44,12 @@ export function writeMuted(muted: boolean): void {
 /** A resume asked for in the unlocking tap may still be settling when the first cue is due. */
 const RESUME_GRACE_MS = 1000;
 
+/**
+ * A quick Start can come before the start cue's samples are computed (story 103). Its cue then
+ * plays as soon as they are, if that is within this long of the cue's moment; later, it is skipped.
+ */
+export const START_CUE_LATE_MS = 500;
+
 export interface SoundEngine {
   /** Start computing the cues, in slices (safe to call any time, and more than once). */
   warm(): void;
@@ -57,6 +63,11 @@ export interface SoundEngine {
    * iPad. It never makes one (story 103): with no context yet, it only marks sound as wanted.
    */
   unlock(): void;
+  /**
+   * The Start tap only (story 103): `unlock`, making the context first if `prime` has not yet. The
+   * one tap that may make it, so a quick Start still unlocks sound and plays the start cue.
+   */
+  unlockForStart(): void;
   /** Play a cue now. False when sound is not unlocked, is blocked, the cue is not ready, or failed: the screen carries on alone. */
   play(name: CueName): boolean;
   readonly unlocked: boolean;
@@ -92,6 +103,8 @@ export function createSoundEngine(
   // once the browser runs it (a desktop browser that remembers the tap), and stays silent while
   // it is suspended (the iPad), until a tap resumes it.
   let wanted = false;
+  // When the start cue was due but its buffer was not ready yet (a quick Start).
+  let startDueAt: number | null = null;
   // Samples already computed, so the unlocking tap can make their buffers at once.
   const settled = new Map<CueName, Float32Array>();
   let watching = false;
@@ -115,6 +128,14 @@ export function createSoundEngine(
         own.set(name, bufferOf(c, data, rate));
       } catch {
         // No buffer: this cue is skipped.
+        return;
+      }
+      // The start cue was due before its samples were ready: play it now if still close to its
+      // moment, else skip it.
+      if (name === 'start' && startDueAt !== null) {
+        const late = now() - startDueAt;
+        startDueAt = null;
+        if (late <= START_CUE_LATE_MS) play('start');
       }
     };
     const pending = prepared();
@@ -168,50 +189,61 @@ export function createSoundEngine(
     prime() {
       open();
     },
-    unlock() {
-      // Already unlocked and playing: a tap has nothing to do (the player calls this on every tap).
-      if (unlockedAt !== null && ctx?.state === 'running') return;
-      // No context yet (or it was closed): never make one in a tap, it would hold the tap's frame.
-      if (!ctx || ctx.state === 'closed') {
-        wanted = true;
-        return;
-      }
-      unlockedAt = now();
-      if (ctx.state !== 'running') resume(ctx);
-      try {
-        // A one-frame silent buffer, played inside the tap, completes the unlock on iPadOS.
-        const silent = ctx.createBufferSource();
-        silent.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
-        silent.connect(ctx.destination);
-        silent.start(0);
-      } catch {
-        // Nothing else to do: the screen carries every cue.
-      }
+    unlock,
+    unlockForStart() {
+      if (!ctx || ctx.state === 'closed') open();
+      unlock();
     },
-    play(name) {
-      if (!ctx || ctx.state === 'closed') return false;
-      // Never resumed here (story 103): only `unlock`, in a tap, resumes the context, so a cue
-      // played in the Stop or "Something hurts" tap does no more than start a source.
-      if (ctx.state !== 'running') {
-        // Within the grace period the resume asked for in the unlocking tap may still be settling.
-        // Past it, or with no unlocking tap at all, a suspended context means sound is blocked (or
-        // the app was hidden): skip the cue rather than play it late, out of step with the screen.
-        if (unlockedAt === null || now() - unlockedAt > RESUME_GRACE_MS) return false;
-      } else if (unlockedAt === null && !wanted) {
-        // Primed ahead of any tap: nothing plays before the Start tap.
-        return false;
-      }
-      const buffer = buffers.get(name);
-      // Not ready yet (or its render failed): skip it rather than compute it now.
-      if (!buffer) return false;
-      try {
-        schedule(ctx, buffer);
-        return true;
-      } catch {
-        return false;
-      }
-    },
+    play,
   };
+  function unlock() {
+    // Already unlocked and playing: a tap has nothing to do (the player calls this on every tap).
+    if (unlockedAt !== null && ctx?.state === 'running') return;
+    // No context yet (or it was closed): never made here, it would hold the tap's frame. Only the
+    // Start tap makes one (`unlockForStart`).
+    if (!ctx || ctx.state === 'closed') {
+      wanted = true;
+      return;
+    }
+    unlockedAt = now();
+    if (ctx.state !== 'running') resume(ctx);
+    try {
+      // A one-frame silent buffer, played inside the tap, completes the unlock on iPadOS.
+      const silent = ctx.createBufferSource();
+      silent.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+      silent.connect(ctx.destination);
+      silent.start(0);
+    } catch {
+      // Nothing else to do: the screen carries every cue.
+    }
+  }
+  function play(name: CueName): boolean {
+    if (!ctx || ctx.state === 'closed') return false;
+    // Never resumed here (story 103): only `unlock`, in a tap, resumes the context, so a cue
+    // played in the Stop or "Something hurts" tap does no more than start a source.
+    if (ctx.state !== 'running') {
+      // Within the grace period the resume asked for in the unlocking tap may still be settling.
+      // Past it, or with no unlocking tap at all, a suspended context means sound is blocked (or
+      // the app was hidden): skip the cue rather than play it late, out of step with the screen.
+      if (unlockedAt === null || now() - unlockedAt > RESUME_GRACE_MS) return false;
+    } else if (unlockedAt === null && !wanted) {
+      // Primed ahead of any tap: nothing plays before the Start tap.
+      return false;
+    }
+    const buffer = buffers.get(name);
+    if (!buffer) {
+      // Not ready yet (or its render failed): skip it rather than compute it now. The start
+      // cue alone may follow a moment later, once its samples are ready (a quick Start).
+      if (name === 'start') startDueAt = now();
+      return false;
+    }
+    try {
+      schedule(ctx, buffer);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
 /** The app's one engine. */
@@ -253,7 +285,9 @@ export function warmWhenIdle(engine: SoundEngine = sound): () => void {
   if (whenIdle && cancel) {
     // Making the context is one task that can't be split (story 101): it waits for a whole idle
     // period, with nothing else due, so an early tap is not held behind it. A page that is never
-    // idle gets it PRIME_TIMEOUT_MS after mount (story 103), never in the Start tap.
+    // idle gets it PRIME_TIMEOUT_MS after mount (story 103); only a Start before then makes it.
+    // The cues are not started in a short idle period: their slices would keep the page from ever
+    // having a full one, and so hold the context back to the timeout.
     let id = 0;
     const started = Date.now();
     const ask = () => {
@@ -285,21 +319,6 @@ export const useCue = () => useContext(CueContext);
 /** The player's sound: the mute switch (remembered on the device) and a cue function that honours it. */
 export function usePlayerSound(engine: SoundEngine = sound) {
   useWarmCues(engine);
-  // A Start tap before the context existed (story 103 AC2): make it after the player's first
-  // paint, never in the tap. The first cues are skipped if it isn't ready; the next tap in the
-  // player resumes it. Nothing to do when the home already made it.
-  useEffect(() => {
-    let live = true;
-    afterPaint(
-      () => {
-        if (live) engine.prime();
-      },
-      () => {},
-    );
-    return () => {
-      live = false;
-    };
-  }, [engine]);
   const [muted, setMutedState] = useState(readMuted);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
