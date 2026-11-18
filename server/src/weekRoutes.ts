@@ -4,7 +4,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { RoleStore } from './roles.js';
 import type { ProgressService } from './progress.js';
-import { DATE_RE, utcDate, type TrainingPlan } from './training.js';
+import type { ContentLibrary } from './content.js';
+import { DATE_RE, templateMinutes, utcDate, type TrainingPlan } from './training.js';
 import { weekView } from './week.js';
 
 export function registerWeekRoutes(
@@ -13,8 +14,16 @@ export function registerWeekRoutes(
     progress,
     plan,
     roles,
+    content,
     clock = () => new Date(),
-  }: { progress: ProgressService; plan: TrainingPlan; roles: RoleStore; clock?: () => Date },
+  }: {
+    progress: ProgressService;
+    plan: TrainingPlan;
+    roles: RoleStore;
+    /** The cards, so the next session line carries its minutes (story 120). */
+    content?: () => ContentLibrary;
+    clock?: () => Date;
+  },
 ): void {
   app.get<{ Querystring: { date?: string } }>('/api/progress/week', async (req, reply) => {
     reply.header('cache-control', 'no-store');
@@ -22,6 +31,7 @@ export function registerWeekRoutes(
     if (role !== 'keeper' && role !== 'parent') return reply.code(403).send({ error: 'forbidden' });
     const date = typeof req.query.date === 'string' && DATE_RE.test(req.query.date) ? req.query.date : utcDate(clock());
     const [days, pauses] = await Promise.all([progress.days(date), progress.pauses.spans()]);
-    return weekView({ today: date, plan, days, pauses });
+    const minutesOf = content ? (t: Parameters<typeof templateMinutes>[0]) => templateMinutes(t, content()) : undefined;
+    return weekView({ today: date, plan, days, pauses, minutesOf });
   });
 }

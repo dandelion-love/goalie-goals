@@ -2,7 +2,7 @@
 // plan the parent set, the recorded sessions and any pause (server/src/week.ts); this module only
 // reads it and words it.
 
-import { localDate } from './training';
+import { aboutMinutes, localDate } from './training';
 
 export type WeekDayState = 'trained' | 'stopped' | 'rest' | 'paused' | 'planned' | 'today' | 'open';
 
@@ -18,6 +18,8 @@ export interface NextSession {
   date: string;
   day: string;
   title: string;
+  /** Its length by the server's one estimate (story 120); absent from an older server. */
+  minutes?: number;
 }
 
 export interface WeekView {
@@ -47,9 +49,10 @@ export function countText(w: Pick<WeekView, 'kept' | 'planned'>): string {
   return `${w.kept} of ${w.planned} ${w.planned === 1 ? 'session' : 'sessions'}`;
 }
 
-/** "Next session: Wed, Spring legs." */
+/** "Next session: Wed, Spring legs. About 15 minutes." (the minutes since story 120). */
 export function nextText(next: NextSession): string {
-  return `Next session: ${next.day}, ${next.title}.`;
+  const line = `Next session: ${next.day}, ${next.title}.`;
+  return typeof next.minutes === 'number' ? `${line} ${aboutMinutes(next.minutes)}.` : line;
 }
 
 const HEADERS = { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' };

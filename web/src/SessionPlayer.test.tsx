@@ -85,7 +85,7 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
       'Cool-down, 1 min',
       'Finish',
     ]);
-    expect(screen.getByText('About 10 minutes')).toBeTruthy();
+    expect(screen.getByText('About 7 minutes')).toBeTruthy();
     expect(server.urls.some((u) => /^\/api\/training\/today\?date=\d{4}-\d{2}-\d{2}$/.test(u))).toBe(true);
     click('Start session');
 
@@ -534,7 +534,7 @@ describe('wake lock in the player (AC2)', () => {
 });
 
 describe('AC3: no approved session for today', () => {
-  const lastApproved = demoSession({ itemVersion: 'sha256:session1', cards: [PLANK], minutes: 8 });
+  const lastApproved = demoSession({ itemVersion: 'sha256:session1', cards: [PLANK], minutes: 4 });
 
   it('offers the last approved version or rest, never the waiting one', async () => {
     const server = keeperServer(todayWith({ today: null, lastApproved, waiting: 2 }));

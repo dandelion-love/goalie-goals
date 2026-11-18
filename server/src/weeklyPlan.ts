@@ -6,10 +6,17 @@
 // pack must keep, and `checkPlanRules` checks them: strength on 2 to 3 days a week, never on
 // consecutive days (Sunday to Monday included); jumps on at most 2 days, starting at no more
 // than 50 contacts a session; jumps and quick-feet work before strength; a 5 to 10 minute
-// warm-up and a cool-down every session; and every dose the card's own.
+// warm-up and a cool-down every session; every session at most 15 minutes by the app's one
+// estimate (story 120); and every dose the card's own.
 
 import type { CardSource, ContentLibrary, Dose } from './content.js';
-import { STARTER_SESSION, type SessionTemplate, type TrainingPlan } from './training.js';
+import {
+  STARTER_SESSION,
+  sessionSeconds,
+  wholeMinutes,
+  type SessionTemplate,
+  type TrainingPlan,
+} from './training.js';
 
 /** 0 is Sunday, 1 Monday, ... 6 Saturday, as `Date.getUTCDay()` gives. */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -28,6 +35,12 @@ export const MAX_JUMP_DAYS = 2;
 export const MAX_STRENGTH_DAYS = 3;
 export const WARM_UP_MIN_S = 5 * 60;
 export const WARM_UP_MAX_S = 10 * 60;
+/**
+ * The longest a session may be, warm-up and cool-down included, in the whole minutes every screen
+ * shows (training rules, story 120): the estimate rounded to the nearest minute. So a session of
+ * up to 929 s (15 min 29 s) reads "About 15 minutes" and passes; 930 s reads 16 and fails.
+ */
+export const MAX_SESSION_MINUTES = 15;
 
 const warmUp = STARTER_SESSION.warmUp;
 const coolDown = STARTER_SESSION.coolDown;
@@ -225,6 +238,11 @@ export function checkPlanRules(week: Week, content: ContentLibrary, served?: Ser
       problems.push(`${where}: the warm-up is ${warm} s, not 5 to 10 minutes.`);
     }
     if (!session.coolDown.length) problems.push(`${where}: no cool-down.`);
+
+    const minutes = wholeMinutes(sessionSeconds(session, known.map((c) => c.dose)));
+    if (minutes > MAX_SESSION_MINUTES) {
+      problems.push(`${where}: about ${minutes} minutes, over the ${MAX_SESSION_MINUTES}-minute limit.`);
+    }
 
     for (const card of known) {
       const dose = served?.get(card.id);

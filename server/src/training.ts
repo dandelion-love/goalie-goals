@@ -14,7 +14,7 @@ import type { ApprovalRequest, ApprovalService, ItemContent } from './approvals.
 import type { Role } from './roles.js';
 import { itemVersion } from './approvals.js';
 import { asObject, type FsDb } from './firestoreDb.js';
-import { cardSeconds, doseText, type CardSource, type ContentLibrary, type ExerciseCard } from './content.js';
+import { cardSeconds, doseText, type CardSource, type ContentLibrary, type Dose, type ExerciseCard } from './content.js';
 import { DossierService, type ClientDossier } from './dossiers.js';
 
 /** A timed, low-risk move in a warm-up or cool-down (no equipment, no jumping). */
@@ -44,7 +44,8 @@ export interface TrainingPlan {
 
 /**
  * The starter session: a 5-minute dynamic warm-up (training rules: 5 to 10 minutes), two
- * low-risk cards at their card doses, and a light cool-down. About 10 minutes in all.
+ * low-risk cards at their card doses, and a light cool-down. About 10 minutes in all; the
+ * training rules allow at most 15 (story 120).
  */
 export const STARTER_SESSION: SessionTemplate = {
   id: 'starter',
@@ -85,6 +86,8 @@ export interface ClientCard {
   easier: { variant: string; useWhen: string };
   dose: ExerciseCard['dose'];
   doseText: string;
+  /** The card's share of the session estimate (story 120), for the player's minutes left. */
+  seconds: number;
   timer: ExerciseCard['timer'];
   figureUrl: string;
   credit: string;
@@ -173,10 +176,33 @@ function movesText(moves: Move[]): string {
   return `${moves.length} ${moves.length === 1 ? 'move' : 'moves'}, ${minutes} min`;
 }
 
-function sessionMinutes(template: SessionTemplate, cards: CardSnapshot[]): number {
+/**
+ * The one estimate of a session's length (story 120): the warm-up and cool-down moves at their
+ * own seconds, plus each card's `cardSeconds` (4 s a rep, or the hold time, sides counted, and
+ * the rests between sets). Every place a session is offered shows `wholeMinutes` of this, and
+ * the plan check holds it to MAX_SESSION_MINUTES (src/weeklyPlan.ts).
+ */
+export function sessionSeconds(template: Pick<SessionTemplate, 'warmUp' | 'coolDown'>, doses: readonly Dose[]): number {
   const moves = [...template.warmUp, ...template.coolDown].reduce((s, m) => s + m.seconds, 0);
-  const work = cards.reduce((s, c) => s + cardSeconds(c.source.card.dose), 0);
-  return Math.max(1, Math.round((moves + work) / 60));
+  return moves + doses.reduce((s, d) => s + cardSeconds(d), 0);
+}
+
+/** Seconds as the whole minutes a person reads: rounded to the nearest, and never 0. */
+export function wholeMinutes(seconds: number): number {
+  return Math.max(1, Math.round(seconds / 60));
+}
+
+/** A template's minutes with today's cards (a missing card counts nothing): the plan's view. */
+export function templateMinutes(template: SessionTemplate, content: ContentLibrary): number {
+  const doses = template.cardIds.flatMap((id) => {
+    const source = content.cards.get(id);
+    return source ? [source.card.dose] : [];
+  });
+  return wholeMinutes(sessionSeconds(template, doses));
+}
+
+function sessionMinutes(template: SessionTemplate, cards: CardSnapshot[]): number {
+  return wholeMinutes(sessionSeconds(template, cards.map((c) => c.source.card.dose)));
 }
 
 /**
@@ -572,6 +598,7 @@ export class TrainingService {
       easier: { variant: card.easier.variant, useWhen: card.easier.use_when },
       dose: { ...card.dose },
       doseText: doseText(card.dose),
+      seconds: cardSeconds(card.dose),
       timer: card.timer,
       figureUrl: `/api/training/cards/${encodeURIComponent(card.id)}/figure.svg?v=${encodeURIComponent(c.itemVersion)}`,
       credit: c.source.credit,

@@ -116,7 +116,7 @@ describe('AC2 and AC5: the next planned session after a session', () => {
     const server = keeperServer(todayWith(), () => 'together');
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} now={JAN_5} />);
     const done = (await screen.findByText('Done for today')).closest('.done-today') as HTMLElement;
-    expect(await within(done).findByText('Next session: Wed, Spring legs.')).toBeTruthy();
+    expect(await within(done).findByText('Next session: Wed, Spring legs. About 15 minutes.')).toBeTruthy();
     expect(server.urls).toContain('/api/progress/week?date=2026-01-05');
     // The strip shows today trained.
     expect(dayTexts()[0]).toBe('MonTrained');
@@ -134,7 +134,7 @@ describe('AC2 and AC5: the next planned session after a session', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Done for today' }));
     const done = (await screen.findByText('Done for today')).closest('.done-today') as HTMLElement;
-    expect(await within(done).findByText('Next session: Wed, Spring legs.')).toBeTruthy();
+    expect(await within(done).findByText('Next session: Wed, Spring legs. About 15 minutes.')).toBeTruthy();
   });
 });
 

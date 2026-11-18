@@ -4,7 +4,9 @@ import type { Layout } from './layout';
 import {
   cueForSet,
   initialState,
+  minutesLeftText,
   reduce,
+  secondsLeft,
   repTarget,
   STOP_UNDO_MS,
   stepsOf,
@@ -129,6 +131,8 @@ export function SessionPlayer({
   }
 
   const step = steps[state.step];
+  // The steps not finished yet, this one included: it updates as each step finishes.
+  const left = secondsLeft(steps, state.step);
   const needsTaps = wake === 'fallback';
   const frozen = state.stopping;
   // Moving on (the next move, a set's start or end, a rest skipped, the finish) is a transition
@@ -174,9 +178,14 @@ export function SessionPlayer({
       >
         <header className="player-bar">
           <div className="player-step">
-            <span className="kind">
-              Step {state.step + 1} of {steps.length}
-            </span>
+            {/* Story 120: minutes left beside the step count, on its line in the left column, so
+                the safety controls on the right keep their place and size. */}
+            <p className="player-progress">
+              <span className="kind">
+                Step {state.step + 1} of {steps.length}
+              </span>
+              {left !== null && <span className="player-left">{minutesLeftText(left)}</span>}
+            </p>
             <h1 className="player-title">{stepTitle(step)}</h1>
           </div>
           <div className="player-bar-actions">

@@ -10,7 +10,7 @@
 // Pure: the caller passes the plan, the recorded days and the pauses. The route is weekRoutes.ts.
 
 import type { Day } from './progression.js';
-import type { TrainingPlan } from './training.js';
+import type { SessionTemplate, TrainingPlan } from './training.js';
 import { WEEKDAY_NAMES, weekdayOf } from './weeklyPlan.js';
 
 export type WeekDayState =
@@ -43,6 +43,8 @@ export interface NextSession {
   date: string;
   day: string;
   title: string;
+  /** Its length in whole minutes, from the app's one estimate (story 120), when the caller gives it. */
+  minutes?: number;
 }
 
 export interface WeekView {
@@ -100,10 +102,12 @@ export interface WeekInput {
   /** The recorded calendar up to today, as ProgressService.days gives it. */
   days: readonly Day[];
   pauses: readonly PauseSpan[];
+  /** A session's minutes by the one estimate (`templateMinutes`, story 120), for the next line. */
+  minutesOf?: (session: SessionTemplate) => number;
 }
 
 /** The week that holds `today`, one state a day, with the count and the next session. */
-export function weekView({ today, plan, days, pauses }: WeekInput): WeekView {
+export function weekView({ today, plan, days, pauses, minutesOf }: WeekInput): WeekView {
   const recorded = new Map(days.map((d) => [d.date, d]));
   // A pause still in force holds every day ahead of it too, until the parent clears it.
   const pausedOn = (date: string) => pauses.some((p) => p.from <= date && (p.to === null || date <= p.to));
@@ -131,7 +135,10 @@ export function weekView({ today, plan, days, pauses }: WeekInput): WeekView {
     for (let i = 1; i <= 7 && !next; i += 1) {
       const date = shiftDate(today, i);
       const session = plan.sessionFor(date);
-      if (session) next = { date, day: WEEKDAY_NAMES[weekdayOf(date)], title: session.title };
+      if (session) {
+        next = { date, day: WEEKDAY_NAMES[weekdayOf(date)], title: session.title };
+        if (minutesOf) next.minutes = minutesOf(session);
+      }
     }
   }
   return {

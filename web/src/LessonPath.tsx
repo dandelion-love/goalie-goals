@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchToday, localDate, type Session, type Today } from './training';
+import { aboutMinutes, fetchToday, localDate, type Session, type Today } from './training';
 import { LoadError, Skeleton, useSettled } from './Loading';
 import type { OfflineStore } from './offline';
 import { precacheFigures } from './figures';
@@ -15,7 +15,8 @@ export function LessonPath({ session, label }: { session: Session; label: string
     <div className="lesson">
       <p className="kind">{label}</p>
       <h3 className="lesson-title">{session.title}</h3>
-      <p className="meta">About {session.minutes} minutes</p>
+      {/* Story 120: the server's one estimate, as the inbox, training days and week show it. */}
+      <p className="meta lesson-minutes">{aboutMinutes(session.minutes)}</p>
       <ol className="path" aria-label={`Steps in ${session.title}`}>
         {session.warmUp.length > 0 && (
           <li className="path-step">

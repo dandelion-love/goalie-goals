@@ -11,8 +11,8 @@ import { WEEKDAY_NAMES, type Weekday } from './weeklyPlan.js';
 export interface TrainingDaysResponse {
   /** 0 is Sunday ... 6 Saturday, Monday first. */
   days: Weekday[];
-  /** Each training day with the theme it carries, in week order. */
-  themes: { day: Weekday; name: string; title: string }[];
+  /** Each training day with the theme it carries and its minutes (story 120), in week order. */
+  themes: { day: Weekday; name: string; title: string; minutes: number }[];
 }
 
 function response(schedule: ScheduleService, date: string): TrainingDaysResponse {
@@ -20,7 +20,15 @@ function response(schedule: ScheduleService, date: string): TrainingDaysResponse
   const days = schedule.days(date);
   return {
     days,
-    themes: days.map((d) => ({ day: d, name: WEEKDAY_NAMES[d], title: week[d]?.title ?? '' })),
+    themes: days.map((d) => {
+      const session = week[d];
+      return {
+        day: d,
+        name: WEEKDAY_NAMES[d],
+        title: session?.title ?? '',
+        minutes: session ? schedule.minutesOf(session) : 0,
+      };
+    }),
   };
 }
 

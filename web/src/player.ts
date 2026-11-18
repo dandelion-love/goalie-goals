@@ -176,3 +176,33 @@ export function reduce(steps: Step[], s: PlayerState, action: Action): PlayerSta
 export function stepTitle(step: Step): string {
   return step.kind === 'moves' ? step.label : step.card.name;
 }
+
+/**
+ * Seconds a step takes by the session estimate (story 120): its moves at their own seconds, or
+ * the card's share as the server sent it. Null when a card came without it (an older saved copy).
+ */
+export function stepSeconds(step: Step): number | null {
+  if (step.kind === 'moves') return step.moves.reduce((s, m) => s + m.seconds, 0);
+  return typeof step.card.seconds === 'number' ? step.card.seconds : null;
+}
+
+/** Seconds left from step `from` on, the step itself included; null when any is unknown. */
+export function secondsLeft(steps: Step[], from: number): number | null {
+  let total = 0;
+  for (const step of steps.slice(from)) {
+    const s = stepSeconds(step);
+    if (s === null) return null;
+    total += s;
+  }
+  return total;
+}
+
+/**
+ * Minutes left in plain words, in whole minutes rounded as the session's own minutes are, so at
+ * the first step it matches "About N minutes" on Today. Never "0 min": under 30 s reads
+ * "Under a minute left".
+ */
+export function minutesLeftText(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  return minutes < 1 ? 'Under a minute left' : `About ${minutes} min left`;
+}

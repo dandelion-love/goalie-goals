@@ -27,5 +27,5 @@ How the keeper's training grows: the movement patterns the keeper trains, a ladd
 
 # Decisions
 
-* [Progression library to build](/decisions/progression-library.md) - Every rung's id, pattern, rung number and prerequisite: 56 rungs in 16 ladders, 9 of them existing cards, each still needing its own acceptance spec and the owner's in-app approval.
+* [Progression library to build](/decisions/progression-library.md) - Every rung's id, pattern, rung number and prerequisite: 56 rungs in 16 ladders, 10 of them existing cards, each still needing its own acceptance spec and the owner's in-app approval.
 * [The themed weekly rotation the engine implements](/decisions/weekly-rotation.md) - The rotation, the parent's settings for training weekdays, team days and match day, and the engine's rules.

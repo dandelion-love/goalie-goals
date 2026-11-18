@@ -4,6 +4,7 @@
 
 import type { ApprovalService, ProposeInput } from './approvals.js';
 import type { TrainingService } from './training.js';
+import { MAX_SESSION_MINUTES } from './weeklyPlan.js';
 
 export const DEMO_REQUESTS: readonly ProposeInput[] = [
   {
@@ -11,7 +12,8 @@ export const DEMO_REQUESTS: readonly ProposeInput[] = [
     itemId: 'plan-starter',
     content: {
       title: 'Starter plan: three short sessions a week',
-      detail: 'About 10 minutes each, never on consecutive days, using only approved exercises.',
+      // Story 120: the limit itself, so the words never fall behind the training rules.
+      detail: `Up to ${MAX_SESSION_MINUTES} minutes each, never on consecutive days, using only approved exercises.`,
     },
   },
   {

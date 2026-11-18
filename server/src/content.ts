@@ -199,9 +199,15 @@ export function doseText(d: Dose): string {
   return `${d.sets} ${d.sets === 1 ? 'set' : 'sets'} of ${work}, rest ${d.rest_s} s`;
 }
 
-/** Rough seconds a card takes: work at about 4 s a rep, or the hold time, plus rests between sets. */
+/** The estimate's pace for counted work (reps, contacts, efforts), in seconds a rep. */
+export const SECONDS_PER_REP = 4;
+
+/**
+ * Rough seconds a card takes: work at about 4 s a rep, or the hold time, plus rests between sets.
+ * Part of the one session estimate (`sessionSeconds` in src/training.ts, story 120).
+ */
 export function cardSeconds(d: Dose): number {
   const sides = d.per_side ? 2 : 1;
-  const perSet = d.kind === 'hold' ? (d.seconds ?? 0) * sides : (d.reps ?? 0) * 4 * sides;
+  const perSet = d.kind === 'hold' ? (d.seconds ?? 0) * sides : (d.reps ?? 0) * SECONDS_PER_REP * sides;
   return d.sets * perSet + Math.max(0, d.sets - 1) * d.rest_s;
 }

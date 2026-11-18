@@ -35,6 +35,11 @@ export interface Card {
   easier: { variant: string; useWhen: string };
   dose: Dose;
   doseText: string;
+  /**
+   * The card's share of the session estimate (story 120), from the server: absent in a copy
+   * saved on the device before it was sent, and then the player shows steps only.
+   */
+  seconds?: number;
   timer: 'reps' | 'interval' | 'countdown' | 'none';
   figureUrl: string;
   credit: string;
@@ -63,6 +68,14 @@ export interface Today {
 }
 
 /** The device's local date, YYYY-MM-DD: "today" is the keeper's day, not the server's. */
+/**
+ * A session's length in plain words (story 120): "About 12 minutes". The number is always the
+ * server's one estimate (`minutes`), so Today, the inbox, the training days and the week agree.
+ */
+export function aboutMinutes(minutes: number): string {
+  return minutes === 1 ? 'About 1 minute' : `About ${minutes} minutes`;
+}
+
 export function localDate(now: Date = new Date()): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;

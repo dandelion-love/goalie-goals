@@ -303,9 +303,9 @@ describe('AC4: training days routes', () => {
     expect(sam.json()).toEqual({
       days: [1, 3, 5],
       themes: [
-        { day: 1, name: 'Mon', title: 'Strong middle' },
-        { day: 3, name: 'Wed', title: 'Spring legs' },
-        { day: 5, name: 'Fri', title: 'Quick feet, strong arms' },
+        { day: 1, name: 'Mon', title: 'Strong middle', minutes: 12 },
+        { day: 3, name: 'Wed', title: 'Spring legs', minutes: 15 },
+        { day: 5, name: 'Fri', title: 'Quick feet, strong arms', minutes: 12 },
       ],
     });
     const kai = await a.inject({ method: 'GET', url: '/api/training/days', headers: as(KAI) });

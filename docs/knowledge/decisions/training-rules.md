@@ -94,6 +94,7 @@ app takes the more conservative option.
 | Growth spurt | When the owner reports fast growth or new knee or heel pain, hold all progressions and drop jump and sprint volume back to the starting dose | [^ioc-2015][^moran-2017-cmj] |
 | After a break | After a week or more off, restart one step below the last level | Cautious reading of [^nsca-2009] |
 | Holds (plank, side plank) | See Holds below | [^soligard-2008][^fifa-core-2025][^mcgill-2010] |
+| Session length | At most 15 minutes, warm-up and cool-down included, by the app's estimate; see Session length below | The owner's decision (story 120) |
 
 # Holds
 
@@ -128,6 +129,31 @@ parent as the only supervisor. McGill keeps adult holds under 10 s so the muscle
 cramp from lack of oxygen, and builds endurance with more repetitions.[^mcgill-2010] The
 app keeps a 10 s floor so the parent can see and check the position, starts low, ends any
 hold as soon as the position breaks, and lets the owner keep every hold at the floor.
+
+# Session length
+
+**A session is at most 15 minutes, warm-up and cool-down included.** The starter plan
+first promised about 10 minutes a session. Once every session had a full warm-up and three
+cards, the pack ran to about 12, 15 and 12 minutes. The owner decided: "Relax the rule,
+just make sure duration is clear." So the limit is 15 minutes, and every place a session
+is offered shows its length.
+
+The estimate, the one number every screen shows and the plan check uses:
+
+| Part | Seconds |
+|---|---|
+| Warm-up and cool-down moves | Each move's own seconds |
+| Counted work (reps, contacts, efforts) | 4 s a rep, per set, both sides for a one-sided card |
+| Holds | The hold time, per set, both sides for a one-sided hold |
+| Rest | The card's rest, between sets only |
+
+The total is rounded to the nearest whole minute, and never shown as 0. The plan check fails
+any session whose rounded estimate is over 15 minutes: up to 929 s reads "About 15 minutes"
+and passes; 930 s reads 16 and fails. Spring legs, the longest session, is 912 s.
+
+The estimate leaves out the time to move between cards and to set up. A session played at
+home may run a little longer, so the limit is a ceiling on what the app plans, not a timer
+on the keeper. The player shows the minutes left as each step finishes.
 
 # Warning signs that stop a session
 

@@ -75,9 +75,9 @@ The card joins **Quick feet, strong arms** (`quick-feet-strong-arms` in
   `pogo-hops` keeps its substitute link). The session goes from about 14 minutes (830 s) to
   about 12 (739 s): the card adds 125 s and the trade takes out 216 s, so no session gets
   longer. Jumps now fall on one day a week (Spring legs), inside the limit of two.
-- **Not yet about 10 minutes.** Spring legs (about 15) and this session (about 12) are
-  still over the "about 10 minutes" the starter plan promises. That predates this card and
-  is left to its own story.
+- **Inside the 15-minute limit.** Spring legs (about 15) and this session (about 12) were
+  over the "about 10 minutes" the starter plan first promised. Story 120 settled it: the
+  training rules now allow up to 15 minutes, and every screen shows a session's length.
 
 ## Approval
 

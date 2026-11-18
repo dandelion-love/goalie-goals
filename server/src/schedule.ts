@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import type { AuditLog } from './approvals.js';
 import type { ContentLibrary } from './content.js';
 import type { Role } from './roles.js';
-import { DATE_RE } from './training.js';
+import { DATE_RE, templateMinutes, type SessionTemplate } from './training.js';
 import {
   checkPlanRules,
   checkTrainingDays,
@@ -163,6 +163,11 @@ export class ScheduleService {
   /** Read the stored changes into the plan (startup, or after another writer). */
   async load(): Promise<void> {
     this.plan.load(await this.store.list());
+  }
+
+  /** A session's minutes by the app's one estimate, with today's cards (story 120). */
+  minutesOf(session: SessionTemplate): number {
+    return templateMinutes(session, this.content());
   }
 
   /** The training days in effect on a date, Monday first. */

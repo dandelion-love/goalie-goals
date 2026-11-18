@@ -22,6 +22,8 @@ export const PLANK: Card = {
   easier: { variant: 'Plank from the knees.', useWhen: 'The hips sag before the time is up.' },
   dose: { kind: 'hold', sets: 2, seconds: 20, per_side: false, rest_s: 45, tempo: 'still and steady' },
   doseText: '2 sets of 20 s hold, rest 45 s',
+  // Story 120: the card's share of the estimate, as the server sends it (2 x 20 s + 45 s rest).
+  seconds: 85,
   timer: 'interval',
   figureUrl: '/api/training/cards/plank/figure.svg?v=sha256%3Aplank1',
   credit: 'Figure: the goalie-goals contributors, CC BY-SA 4.0, drawn for this repo.',
@@ -41,6 +43,8 @@ export const BRIDGE: Card = {
   easier: { variant: 'Smaller lift.', useWhen: 'The back arches.' },
   dose: { kind: 'reps', sets: 2, reps: 12, per_side: false, rest_s: 45, tempo: 'up in one second, hold one, down for three' },
   doseText: '2 sets of 12 reps, rest 45 s',
+  // 2 x 12 reps at 4 s + 45 s rest.
+  seconds: 141,
   timer: 'reps',
   figureUrl: '/api/training/cards/glute-bridge/figure.svg?v=sha256%3Abridge1',
   credit: 'Figure: the goalie-goals contributors, CC BY-SA 4.0, drawn for this repo.',
@@ -51,7 +55,8 @@ export function demoSession(over: Partial<Session> = {}): Session {
     itemId: 'session-starter',
     itemVersion: 'sha256:session2',
     title: 'Strong middle',
-    minutes: 10,
+    // The server's estimate of this fixture: 105 + 85 + 141 + 60 = 391 s, about 7 minutes.
+    minutes: 7,
     warmUp: [
       { name: 'March on the spot', seconds: 60, cue: 'Knees up, arms swing' },
       { name: 'Arm circles', seconds: 45, cue: 'Small circles, then big' },
@@ -73,6 +78,8 @@ export function todayWith(over: Partial<Today> = {}): Today {
  */
 export function demoWeek(today = '2026-01-05', todayState: WeekDayState = 'today', earlier: WeekDayState = 'trained'): WeekView {
   const titles = ['Strong middle', null, 'Spring legs', null, 'Quick feet, strong arms', null, null];
+  // Each theme's minutes as the server's estimate gives them for the repo's pack (story 120).
+  const minutes: Record<string, number> = { 'Strong middle': 12, 'Spring legs': 15, 'Quick feet, strong arms': 12 };
   const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const shift = (date: string, n: number) => {
     const d = new Date(`${date}T00:00:00Z`);
@@ -88,8 +95,8 @@ export function demoWeek(today = '2026-01-05', todayState: WeekDayState = 'today
   const kept = days.filter((d) => d.state === 'trained' || d.state === 'stopped').length;
   const after = days.find((d) => d.date > today && d.title);
   const next = after
-    ? { date: after.date, day: after.day, title: after.title! }
-    : { date: shift(monday, 7), day: 'Mon', title: 'Strong middle' };
+    ? { date: after.date, day: after.day, title: after.title!, minutes: minutes[after.title!] }
+    : { date: shift(monday, 7), day: 'Mon', title: 'Strong middle', minutes: minutes['Strong middle'] };
   return { date: today, days, kept, planned: 3, next };
 }
 

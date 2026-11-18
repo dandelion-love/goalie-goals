@@ -191,7 +191,7 @@ describe('story 114: the week route', () => {
     const w = kai.json() as WeekView;
     expect(w.days[0]).toMatchObject({ date: MON, state: 'trained', isToday: true });
     expect([w.kept, w.planned]).toEqual([1, 3]);
-    expect(w.next).toEqual({ date: WED, day: 'Wed', title: 'Spring legs' });
+    expect(w.next).toEqual({ date: WED, day: 'Wed', title: 'Spring legs', minutes: 15 });
 
     const other = await app.inject({ method: 'GET', url: '/api/progress/week', headers: as(OTHER) });
     expect(other.statusCode).toBe(403);

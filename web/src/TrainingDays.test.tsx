@@ -9,11 +9,13 @@ import type { TrainingDays, Weekday } from './schedule';
 // and sends.
 const NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const THEMES = ['Strong middle', 'Spring legs', 'Quick feet, strong arms'];
+/** Each theme's minutes as the server's one estimate gives them (story 120). */
+const MINUTES = [12, 15, 12];
 const order = (d: number) => (d + 6) % 7;
 
 function daysBody(days: Weekday[]): TrainingDays {
   const sorted = [...days].sort((a, b) => order(a) - order(b));
-  return { days: sorted, themes: sorted.map((d, i) => ({ day: d, name: NAMES[d], title: THEMES[i] })) };
+  return { days: sorted, themes: sorted.map((d, i) => ({ day: d, name: NAMES[d], title: THEMES[i], minutes: MINUTES[i] })) };
 }
 
 function fakeServer(role: 'keeper' | 'parent', { saveFails = false } = {}) {

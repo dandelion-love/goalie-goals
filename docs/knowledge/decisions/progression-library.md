@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Progression library to build
-description: Every rung's id, pattern, rung number and prerequisite - 56 rungs in 16 ladders, 9 of them existing cards - each still needing its own acceptance spec and the owner's in-app approval.
+description: Every rung's id, pattern, rung number and prerequisite - 56 rungs in 16 ladders, 10 of them existing cards - each still needing its own acceptance spec and the owner's in-app approval.
 tags: [decision, progression-library, ladders, unlock, exercise-card]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T07:30:00Z }
@@ -28,8 +28,8 @@ changes no code and approves no exercise.
 
 # Decision
 
-1. The library is the 56 rungs below, in 16 ladders. The 9 existing cards keep their ids
-   and become rung 1 or 2 of their ladder; 47 rungs are new.
+1. The library is the 56 rungs below, in 16 ladders. The 10 existing cards keep their ids
+   and become rung 1 or 2 of their ladder; 46 rungs are new.
 2. **Listing a rung here does not approve it.** Each rung is a behavioural story: it needs
    its own card, its own acceptance spec citing the training rules, a figure and a dossier,
    and the owner's approval in the app before the app may schedule it.[^training-rules][^dossier][^parent-approval]
@@ -109,7 +109,7 @@ prerequisite. "Needs" lists what goes beyond the default "bodyweight and home" p
 
 | Id | Pattern | Rung | Prerequisite | Needs | Card |
 |---|---|---|---|---|---|
-| `set-position` | Set position | 1 | None | - | New |
+| `set-position` | Set position | 1 | None | - | Existing |
 | `set-from-walk` | Set position | 2 | `set-position` | - | New |
 | `set-and-step` | Set position | 3 | `set-from-walk` and `side-step` | - | New |
 | `quick-feet-set` | Footwork | 1 | `set-position` | - | New |
@@ -134,8 +134,8 @@ prerequisite. "Needs" lists what goes beyond the default "bodyweight and home" p
 | Strength | 5 | 20 | 4 | 16 |
 | Trunk | 3 | 9 | 2 | 7 |
 | Movement and jumps | 3 | 10 | 3 | 7 |
-| Goalkeeper actions | 5 | 17 | 0 | 17 |
-| **Total** | **16** | **56** | **9** | **47** |
+| Goalkeeper actions | 5 | 17 | 1 | 16 |
+| **Total** | **16** | **56** | **10** | **46** |
 
 The epic expected 30 to 40 cards. Sixteen ladders of at least three rungs need at least
 48, so the library is larger; it is built ladder by ladder and each ladder ships on its own.

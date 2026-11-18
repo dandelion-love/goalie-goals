@@ -446,6 +446,18 @@ button:active:not(:disabled) {
   margin: var(--space-1) 0 0;
 }
 
+/* Story 120: the step count and the minutes left share one line in the left column, so the bar
+   keeps its height and the safety controls on the right never move. */
+.player-progress {
+  margin: 0;
+}
+
+.player-left {
+  margin-left: var(--space-3);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .player-bar-actions {
   display: flex;
   /* Stop sits well away from Something hurts (at least 24 px), so one is not tapped for the other. */
@@ -925,6 +937,13 @@ button:active:not(:disabled) {
 
 .themes {
   margin: 0 0 var(--space-3);
+}
+
+/* Story 120: each theme's minutes on its own line under it, so a long title never splits it
+   at phone width; the loading skeleton keeps the same two lines a theme. */
+.theme-title,
+.theme-minutes {
+  display: block;
 }
 
 /* Story #80: loading skeletons, errors with Retry, the offline notice and the undo toast. */

@@ -318,7 +318,12 @@ export async function buildApp({
       pauses: painService,
     });
   registerProgressRoutes(app, { progress: progressService, roles: roleStore });
-  registerWeekRoutes(app, { progress: progressService, plan: trainingService.plan, roles: roleStore });
+  registerWeekRoutes(app, {
+    progress: progressService,
+    plan: trainingService.plan,
+    roles: roleStore,
+    content: () => trainingService.library,
+  });
 
   const historyService =
     history ??

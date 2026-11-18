@@ -9,6 +9,7 @@ import {
   type Weekday,
 } from './schedule';
 import { useSettled } from './Loading';
+import { aboutMinutes } from './training';
 
 const INTRO = `Pick ${DAYS_PER_WEEK} days with a rest day between each. The other days are rest.`;
 
@@ -66,7 +67,13 @@ export function TrainingDays({
           <ul className="themes" aria-hidden="true">
             {Array.from({ length: DAYS_PER_WEEK }, (_, i) => (
               <li key={i}>
-                <span className="skeleton-line" />
+                {/* Two lines, as a theme and its minutes take (story 120). */}
+                <span className="theme-title">
+                  <span className="skeleton-line" />
+                </span>
+                <span className="theme-minutes">
+                  <span className="skeleton-line" />
+                </span>
               </li>
             ))}
           </ul>
@@ -123,7 +130,12 @@ export function TrainingDays({
       <ul className="themes">
         {saved.themes.map((t) => (
           <li key={t.day}>
-            {t.name}: {t.title}
+            {/* One text node, so no reader or audit script puts a space before the colon. */}
+            <span className="theme-title">{`${t.name}: ${t.title}`}</span>
+            {/* Story 120: each session's length, the same number Today and the inbox show. */}
+            {typeof t.minutes === 'number' && t.minutes > 0 && (
+              <span className="meta theme-minutes">{aboutMinutes(t.minutes)}</span>
+            )}
           </li>
         ))}
       </ul>

@@ -114,7 +114,7 @@ function parentServer() {
       itemVersion: 'sha256:session2',
       title: 'Session: Strong middle',
       detail:
-        'About 10 minutes. Warm-up: 6 moves, 5 min. Front plank: 2 sets of 20 s hold, rest 45 s. ' +
+        'About 12 minutes. Warm-up: 6 moves, 5 min. Front plank: 2 sets of 20 s hold, rest 45 s. ' +
         'Glute bridge: 2 sets of 12 reps, rest 45 s. Cool-down: 1 move, 1 min.',
       state: 'pending',
       createdAt: at,
@@ -142,6 +142,17 @@ function parentServer() {
     if (url === '/api/pain/status') {
       return json({ paused: true, since: '2026-01-05', reports: [{ id: 'p1', bodyArea: 'knee', note: null, date: '2026-01-05', mistakeAt: '2026-01-05T17:02:00Z' }] });
     }
+    // Story 120: the training days with each session's minutes.
+    if (url.startsWith('/api/training/days')) {
+      return json({
+        days: [1, 3, 5],
+        themes: [
+          { day: 1, name: 'Mon', title: 'Strong middle', minutes: 12 },
+          { day: 3, name: 'Wed', title: 'Spring legs', minutes: 15 },
+          { day: 5, name: 'Fri', title: 'Quick feet, strong arms', minutes: 12 },
+        ],
+      });
+    }
     // Story 114: this week, with a safety stop and the pause on the days ahead.
     if (url.startsWith('/api/progress/week')) return json(demoWeek('2026-01-07', 'paused', 'stopped'));
     if (url.startsWith('/api/progress/summary')) {
@@ -164,6 +175,8 @@ describe('the words on both homes (AC1)', () => {
     await screen.findByText('Check in before clearing.');
     // Story 114: this week's strip, in the same copy rules.
     await screen.findByText('1 of 3 sessions');
+    // Story 120: the training days with each session's minutes, in the same copy rules.
+    await screen.findByText('About 15 minutes');
     // Story 113: a recent session, opened, in the same copy rules.
     const recent = await screen.findByText('Jan 5: Strong middle, Stopped for safety');
     fireEvent.click(recent.closest('summary')!);
@@ -222,7 +235,7 @@ describe('the words on both homes (AC1)', () => {
   });
 
   it('the fallback, the pain report and the paused home', async () => {
-    const lastApproved = demoSession({ itemVersion: 'sha256:session1', cards: [PLANK], minutes: 8 });
+    const lastApproved = demoSession({ itemVersion: 'sha256:session1', cards: [PLANK], minutes: 4 });
     render(<App fetchImpl={keeperServer(todayWith({ today: null, lastApproved, waiting: 1 })).fetchImpl} wakeLock={wake} />);
     await screen.findByRole('button', { name: 'Do last version' });
     checkCopy('K1 fallback', ELSEWHERE);

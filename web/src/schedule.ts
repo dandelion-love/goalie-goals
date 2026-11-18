@@ -8,7 +8,8 @@ export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export interface TrainingDays {
   days: Weekday[];
-  themes: { day: Weekday; name: string; title: string }[];
+  /** Each day's theme and its minutes by the server's one estimate (story 120). */
+  themes: { day: Weekday; name: string; title: string; minutes?: number }[];
 }
 
 /** The week as the control shows it, Monday first. */
