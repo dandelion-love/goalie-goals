@@ -7,6 +7,10 @@ The installable web app: TypeScript, React, Vite and
 ## Screens
 
 - **Keeper home** and **Parent home**, chosen by the role from `/api/me`.
+  - Parent home: the **Inbox** of pending requests, each with **Approve** and **Decline**,
+    and a badge with the pending count (the in-app stand-in for push); then **History**.
+  - Keeper home: **Your training** shows approved items only, and a count of changes
+    waiting for the parent without their content; then the same **History**.
 - **Not set up**: a signed-in account with no role. It shows no data.
 - **Session expired**: `/api/me` returned `401`. **Reconnect** navigates the app window to
   the start URL, so the sign-in proxy's redirect runs inside the installed app.

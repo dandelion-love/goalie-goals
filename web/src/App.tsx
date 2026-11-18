@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchMe, reconnect, type MeResult } from './api';
 import { useLayout, type Layout } from './layout';
+import { ApprovedTraining, History, ParentInbox } from './ApprovalScreens';
 
 type View = { kind: 'loading' } | MeResult;
 
@@ -29,7 +30,7 @@ export function App({ fetchImpl, onReconnect = () => reconnect() }: AppProps) {
         <span className="brand">Goalie Goals</span>
       </header>
       <main className="app-main">
-        <Screen view={view} layout={layout} onReconnect={onReconnect} onRetry={load} />
+        <Screen view={view} layout={layout} fetchImpl={fetchImpl} onReconnect={onReconnect} onRetry={load} />
       </main>
     </div>
   );
@@ -38,11 +39,13 @@ export function App({ fetchImpl, onReconnect = () => reconnect() }: AppProps) {
 function Screen({
   view,
   layout,
+  fetchImpl,
   onReconnect,
   onRetry,
 }: {
   view: View;
   layout: Layout;
+  fetchImpl?: typeof fetch;
   onReconnect: () => void;
   onRetry: () => void;
 }) {
@@ -70,8 +73,8 @@ function Screen({
         </section>
       );
     case 'signed-in':
-      if (view.role === 'keeper') return <KeeperHome layout={layout} />;
-      if (view.role === 'parent') return <ParentHome layout={layout} />;
+      if (view.role === 'keeper') return <KeeperHome layout={layout} fetchImpl={fetchImpl} />;
+      if (view.role === 'parent') return <ParentHome layout={layout} fetchImpl={fetchImpl} />;
       return <NotSetUp />;
   }
 }
@@ -85,37 +88,27 @@ function NotSetUp() {
   );
 }
 
-function KeeperHome({ layout }: { layout: Layout }) {
+function KeeperHome({ layout, fetchImpl }: { layout: Layout; fetchImpl?: typeof fetch }) {
   return (
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Keeper home</h1>
       <div className={layout === 'expanded' ? 'panes' : 'stack'}>
-        <article className="card">
-          <h2>Today's session</h2>
-          <p>No session planned yet.</p>
-        </article>
-        <article className="card">
-          <h2>Progress</h2>
-          <p>Streaks and XP will show here.</p>
-        </article>
+        <ApprovedTraining fetchImpl={fetchImpl} />
+        <History fetchImpl={fetchImpl} />
       </div>
     </section>
   );
 }
 
-function ParentHome({ layout }: { layout: Layout }) {
+function ParentHome({ layout, fetchImpl }: { layout: Layout; fetchImpl?: typeof fetch }) {
+  // Answering a request adds to the history, so the history reloads after each answer.
+  const [answered, setAnswered] = useState(0);
   return (
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Parent home</h1>
       <div className={layout === 'expanded' ? 'panes' : 'stack'}>
-        <article className="card">
-          <h2>Waiting for you</h2>
-          <p>Nothing to approve.</p>
-        </article>
-        <article className="card">
-          <h2>This week</h2>
-          <p>Sessions done together will show here.</p>
-        </article>
+        <ParentInbox fetchImpl={fetchImpl} onChange={() => setAnswered((n) => n + 1)} />
+        <History fetchImpl={fetchImpl} refresh={answered} />
       </div>
     </section>
   );

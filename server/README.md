@@ -12,6 +12,22 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
   - no header, or one that does not verify: `401`
   - verified, no role: `{"role": null}` (the app shows "not set up")
   - verified: `{"role": "keeper"}` or `{"role": "parent"}`
+- Parent approval (per `docs/knowledge/decisions/parent-approval.md`). Every route checks
+  the caller's role from the app's own data; an account with no role gets `403`.
+
+  | Route | Roles | What it does |
+  | --- | --- | --- |
+  | `GET /api/approvals/pending` | parent | The inbox: pending plan, exercise and harder-version requests. |
+  | `POST /api/approvals/:id/approve` | parent | Approves that item version. The keeper gets `403`, logged as `refused`. |
+  | `POST /api/approvals/:id/decline` | parent | Declines, with an optional `{"reason"}`. |
+  | `GET /api/training/approved` | keeper, parent | Approved item versions only, plus a `waiting` count without content. |
+  | `GET /api/audit` | keeper, parent | The append-only audit log: requested, approved, declined, expired, refused. Roles, never accounts. |
+  | `GET /api/notifications/badge` | keeper, parent | Unread count for the in-app badge. |
+
+  An approval is bound to the item's content hash (`itemVersion`): an edit is a new version
+  and needs a new request, and the keeper keeps the last approved version meanwhile. A
+  request unanswered for 7 days becomes `expired`; silence never approves. A decided request
+  never changes again (`409`).
 - Every other path that is not `/api/...` gets the web app (`WEB_ROOT`), with
   `index.html` for app routes. Hashed assets are cached for a year; the shell, manifest and
   service worker never.
@@ -32,6 +48,15 @@ Roles sit behind a `RoleStore` interface. `MemoryRoleStore` serves the walking s
 `FirestoreRoleStore` reads `members/{account}.role` through a minimal interface the
 Firestore client satisfies, and is tested against a fake. It is not wired in yet.
 
+Approval sits behind `ApprovalStore` and `AuditLog` (`src/approvals.ts`), with in-memory
+implementations; `FirestoreApprovalStore` and `FirestoreAuditLog` are stubs that refuse to
+run until a later story wires them. The audit log has `append` and `list` only. The clock is
+injected so tests can move time.
+
+Notifications go through `Notifier` (`src/notifier.ts`). `InAppNotifier` is the mock for
+push: it keeps unread notifications in memory for the badge and sends nothing. A later story
+adds web push behind the same interface; the inbox and badge stay.
+
 ## Local development with a mock identity
 
 ```bash
@@ -43,7 +68,9 @@ npm run dev --workspace web   # proxies /api to :8080
 With the flag on, the server makes an ES256 key in memory at startup and signs a header
 shaped like the proxy's for each `/api` request that lacks one, then verifies it through
 the same code path as production. Switch accounts with `/api/dev/as?account=sam@example.com`;
-`account=none` sends no header, so the app shows the expired-session state. The key is
+`account=none` sends no header, so the app shows the expired-session state. With the mock
+on, the server also seeds three demo requests (a starter plan, an exercise and a harder
+version) for the parent's inbox. The key is
 never written to disk, and the flag stops the server from starting when
 `NODE_ENV=production`.
 
