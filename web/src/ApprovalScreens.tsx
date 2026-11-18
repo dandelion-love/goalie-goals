@@ -10,6 +10,7 @@ import {
   type AuditEntry,
   type PendingRequest,
 } from './approvals';
+import { PauseInboxItem } from './PainScreens';
 
 type Load<T> = { kind: 'loading' } | { kind: 'ready'; data: T } | { kind: 'error' };
 
@@ -62,6 +63,7 @@ export function ParentInbox({ fetchImpl, onChange }: { fetchImpl?: typeof fetch;
           </span>
         )}
       </h2>
+      <PauseInboxItem fetchImpl={fetchImpl} onChange={onChange} />
       {state.kind === 'loading' && <p role="status">Loading…</p>}
       {state.kind === 'error' && <p role="alert">Couldn't load the inbox. Pull to refresh or try again later.</p>}
       {failed && <p role="alert">That answer didn't go through. It is still waiting.</p>}
@@ -153,6 +155,8 @@ const ACTION_TEXT: Record<AuditEntry['action'], string> = {
   declined: 'declined',
   expired: 'lapsed',
   refused: 'refused',
+  paused: 'reported',
+  cleared: 'cleared',
 };
 
 const ACTOR_TEXT: Record<AuditEntry['actorRole'], string> = {
@@ -189,8 +193,10 @@ export function History({ fetchImpl, refresh = 0 }: { fetchImpl?: typeof fetch; 
               {e.action === 'expired'
                 ? `${e.title} lapsed unanswered`
                 : e.action === 'refused'
-                  ? `${ACTOR_TEXT[e.actorRole]} tried to answer ${e.title}; refused`
-                  : `${ACTOR_TEXT[e.actorRole]} ${ACTION_TEXT[e.action]} ${e.title}`}
+                  ? `${ACTOR_TEXT[e.actorRole]} tried to ${e.kind === 'pause' ? 'clear' : 'answer'} ${e.title}; refused`
+                  : e.action === 'paused'
+                    ? `${ACTOR_TEXT[e.actorRole]} reported ${e.title}; training paused`
+                    : `${ACTOR_TEXT[e.actorRole]} ${ACTION_TEXT[e.action]} ${e.title}`}
               {e.reason && e.action === 'declined' ? `: ${e.reason}` : ''}
             </li>
           ))}

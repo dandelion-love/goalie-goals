@@ -52,6 +52,8 @@ export interface Today {
   today: Session | null;
   lastApproved: Session | null;
   waiting: number;
+  /** Training is paused after a pain report: nothing to train until the parent clears it. */
+  paused: boolean;
 }
 
 /** The device's local date, YYYY-MM-DD: "today" is the keeper's day, not the server's. */
@@ -77,10 +79,13 @@ export async function fetchToday(fetchImpl: typeof fetch = fetch, now: Date = ne
   return {
     date: String(body.date ?? ''),
     planned: body.planned,
-    today: isSession(body.today) ? body.today : null,
+    today: body.paused !== true && isSession(body.today) ? body.today : null,
     // Only offered when today's is not approved, as the parent-approval Decision orders it.
-    lastApproved: !isSession(body.today) && isSession(body.lastApproved) ? body.lastApproved : null,
+    // Neither is offered while training is paused.
+    lastApproved:
+      body.paused !== true && !isSession(body.today) && isSession(body.lastApproved) ? body.lastApproved : null,
     waiting: typeof body.waiting === 'number' ? body.waiting : 0,
+    paused: body.paused === true,
   };
 }
 

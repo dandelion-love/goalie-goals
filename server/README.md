@@ -62,6 +62,25 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
   pauses come in through `PauseSource`. Not built yet: spare days and the habit-strength
   score from the Decision, and a solo path in the player (the content has no safe-solo flag
   yet, so the player records a together session).
+- Something hurts (`src/pain.ts`, `src/painRoutes.ts`), per the parent-approval and
+  training-rules Decisions. A pain report pauses all training for the keeper until a parent
+  clears it.
+
+  | Route | Roles | What it does |
+  | --- | --- | --- |
+  | `POST /api/pain` | keeper, parent | Records a report (`id` made by the device, `bodyArea` from a fixed list, optional `note`, `date`) and pauses training. The same `id` sent again is stored once, so the device's offline outbox can retry. |
+  | `GET /api/pain/status` | keeper, parent | Whether training is paused and since when. The parent gets the open reports; the keeper's device gets their ids only. |
+  | `POST /api/pain/clear` | parent | Clears the pause. The keeper gets `403`, logged as `refused`. |
+
+  While paused, `GET /api/training/today` answers `paused: true` with no session and no
+  fallback, and the pause days count as `paused` for streaks (they never break one). The
+  report and the clear go into the same audit log as approvals (`kind: pause`, actions
+  `paused` and `cleared`), with roles and the body area only, never the note. The report is
+  stored in the app's data only: no handler logs it, errors answer with a code and no echo,
+  and Fastify never logs request bodies (`test/pain.test.ts` reads every log line). Reports
+  sit behind `PainStore` (`MemoryPainStore` for now). Not built yet: the clearance details
+  from the Decision (rest days taken, a professional seen, a stepped return plan) and push to
+  the parent's phone; the in-app inbox and badge stand in.
 - Every other path that is not `/api/...` gets the web app (`WEB_ROOT`), with
   `index.html` for app routes. Hashed assets are cached for a year; the shell, manifest and
   service worker never.

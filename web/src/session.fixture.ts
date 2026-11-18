@@ -60,7 +60,7 @@ export function demoSession(over: Partial<Session> = {}): Session {
 }
 
 export function todayWith(over: Partial<Today> = {}): Today {
-  return { date: '2026-01-05', planned: true, today: demoSession(), lastApproved: null, waiting: 0, ...over };
+  return { date: '2026-01-05', planned: true, today: demoSession(), lastApproved: null, waiting: 0, paused: false, ...over };
 }
 
 /** A fake API for the keeper's home: /api/me, today's session and the approval screens. */

@@ -25,7 +25,18 @@ The installable web app: TypeScript, React, Vite and
   screen. Every ending has a positive finish screen with no "one more?" prompt. The keeper's
   home sends each finished session to `/api/progress/sessions` and the finish screen shows
   its XP and the streaks; the `onSessionFinish` prop on `App` also receives the result.
-  The pain report form and the training pause come in a later story.
+- **Something hurts** (`src/pain.ts`, `src/PainScreens.tsx`): on every player screen and on
+  the keeper's home. It ends the session at once and pauses training on the device before
+  anything is sent, then asks where it hurts (a short fixed list) with an optional note. The
+  pause lives in localStorage (`LocalPauseStore`), so it holds and shows with the network
+  off; an unsent report waits there and is sent when the app is online again, then its
+  content is dropped from the device. While paused the keeper's home shows **Training is
+  paused** and offers nothing to train. The parent's **Inbox** shows the report as an urgent
+  item with **Clear the pause**; the keeper's device lifts the pause when the server no longer
+  has it. Report content never goes to the console or anywhere but `/api/pain`.
+  With the network off, an open app keeps the pause, and an app whose `/api` calls fail shows
+  it above "Can't reach the app". The HTML shell is still not cached (see **Installable
+  app**), so a cold start with no network at all needs the offline story.
 - **Together so far** (`src/ProgressPanel.tsx`, client in `src/progress.ts`), on both homes:
   team XP, the team streak and each person's streak. A run that ended shows under
   **Completed runs** with "A new run starts with your next session": no "lost" screen and

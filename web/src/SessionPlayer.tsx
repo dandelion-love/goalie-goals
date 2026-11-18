@@ -15,6 +15,8 @@ export interface SessionPlayerProps {
   onFinish?: (result: SessionResult) => void;
   /** What the finished session earned, once recorded; shown on the finish screen. */
   progress?: FinishProgress | 'saving' | 'unsaved' | null;
+  /** Shown on the finish screen after "Something hurts": the pain report form. */
+  hurtForm?: ReactNode;
   /** Leave the finish screen. */
   onExit: () => void;
 }
@@ -22,7 +24,7 @@ export interface SessionPlayerProps {
 export const WAKE_FALLBACK_TEXT = 'Screen may dim: tap the timer to keep it awake.';
 
 /** The ~10 minute session: warm-up, each approved card, cool-down, then a finish screen. */
-export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, onExit }: SessionPlayerProps) {
+export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, hurtForm, onExit }: SessionPlayerProps) {
   const steps = useMemo(() => stepsOf(session), [session]);
   const [state, dispatch] = useReducer(
     (s: PlayerState, a: Parameters<typeof reduce>[2]) => reduce(steps, s, a),
@@ -50,7 +52,15 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, o
   }, [state.outcome, state.praised, state.setsDone, state.warmUpLogged, session, onFinish]);
 
   if (state.outcome) {
-    return <FinishScreen outcome={state.outcome} praised={state.praised} progress={progress} onExit={onExit} />;
+    return (
+      <FinishScreen
+        outcome={state.outcome}
+        praised={state.praised}
+        progress={progress}
+        hurtForm={hurtForm}
+        onExit={onExit}
+      />
+    );
   }
 
   const step = steps[state.step];
@@ -338,11 +348,13 @@ function FinishScreen({
   outcome,
   praised,
   progress,
+  hurtForm,
   onExit,
 }: {
   outcome: Outcome;
   praised: string[];
   progress?: FinishProgress | 'saving' | 'unsaved' | null;
+  hurtForm?: ReactNode;
   onExit: () => void;
 }) {
   const { title, body } = FINISH[outcome];
@@ -351,6 +363,7 @@ function FinishScreen({
     <section className="notice finish" aria-labelledby="finish-title">
       <h1 id="finish-title">{title}</h1>
       <p>{body}</p>
+      {outcome === 'hurt' && hurtForm}
       {unique.length > 0 && (
         <>
           <h2>Looked good today</h2>

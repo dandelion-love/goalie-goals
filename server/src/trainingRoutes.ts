@@ -9,7 +9,12 @@ import type { Clock } from './approvals.js';
 
 export function registerTrainingRoutes(
   app: FastifyInstance,
-  { training, roles, clock = () => new Date() }: { training: TrainingService; roles: RoleStore; clock?: Clock },
+  {
+    training,
+    roles,
+    clock = () => new Date(),
+    isPaused = async () => false,
+  }: { training: TrainingService; roles: RoleStore; clock?: Clock; isPaused?: () => Promise<boolean> },
 ): void {
   async function allowed(account: string): Promise<boolean> {
     const role = await roles.roleFor(account);
@@ -22,7 +27,10 @@ export function registerTrainingRoutes(
     reply.header('cache-control', 'no-store');
     if (!(await allowed(req.identity!.account))) return reply.code(403).send({ error: 'forbidden' });
     const date = typeof req.query.date === 'string' && DATE_RE.test(req.query.date) ? req.query.date : utcDate(clock());
-    return training.today(date);
+    const today = await training.today(date);
+    // Paused after a pain report: rest only, nothing to train, until a parent clears it.
+    if (await isPaused()) return { ...today, paused: true, today: null, lastApproved: null };
+    return { ...today, paused: false };
   });
 
   // The keeper's card library: the latest approved version of each card.

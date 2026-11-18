@@ -27,9 +27,10 @@ export interface ApprovedItem {
 export interface AuditEntry {
   id: string;
   at: string;
-  action: 'requested' | 'approved' | 'declined' | 'expired' | 'refused';
+  action: 'requested' | 'approved' | 'declined' | 'expired' | 'refused' | 'paused' | 'cleared';
   actorRole: 'keeper' | 'parent' | 'system';
-  kind: RequestKind;
+  /** `pause`: a pain report or its clear. The title names the body area only. */
+  kind: RequestKind | 'pause';
   title: string;
   reason: string | null;
 }

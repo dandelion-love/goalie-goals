@@ -21,6 +21,8 @@ import { registerTrainingRoutes } from './trainingRoutes.js';
 import { InAppNotifier } from './notifier.js';
 import { MemoryProgressStore, ProgressService } from './progress.js';
 import { registerProgressRoutes } from './progressRoutes.js';
+import { MemoryPainStore, PainService } from './pain.js';
+import { registerPainRoutes } from './painRoutes.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -38,7 +40,11 @@ export interface AppDeps {
   training?: TrainingService;
   /** XP and streaks; in memory, on the training plan, unless given. */
   progress?: ProgressService;
+  /** Pain reports and the training pause; in memory, on the approvals audit log, unless given. */
+  pain?: PainService;
   logger?: boolean;
+  /** Send log lines here (tests read them); implies the logger at every level. */
+  logStream?: { write(line: string): void };
 }
 
 export interface MeResponse {
@@ -56,16 +62,26 @@ function cookie(header: string | undefined, name: string): string | undefined {
   return undefined;
 }
 
-export async function buildApp({ config, verifier, roles, approvals, training, progress, logger = false }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({
+  config,
+  verifier,
+  roles,
+  approvals,
+  training,
+  progress,
+  pain,
+  logger = false,
+  logStream,
+}: AppDeps): Promise<FastifyInstance> {
   if (config.devMockIdentity && config.production) {
     throw new ConfigError(`${DEV_MOCK_FLAG} is refused in production.`);
   }
 
+  // Never log the identity header or cookies. Request bodies are never logged, so a pain
+  // report's content never reaches the log (tested in pain.test.ts).
+  const redact = ['req.headers["x-goog-iap-jwt-assertion"]', 'req.headers.cookie'];
   const app = Fastify({
-    logger: logger && {
-      // Never log the identity header or cookies.
-      redact: ['req.headers["x-goog-iap-jwt-assertion"]', 'req.headers.cookie'],
-    },
+    logger: logStream ? { level: 'trace', stream: logStream, redact } : logger && { redact },
   });
 
   let signer: TestSigner | undefined;
@@ -147,7 +163,11 @@ export async function buildApp({ config, verifier, roles, approvals, training, p
     badge: hasBadge(approvalService.notifier) ? approvalService.notifier : undefined,
   });
 
-  registerTrainingRoutes(app, { training: trainingService, roles: roleStore });
+  const painService =
+    pain ?? new PainService({ store: new MemoryPainStore(), audit: approvalService.audit, notifier: approvalService.notifier });
+  registerPainRoutes(app, { pain: painService, roles: roleStore });
+
+  registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused() });
 
   const progressService =
     progress ??
@@ -155,6 +175,7 @@ export async function buildApp({ config, verifier, roles, approvals, training, p
       store: new MemoryProgressStore(),
       plan: trainingService.plan,
       plannedSets: (version) => trainingService.plannedSets(version),
+      pauses: painService,
     });
   registerProgressRoutes(app, { progress: progressService, roles: roleStore });
 

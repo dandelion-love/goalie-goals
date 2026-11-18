@@ -93,6 +93,7 @@ function TodayBody({
   onRest: () => void;
   onStart: (session: Session) => void;
 }) {
+  if (today.paused) return <p className="done-today">Training is paused until your parent clears it. Rest today.</p>;
   if (doneToday) return <p className="done-today">Today's session is done. See you next time.</p>;
   if (resting) return <p className="done-today">Rest day chosen. Recovery is part of training.</p>;
   if (!today.planned) return <p>Rest day. Recovery is part of training.</p>;

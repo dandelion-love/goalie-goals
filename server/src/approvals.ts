@@ -60,7 +60,7 @@ export interface ApprovalStore {
   approvedVersion(itemId: string, itemVersion: string): Promise<ApprovalRequest | null>;
 }
 
-export type AuditAction = 'requested' | 'approved' | 'declined' | 'expired' | 'refused';
+export type AuditAction = 'requested' | 'approved' | 'declined' | 'expired' | 'refused' | 'paused' | 'cleared';
 
 export interface AuditEvent {
   id: string;
@@ -69,8 +69,9 @@ export interface AuditEvent {
   actorRole: Role | 'system';
   /** Internal account reference; `system` for the app itself. Not sent to clients. */
   actor: string;
+  /** The request, or for `pause` events the pain report (its content is never in the log). */
   requestId: string;
-  kind: RequestKind;
+  kind: RequestKind | 'pause';
   itemId: string;
   itemVersion: string;
   title: string;
