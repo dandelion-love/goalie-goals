@@ -37,6 +37,16 @@ privacy guard refuses them).
 
 A missing variable makes `plan -input=false` fail and name it; there is no fallback value.
 
+Two things that stop a first apply:
+
+- **Stale application-default credentials.** If the apply says the billing link is
+  missing `billing.resourceAssociations.create` although your account is a billing admin,
+  the application-default sign-in is a different account. Either redo
+  `gcloud auth application-default login`, or run with your active gcloud account:
+  `export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token)`.
+- **The quota project needs the Cloud Resource Manager API** (`cloudresourcemanager.googleapis.com`)
+  as well as the budgets API, or creating the project fails with a 403.
+
 ## Cost
 
 The budget alerts at 50%, 90% and 100% of actual spend and at 100% of forecast. It does
