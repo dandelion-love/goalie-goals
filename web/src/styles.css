@@ -833,6 +833,12 @@ button:active:not(:disabled) {
   background: var(--bg);
 }
 
+/* Story #95: a panel's place while it loads, kept when the load fails. At least room for two
+ * lines of message and Retry; the panel's own size class below can ask for more. */
+.load-space {
+  min-height: calc(2 * var(--text-md) * var(--leading-md) + var(--space-2) + var(--target));
+}
+
 /* The size of one inbox request, so the inbox holds its place while it loads. */
 .skeleton-request {
   min-height: var(--skeleton-request);
@@ -950,4 +956,35 @@ button:active:not(:disabled) {
   height: 100%;
   z-index: 20;
   pointer-events: none;
+}
+
+/* Story #95: an answered request keeps its place, its outcome at the buttons' height, until the
+ * parent's next answer. */
+.actions.outcome {
+  grid-template-columns: 1fr;
+  align-items: center;
+  min-height: var(--target);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+
+/* The Training days card while it loads: a line for each theme, at the theme's line height. */
+.days-skeleton .themes .skeleton-line {
+  display: inline-block;
+  width: 60%;
+  vertical-align: middle;
+}
+
+/* Kept below Save, two lines tall, so a message after saving moves nothing. */
+.days-message {
+  min-height: calc(2 * var(--text-md) * var(--leading-md));
+  margin-top: var(--space-2);
+}
+
+.days-message p {
+  margin: 0;
+}
+
+.history-note:not(:empty) {
+  margin-top: var(--space-3);
 }

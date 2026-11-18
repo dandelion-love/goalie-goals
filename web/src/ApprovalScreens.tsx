@@ -14,7 +14,7 @@ import {
 } from './approvals';
 import { fetchPauseStatus, type PauseStatus } from './pain';
 import { PauseInboxItem } from './PainScreens';
-import { LoadError, Skeleton, useSettled } from './Loading';
+import { LoadSpace, useSettled } from './Loading';
 import { SAVING, SavingAnnouncer, savingProps, useOneAtATime } from './Saving';
 
 type Load<T> = { kind: 'loading' } | { kind: 'ready'; data: T } | { kind: 'error' };
@@ -24,11 +24,50 @@ function formatDate(iso: string): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-/** The toast after an answer: Undo while the window lasts, then the outcome of an undo. */
-type Toast = { kind: 'undo'; id: string; title: string } | { kind: 'note'; text: string };
+/**
+ * The toast after an answer: Undo while the window lasts, then the outcome of an undo. An answer
+ * that didn't go through is an `error`, read out as an alert.
+ */
+type Toast = { kind: 'undo'; id: string; title: string } | { kind: 'note' | 'error'; text: string };
 
 /** How long a toast with no Undo stays up. */
 const NOTE_MS = 6000;
+
+/**
+ * A request as the inbox shows it. `answered` marks one the parent has just answered, held in
+ * its place (story #95 AC3).
+ */
+type Row = { request: PendingRequest; answered?: 'approve' | 'decline' };
+
+/**
+ * An answer that lands this soon after the tap takes its item away at once: the list closes up
+ * as the tap's own result, inside the 500 ms the layout-shift measure gives an input. Later than
+ * this, the item stays where it is with its outcome, and goes at the parent's next answer, so
+ * nothing moves on its own while the parent reads (story #95 AC3).
+ */
+export const CLOSE_UP_MS = 300;
+
+/**
+ * The inbox's rows after a load: each row keeps its place. A row the server still lists is
+ * pending again (an undo puts it back where it was); an answered row stays until the next
+ * answer; any other row has gone (answered elsewhere, or lapsed). A request not yet shown goes
+ * after the one before it in the server's order.
+ */
+export function mergeRows(rows: Row[], requests: PendingRequest[]): Row[] {
+  const fresh = new Map(requests.map((r) => [r.id, r]));
+  const out: Row[] = [];
+  for (const row of rows) {
+    const request = fresh.get(row.request.id);
+    if (request) out.push({ request });
+    else if (row.answered) out.push(row);
+  }
+  requests.forEach((r, i) => {
+    if (out.some((x) => x.request.id === r.id)) return;
+    const at = i === 0 ? 0 : out.findIndex((x) => x.request.id === requests[i - 1].id) + 1;
+    out.splice(at, 0, { request: r });
+  });
+  return out;
+}
 
 /**
  * The parent's inbox: the pause item when training is paused, every pending request with
@@ -47,15 +86,18 @@ export function ParentInbox({
   refresh?: number;
   onSettled?: () => void;
 }) {
-  const [state, setState] = useState<Load<{ requests: PendingRequest[]; badge: number; pause: PauseStatus | null }>>({
+  const [state, setState] = useState<Load<{ rows: Row[]; badge: number; pause: PauseStatus | null }>>({
     kind: 'loading',
   });
   /** The request on its way, and which control sent it (it reads "Saving…" until it lands). */
   const [busy, setBusy] = useState<{ id: string; verb: 'approve' | 'decline' | 'undo' } | null>(null);
-  const [failed, setFailed] = useState(false);
   const [toast, setToast] = useState<{ toast: Toast; ms: number } | null>(null);
   const once = useOneAtATime();
   useSettled(state.kind !== 'loading', onSettled);
+
+  /** Changes the rows of a loaded inbox (at a tap, or as an answer lands). */
+  const editRows = (edit: (rows: Row[]) => Row[]) =>
+    setState((s) => (s.kind === 'ready' ? { kind: 'ready', data: { ...s.data, rows: edit(s.data.rows) } } : s));
 
   const load = useCallback(async () => {
     try {
@@ -65,7 +107,10 @@ export function ParentInbox({
         fetchBadge(fetchImpl),
         fetchPauseStatus(fetchImpl).catch(() => null),
       ]);
-      setState({ kind: 'ready', data: { requests, badge, pause } });
+      setState((s) => ({
+        kind: 'ready',
+        data: { rows: mergeRows(s.kind === 'ready' ? s.data.rows : [], requests), badge, pause },
+      }));
       // Undone elsewhere (the History): the request is back, so its Undo toast goes.
       setToast((t) => {
         const shown = t?.toast;
@@ -88,13 +133,21 @@ export function ParentInbox({
 
   const answer = (r: PendingRequest, verb: 'approve' | 'decline') =>
     once(async () => {
+      const tapped = Date.now();
+      // Items answered earlier go now, as part of this tap, so the list closes up at a moment
+      // the parent caused (story #95 AC3).
+      editRows((rows) => rows.filter((x) => !x.answered));
       setBusy({ id: r.id, verb });
-      setFailed(false);
       try {
         const { undoForMs } = await answerRequest(r.id, verb, fetchImpl);
         if (verb === 'approve' && undoForMs > 0) setToast({ toast: { kind: 'undo', id: r.id, title: r.title }, ms: undoForMs });
+        const soon = Date.now() - tapped <= CLOSE_UP_MS;
+        editRows((rows) =>
+          soon ? rows.filter((x) => x.request.id !== r.id) : rows.map((x) => (x.request.id === r.id ? { ...x, answered: verb } : x)),
+        );
       } catch {
-        setFailed(true);
+        // In the toast's place, which is always kept, so the message moves nothing.
+        setToast({ toast: { kind: 'error', text: "That answer didn't go through. It is still waiting." }, ms: NOTE_MS });
       }
       await load();
       setBusy(null);
@@ -140,9 +193,11 @@ export function ParentInbox({
       )}
       {/* Undo's "Saving…" is read by the toast's own polite region, so it is said once. */}
       <SavingAnnouncer pending={busy !== null && busy.verb !== 'undo'} />
-      {state.kind === 'loading' && <Skeleton lines={4} className="skeleton-request" />}
-      {state.kind === 'error' && (
-        <LoadError
+      {state.kind !== 'ready' && (
+        <LoadSpace
+          failed={state.kind === 'error'}
+          lines={4}
+          size="skeleton-request"
           message="Couldn't load the inbox."
           onRetry={() => {
             setState({ kind: 'loading' });
@@ -150,31 +205,35 @@ export function ParentInbox({
           }}
         />
       )}
-      {failed && <p role="alert">That answer didn't go through. It is still waiting.</p>}
-      {state.kind === 'ready' && state.data.requests.length === 0 && <p>Nothing to approve.</p>}
-      {state.kind === 'ready' && state.data.requests.length > 0 && (
+      {state.kind === 'ready' && state.data.rows.length === 0 && <p>Nothing to approve.</p>}
+      {state.kind === 'ready' && state.data.rows.length > 0 && (
         <ul className="requests">
-          {state.data.requests.map((r) => (
+          {state.data.rows.map(({ request: r, answered }) => (
             <li key={r.id} className="request" aria-label={r.title}>
               <span className="kind">{KIND_LABEL[r.kind] ?? r.kind}</span>
               <h3>{r.title}</h3>
               <p>{r.detail}</p>
               {/* One text node, so no reader or audit script puts a space before the semicolon. */}
               <p className="meta">{`Lapses unanswered on ${formatDate(r.expiresAt)}; silence never approves.`}</p>
-              <div className="actions">
-                <button
-                  type="button"
-                  className="primary"
-                  {...control(r.id, 'approve', 'Approve')}
-                  onClick={() => void answer(r, 'approve')}
-                />
-                <button
-                  type="button"
-                  className="secondary"
-                  {...control(r.id, 'decline', 'Decline')}
-                  onClick={() => void answer(r, 'decline')}
-                />
-              </div>
+              {answered ? (
+                // The outcome takes the buttons' place at their height, so the list keeps its shape.
+                <div className="actions outcome">{answered === 'approve' ? 'Approved' : 'Declined'}</div>
+              ) : (
+                <div className="actions">
+                  <button
+                    type="button"
+                    className="primary"
+                    {...control(r.id, 'approve', 'Approve')}
+                    onClick={() => void answer(r, 'approve')}
+                  />
+                  <button
+                    type="button"
+                    className="secondary"
+                    {...control(r.id, 'decline', 'Decline')}
+                    onClick={() => void answer(r, 'decline')}
+                  />
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -183,7 +242,7 @@ export function ParentInbox({
           inside it, so nothing moves (story #95), and never over a target (story #96 AC1). */}
       <div className="toast-slot" aria-hidden={toast ? undefined : true}>
         {toast && (
-          <div className="toast" role="status">
+          <div className="toast" role={toast.toast.kind === 'error' ? 'alert' : 'status'}>
             {toast.toast.kind === 'undo' ? (
               <>
                 <span className="toast-text">{`Approved: ${toast.toast.title}`}</span>
@@ -231,9 +290,11 @@ export function ApprovedTraining({
   return (
     <article className="card" aria-labelledby="training-title" aria-busy={state.kind === 'loading'}>
       <h2 id="training-title">Your training</h2>
-      {state.kind === 'loading' && <Skeleton lines={3} className="skeleton-request" />}
-      {state.kind === 'error' && (
-        <LoadError
+      {state.kind !== 'ready' && (
+        <LoadSpace
+          failed={state.kind === 'error'}
+          lines={3}
+          size="skeleton-request"
           message="Couldn't load your training."
           onRetry={() => {
             setState({ kind: 'loading' });
@@ -363,9 +424,10 @@ export function History({
   return (
     <article className="card" aria-labelledby="history-title" aria-busy={state.kind === 'loading'}>
       <h2 id="history-title">History</h2>
-      {state.kind === 'loading' && <Skeleton lines={3} />}
-      {state.kind === 'error' && (
-        <LoadError
+      {state.kind !== 'ready' && (
+        <LoadSpace
+          failed={state.kind === 'error'}
+          lines={3}
           message="Couldn't load the history."
           onRetry={() => {
             setState({ kind: 'loading' });
@@ -374,7 +436,6 @@ export function History({
         />
       )}
       <SavingAnnouncer pending={busy !== null} />
-      {note && <p role="status">{note}</p>}
       {state.kind === 'ready' && state.data.events.length === 0 && <p>Nothing yet.</p>}
       {state.kind === 'ready' && state.data.events.length > 0 && (
         <ol className="history">
@@ -407,6 +468,10 @@ export function History({
           ))}
         </ol>
       )}
+      {/* After the list, and always in the page: a note that comes moves nothing (story #95). */}
+      <div className="history-note" role="status">
+        {note}
+      </div>
     </article>
   );
 }

@@ -8,7 +8,9 @@ import {
   type TrainingDays as Days,
   type Weekday,
 } from './schedule';
-import { Skeleton, useSettled } from './Loading';
+import { useSettled } from './Loading';
+
+const INTRO = `Pick ${DAYS_PER_WEEK} days with a rest day between each. The other days are rest.`;
 
 /**
  * Parent home only: pick the three training days. The themes move with the days; the server
@@ -45,12 +47,34 @@ export function TrainingDays({
     };
   }, [fetchImpl]);
 
-  // While loading, the card holds its place: the heading, the week of toggles, the themes.
+  // While loading, the card is drawn at its final size: the same text, the week of toggles
+  // (disabled), a line for each theme, the message's place and Save. So nothing below it moves
+  // when it fills in (story #95 AC2).
   if (load === 'loading') {
     return (
       <article className="card" aria-labelledby="training-days-title" aria-busy="true">
         <h2 id="training-days-title">Training days</h2>
-        <Skeleton lines={6} className="skeleton-days" />
+        <p>{INTRO}</p>
+        <div className="days-skeleton" role="status" aria-label="Loading">
+          <div className="day-toggles" aria-hidden="true">
+            {WEEK.map(({ day, name }) => (
+              <button key={day} type="button" className="day-toggle" disabled tabIndex={-1}>
+                {name}
+              </button>
+            ))}
+          </div>
+          <ul className="themes" aria-hidden="true">
+            {Array.from({ length: DAYS_PER_WEEK }, (_, i) => (
+              <li key={i}>
+                <span className="skeleton-line" />
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="primary" disabled tabIndex={-1} aria-hidden="true">
+            Save days
+          </button>
+        </div>
+        <div className="days-message" />
       </article>
     );
   }
@@ -81,7 +105,7 @@ export function TrainingDays({
   return (
     <article className="card" aria-labelledby="training-days-title">
       <h2 id="training-days-title">Training days</h2>
-      <p>Pick {DAYS_PER_WEEK} days with a rest day between each. The other days are rest.</p>
+      <p>{INTRO}</p>
       <div className="day-toggles" role="group" aria-label="Training days">
         {WEEK.map(({ day, name }) => (
           <button
@@ -103,10 +127,11 @@ export function TrainingDays({
           </li>
         ))}
       </ul>
-      {message && <p role={message.kind}>{message.text}</p>}
       <button type="button" className="primary" disabled={!ready || busy} onClick={() => void save()}>
         Save days
       </button>
+      {/* Below Save, in a place kept for it, so a message after saving moves nothing (story #95). */}
+      <div className="days-message">{message && <p role={message.kind}>{message.text}</p>}</div>
     </article>
   );
 }

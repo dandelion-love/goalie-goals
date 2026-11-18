@@ -30,6 +30,31 @@ export function LoadError({ message, onRetry }: { message: string; onRetry: () =
   );
 }
 
+/**
+ * The space a panel holds while it loads: its skeleton, or, when the load fails, the message and
+ * Retry in the same box, so a failure (or a Retry) moves nothing below it (story #95 AC4). The
+ * box is the same element in both states; `size` names the panel's usual size.
+ */
+export function LoadSpace({
+  failed,
+  lines,
+  size = '',
+  message,
+  onRetry,
+}: {
+  failed: boolean;
+  lines: number;
+  size?: string;
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className={`load-space ${size}`.trim()}>
+      {failed ? <LoadError message={message} onRetry={onRetry} /> : <Skeleton lines={lines} />}
+    </div>
+  );
+}
+
 /** Shows its children once `open`; until then they are mounted (so they load) but hidden. */
 export function Reveal({ open, children }: { open: boolean; children: ReactNode }) {
   return (
