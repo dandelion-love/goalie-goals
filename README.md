@@ -18,6 +18,12 @@ issues and its pull requests; a guard in the git hooks enforces it. See the
 
 Sign-in is with Google accounts, limited to an allowlist kept outside the repo.
 
+## Licences
+
+- Code: [MIT](LICENSE), copyright the goalie-goals contributors.
+- Exercise content in [`content/`](content/README.md): CC BY-SA 4.0, with every asset
+  credited in `content/credits.json`. `python3 tools/credits_check.py` checks it.
+
 ## Development
 
 - Turn the guard on in a new clone: `git config core.hooksPath .githooks`
