@@ -29,7 +29,10 @@ data at runtime, never in this repo.
 ## How to write about people in public text
 
 - Say **the keeper** for the young athlete and **the parent** for the training partner.
-  Both are users of the app.
+  Both are users of the app. Never give either one a gendered pronoun (he, she, his,
+  her): repeat "the keeper" or "the parent", or use they. A pronoun tells readers the
+  child's gender, which nothing public says. Sources may describe their own study groups
+  ("male youth athletes") in citations; that describes the study, not the keeper.
 - Use an age band ("U15", "early teens"), never an age or birthday. A narrow range of
   years is an age too; research cites age groups as bands as well.
 - State needs as training goals: "vertical jump and lateral speed lag the older age group",
