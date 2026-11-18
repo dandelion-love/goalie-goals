@@ -17,6 +17,8 @@ Modes:
   --message FILE    a commit message (commit-msg)
   --pre-push        git's pre-push lines on stdin: every outgoing commit
   --range A..B      every commit in a range that no remote has yet
+  --history [REF]   author and committer lines of every commit reachable from REF
+                    (default HEAD), pushed ones included: catches commits GitHub made
   --all             every tracked file
   --text            text on stdin, read as a message (check an issue body before posting)
   --claude-hook     a Claude Code PreToolUse event on stdin; prints a deny decision
@@ -307,6 +309,18 @@ def scan_commit(sha: str) -> list[str]:
     return out
 
 
+def scan_history(ref: str = "HEAD") -> list[str]:
+    """Author and committer lines of every commit reachable from ref, including
+    commits already on a remote. The other modes skip pushed commits, so a merge
+    commit GitHub writes (for example from its web merge button) is only seen here."""
+    out: list[str] = []
+    log = git("log", "--format=%h%x09%an <%ae>%x09%cn <%ce>", ref)
+    for line in filter(None, log.splitlines()):
+        sha, _, people = line.partition("\t")
+        out += scan(people.replace("\t", "\n"), f"commit {sha} author", message=True)
+    return out
+
+
 def scan_range(rng: str) -> list[str]:
     out: list[str] = []
     for sha in git("rev-list", "--reverse", rng, "--not", "--remotes").split():
@@ -543,6 +557,8 @@ def main(argv: list[str]) -> int:
         findings = scan_pre_push(sys.stdin.read().splitlines())
     elif mode == "--range" and len(argv) > 1:
         findings = scan_range(argv[1])
+    elif mode == "--history":
+        findings = scan_history(argv[1] if len(argv) > 1 else "HEAD")
     elif mode == "--all":
         findings = scan_all()
     elif mode == "--text":

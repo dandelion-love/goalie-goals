@@ -191,6 +191,27 @@ class Hook(unittest.TestCase):
         self.assertEqual(out["hookEventName"], "PreToolUse")
         return out["permissionDecision"]
 
+    def test_history_checks_pushed_authors(self) -> None:
+        before = pg.ROOT
+        with tempfile.TemporaryDirectory() as repo:
+            def commit(email: str, msg: str) -> None:
+                env = {**os.environ, "GIT_AUTHOR_NAME": "Sam",
+                       "GIT_AUTHOR_EMAIL": email, "GIT_COMMITTER_NAME": "Sam",
+                       "GIT_COMMITTER_EMAIL": j("sam", AT, "example", ".com")}
+                subprocess.run(["git", "-C", repo, "-c", "core.hooksPath=" + os.devnull,
+                                "commit", "-q", "--allow-empty", "-m", msg],
+                               check=True, env=env)
+            subprocess.run(["git", "init", "-q", repo], check=True)
+            commit(j("1+sam", AT, "users.noreply", ".github.com"), "clean")
+            try:
+                pg.ROOT = Path(repo)
+                self.assertEqual(pg.scan_history(), [])
+                commit(j("sam.private", AT, "mail", ".test"), "web merge")
+                found = pg.scan_history()
+                self.assertTrue(any("email address" in f for f in found), found)
+            finally:
+                pg.ROOT = before
+
     def test_worktree_root(self) -> None:
         before = pg.ROOT
         try:

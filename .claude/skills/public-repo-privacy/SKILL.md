@@ -55,7 +55,9 @@ data at runtime, never in this repo.
 The agent hooks see only what is already staged, so the git hooks are the final word.
 
 By hand: `python3 tools/privacy_guard.py --text < draft.md` checks a draft,
-`--all` the tree, `--status` which private-term sources are loaded.
+`--all` the tree, `--history origin/main` every author line already on GitHub (commits
+GitHub writes itself, such as web merges, skip our hooks), `--status` which private-term
+sources are loaded.
 
 Private terms (the family's names, places, teams, school, private domains) live outside the
 repo in `~/.config/goalie-goals/private-terms.txt`: one per line, `re:` for a regular

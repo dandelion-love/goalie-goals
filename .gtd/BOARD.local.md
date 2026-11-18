@@ -107,6 +107,11 @@ reviewer also owns the clean-room check (no private data, no copied text or asse
    Commit messages carry `Refs #n`, never a closing keyword (`Closes`, `Fixes`,
    `Resolves`): `pr_open` refuses them, and its `closes` flag closes the issue on
    merge. Rewording a pushed commit needs a force-push, which is not allowed here.
+   Merges never use GitHub's web merge button: it writes a merge commit under the
+   account's own email, which our hooks never see. Merge locally under the noreply
+   identity and push, or use the server's `pr_merge`. After every merge the reviewer
+   runs `python3 tools/privacy_guard.py --history origin/main`; a finding there is a
+   leak (the privacy skill's leak steps, `needs:james`).
 5. Each new kind of finding is codified (a guard rule with a test, a line in the privacy
    skill, or a rule here), never by writing the private value into the repo.
 6. The reviewer never reviews its own work, and the builder never passes its own.
