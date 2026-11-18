@@ -42,6 +42,13 @@ Public-domain (CC0) media for the app: exercise figures and pose references, rew
 * [Drawn and generated figures](/exercise-media/drawn-and-generated-figures.md) - The parametric vector figure this route is compared with.
 * [Exercise media](/decisions/exercise-media.md) - The Decision on sources, attribution and stored format that any rendered figure must meet.
 
+# Government and health-body exercise figures
+
+* [Government works and open government licences side by side](/cc0-media/government-licences.md) - US federal works, the UK, Canadian, Australian and New Zealand licences and WHO's, each read from the publisher's page, with the licence id, the stated path into CC BY-SA 4.0 and the exclusions.
+* [Government exercise publications checked for figures](/cc0-media/government-exercise-publications.md) - Defence fitness guides and health-agency exercise guidance per country, their figure formats and credits, and which figures may be redrawn.
+* [Health organisations and physio exercise sheets as figure sources](/cc0-media/health-organisation-sources.md) - WHO, national health services, Physiopedia and physiotherapy leaflets, and why non-commercial, image-excluded and software-owned drawings are near misses.
+* [Government and health-body figures for each exercise](/cc0-media/government-coverage.md) - The best candidate figure for every card and goalkeeper move, or none found, with counts.
+
 # Anatomy and muscle maps
 
 * [Open muscle-map components and their art](/cc0-media/muscle-map-components.md) - Nine body-highlighter packages, code and art licences checked apart; body-muscles' own drawing passes under Apache-2.0, the shared react-native-body-highlighter art does not.

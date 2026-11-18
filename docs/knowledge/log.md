@@ -2,6 +2,8 @@
 
 ## 2026-11-18
 
+* **Added**: government and health-body research for exercise figures: licences side by side (US federal works, UK, Canadian, Australian and New Zealand open licences, WHO), the publications checked per country, health organisations and physio sheets, and a coverage table for every card and goalkeeper move; the media Decision and the credits check gain public-domain US federal works and OGL v3.0.
+
 * **Added**: exercise dossier research: the six sections, the claim rules (youth sources first, adult evidence labelled, ranges with time frames, no looks or size promises, cautious injury claims, plain words), the youth adaptation evidence, a worked front plank example, and the dossier content-model Decision.
 * **Added**: dossier clip links: the link policy (official channels, no embed, no tracking, age rules, the spread rule, parent approval), the link record and pre-release check design, and a low-diving-save sample.
 * **Added**: muscle-map research for exercise dossiers: open body-highlighter packages with code and art licences checked apart, wger and Commons anatomy SVGs, the CC0 search, and a recommendation with a muscle-group vocabulary and a proposed mapping for the current cards.

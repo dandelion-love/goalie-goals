@@ -7,7 +7,10 @@ Rules (see docs/knowledge/decisions/exercise-media.md):
 - Every entry has path, author, licence, source and checked (a date). Adapted material also
   says what changed.
 - The licence is one that CC BY-SA 4.0 content can include: CC0-1.0, CC-BY-4.0,
-  CC-BY-SA-4.0, CC-BY-SA-3.0, MIT or Apache-2.0. Anything else, or unknown, fails.
+  CC-BY-SA-4.0, CC-BY-SA-3.0, MIT, Apache-2.0, OGL-UK-3.0 (its text states it is
+  compatible with CC BY 4.0) or PD-USGov (a US federal work, public domain by statute;
+  see docs/knowledge/cc0-media/government-licences.md). Anything else, or unknown,
+  fails, including OGL-Canada-2.0 (no stated path) and non-commercial licences.
 - Share-alike material (CC-BY-SA-*) lives only under content/.
 - The app's asset folders (web/public/, public/, assets/, whichever exist) are scanned too:
   every file there also needs an entry, so an uncredited third-party or share-alike file
@@ -24,7 +27,8 @@ import re
 import sys
 from pathlib import Path
 
-COMPATIBLE = {"CC0-1.0", "CC-BY-4.0", "CC-BY-SA-3.0", "CC-BY-SA-4.0", "MIT", "Apache-2.0"}
+COMPATIBLE = {"CC0-1.0", "CC-BY-4.0", "CC-BY-SA-3.0", "CC-BY-SA-4.0", "MIT", "Apache-2.0",
+              "OGL-UK-3.0", "PD-USGov"}
 SHARE_ALIKE = re.compile(r"^CC-BY-SA-")
 REQUIRED = ("path", "author", "licence", "source", "checked")
 EXEMPT = {"README.md", "LICENSE", "credits.json"}
