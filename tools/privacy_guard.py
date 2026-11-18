@@ -100,7 +100,12 @@ BLOCKED_FILE = [
         r"(^|/)(\.env(\.(?!example$|sample$|template$)[\w.-]+)?|\.netrc|\.pypirc"
         r"|id_(rsa|dsa|ecdsa|ed25519)[\w.-]*|[^/]*service[-_]?account[^/]*\.json"
         r"|[^/]*credentials?[^/]*\.json|client_secret[^/]*\.json"
-        r"|[^/]*\.(pem|key|p12|pfx|jks|keystore|tfstate|tfvars))$", re.I)),
+        r"|[^/]*\.(pem|key|p12|pfx|jks|keystore))$", re.I)),
+    # State and plans hold every resource id and often secrets in clear; vars files hold
+    # the deployment's identifiers. Only *.tf and .terraform.lock.hcl belong in git.
+    ("Terraform state, variables or plan", re.compile(
+        r"(^|/)(\.terraform/|[^/]*\.tfstate([.][\w.-]+)?$|\.terraform\.tfstate\.lock\.info$"
+        r"|[^/]*\.tfvars([.](?!example$)[\w.-]+)?$|[^/]*\.tfplan$|crash([.]\d+)?\.log$)", re.I)),
     ("database or personal data export", re.compile(
         r"\.(sqlite3?|db|fit|gpx|tcx|kml|kmz|xlsx?|numbers|vcf|ics)$", re.I)),
     ("camera photo, video or voice recording", re.compile(

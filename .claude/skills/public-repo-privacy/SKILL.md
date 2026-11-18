@@ -23,6 +23,7 @@ data at runtime, never in this repo.
 | Contact and accounts | email addresses, phone numbers, account ids, social handles | the sign-in allowlist in the cloud console; Secret Manager |
 | Secrets | API keys, OAuth client id and secret, tokens, service-account keys, `.env` files | Secret Manager, a gitignored `.env.local`, GitHub Actions secrets |
 | Infrastructure | cloud project number, service URLs, the deployment's domain, service accounts, buckets, the gtd server's address | config outside the repo: `.env.local`, `git config`, `~/.config/` |
+| Terraform values | state and its backups, plan files, `.tfvars`, project ids or bucket names as variable defaults | remote state; `-var-file` and `-backend-config` files outside the repo; commit `*.tf`, the lock file and a `.tfvars.example` with placeholders |
 | Private links | claude.ai sessions and artifacts, private repos, Drive and Docs links | the conversation, or a private channel |
 
 ## How to write about people in public text
