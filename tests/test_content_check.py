@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -98,6 +99,46 @@ class ContentCheck(unittest.TestCase):
         self.assertFinding(
             self.edit_card(lambda c: c["dose"].update(per_side=True), "pogo-hops"),
             "dose total 36 contacts is above 30")
+
+    # Holds: the Decision's Holds table (issue #39).
+    def test_hold_longer_than_start(self) -> None:
+        self.assertFinding(self.edit_card(lambda c: c["dose"].update(seconds=25), "plank"),
+                           "dose seconds 25 is outside 10 to 20 for hold")
+
+    def test_hold_shorter_than_floor(self) -> None:
+        self.assertFinding(
+            self.edit_card(lambda c: c["dose"].update(seconds=8), "side-plank"),
+            "dose seconds 8 is outside 10 to 20 for hold")
+
+    def test_hold_three_sets(self) -> None:
+        self.assertFinding(self.edit_card(lambda c: c["dose"].update(sets=3), "plank"),
+                           "dose sets 3 is outside 1 to 2 for hold")
+
+    def test_hold_rest_too_short(self) -> None:
+        self.assertFinding(self.edit_card(lambda c: c["dose"].update(rest_s=20), "plank"),
+                           "dose rest_s 20 is outside 30 to 180 for hold")
+
+    def test_hold_limits_mirror_decision(self) -> None:
+        text = (ROOT / "docs" / "knowledge" / "decisions" / "training-rules.md").read_text(
+            encoding="utf-8")
+        holds = re.search(r"^# Holds$(.*?)^# ", text, re.M | re.S)
+        self.assertIsNotNone(holds, "the Decision has no Holds section")
+
+        def row(lever: str) -> list[int]:
+            m = re.search(rf"^\| {lever} \| ([^|]+)\|", holds.group(1), re.M)
+            self.assertIsNotNone(m, f"no {lever} row in the Holds table")
+            return [int(n) for n in re.findall(r"\d+", m.group(1))]
+
+        lim = cc.HOLD_LIMITS
+        self.assertEqual(row("Hold sets"), list(lim["sets"]))
+        self.assertEqual(row("Hold time"), list(lim["seconds"]))
+        self.assertEqual(row("Starting hold"), list(lim["start_seconds"]))
+        self.assertEqual(row("Hold step"), [lim["step_seconds"]])
+        self.assertEqual(row("Hold rest"), [lim["rest_s_min"]])
+        lo, hi = lim["start_seconds"]
+        self.assertTrue(lim["seconds"][0] <= lo <= hi <= lim["seconds"][1])
+        self.assertEqual(cc.LIMITS["hold"]["sets"], lim["sets"])
+        self.assertEqual(cc.LIMITS["hold"]["seconds"], lim["start_seconds"])
 
     def test_dose_differs_from_spec(self) -> None:
         def raise_reps(c):

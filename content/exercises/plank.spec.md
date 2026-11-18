@@ -6,8 +6,11 @@ any real use ([training rules](/decisions/training-rules.md), rule 1).
 
 ## Dose
 
-From [training rules](/decisions/training-rules.md), progression limits. Holds count as bodyweight strength work, 1 to 3 sets. The Decision sets no hold time, so this card starts with short holds of at most 30 seconds and the owner decides any increase. No
-added load, no maximal effort, no set taken to failure (rule 3).
+From [training rules](/decisions/training-rules.md), holds: 1 to 2 sets, a starting
+hold of 10 to 20 seconds, at most 5 seconds longer at a time after two clean sessions
+and the owner's approval, never longer than 30 seconds, and at least 30 seconds rest
+between sets. The hold ends when the position breaks. No added load, no maximal
+effort, no set taken to failure (rule 3).
 
 - kind: hold
 - sets: 2
