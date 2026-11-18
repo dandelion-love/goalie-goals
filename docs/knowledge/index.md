@@ -25,6 +25,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 * [Building for the iPad](/platform/index.md) - installing, layout, touch, push, offline, media and sign-in for an iPad home-screen web app
 
+* [Usability](/usability/index.md) - lightweight usability methods for one household, and the privacy-safe ten-minute home check with its proxy check
+
 ## Decisions
 
 * [Decisions](/decisions/index.md) - choices the app is built on, each with its sources

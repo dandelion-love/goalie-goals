@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Added**: usability research: lightweight methods for one household (task success, time on task, think-aloud, SUS and a plain-words youth form, five-second tests) and the ten-minute home check, with its privacy rules, the proxy check agents run between checks, and the replacement rule.
 * **Added**: motion research: open motion libraries and runtimes, animation file licences and motion principles, with the motion Decision.
 * **Added**: exercise-media research: open databases, icon and illustration sets, video and animation, drawn figures and storage format, with the media Decision.
 * **Added**: exercise-app research: open-source and commercial apps, how they explain an exercise, licences, and the content-reuse Decision.
