@@ -27,10 +27,13 @@ export interface ApprovedItem {
 export interface AuditEntry {
   id: string;
   at: string;
-  action: 'requested' | 'approved' | 'declined' | 'expired' | 'refused' | 'paused' | 'cleared';
+  action: 'requested' | 'approved' | 'declined' | 'expired' | 'refused' | 'paused' | 'cleared' | 'changed';
   actorRole: 'keeper' | 'parent' | 'system';
-  /** `pause`: a pain report or its clear. The title names the body area only. */
-  kind: RequestKind | 'pause';
+  /**
+   * `pause`: a pain report or its clear; the title names the body area only.
+   * `schedule`: the parent's choice of training days.
+   */
+  kind: RequestKind | 'pause' | 'schedule';
   title: string;
   reason: string | null;
 }

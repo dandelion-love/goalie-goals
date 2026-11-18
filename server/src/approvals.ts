@@ -65,7 +65,15 @@ export interface ApprovalStore {
   approvedVersion(itemId: string, itemVersion: string): Promise<ApprovalRequest | null>;
 }
 
-export type AuditAction = 'requested' | 'approved' | 'declined' | 'expired' | 'refused' | 'paused' | 'cleared';
+export type AuditAction =
+  | 'requested'
+  | 'approved'
+  | 'declined'
+  | 'expired'
+  | 'refused'
+  | 'paused'
+  | 'cleared'
+  | 'changed';
 
 export interface AuditEvent {
   id: string;
@@ -74,9 +82,13 @@ export interface AuditEvent {
   actorRole: Role | 'system';
   /** Internal account reference; `system` for the app itself. Not sent to clients. */
   actor: string;
-  /** The request, or for `pause` events the pain report (its content is never in the log). */
+  /**
+   * The request; for `pause` events the pain report (its content is never in the log); for
+   * `schedule` events the change.
+   */
   requestId: string;
-  kind: RequestKind | 'pause';
+  /** `schedule`: the parent's choice of training days (src/schedule.ts). */
+  kind: RequestKind | 'pause' | 'schedule';
   itemId: string;
   itemVersion: string;
   title: string;

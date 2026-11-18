@@ -24,6 +24,9 @@ import { MemoryProgressStore, ProgressService } from './progress.js';
 import { registerProgressRoutes } from './progressRoutes.js';
 import { MemoryPainStore, PainService } from './pain.js';
 import { registerPainRoutes } from './painRoutes.js';
+import { WeeklyPlan } from './weeklyPlan.js';
+import { MemoryScheduleStore, ScheduleService } from './schedule.js';
+import { registerScheduleRoutes } from './scheduleRoutes.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -43,6 +46,8 @@ export interface AppDeps {
   progress?: ProgressService;
   /** Pain reports and the training pause; in memory, on the approvals audit log, unless given. */
   pain?: PainService;
+  /** The parent's training days; in memory, on the weekly plan, unless given. */
+  schedule?: ScheduleService;
   logger?: boolean;
   /** Send log lines here (tests read them); implies the logger at every level. */
   logStream?: { write(line: string): void };
@@ -71,6 +76,7 @@ export async function buildApp({
   training,
   progress,
   pain,
+  schedule,
   logger = false,
   logStream,
 }: AppDeps): Promise<FastifyInstance> {
@@ -110,17 +116,31 @@ export async function buildApp({
         notifier: new InAppNotifier(),
       };
   const approvalService = approvals ?? new ApprovalService(own!);
-  // Local development plans a rest day for the demo week; otherwise every day has the session.
+  // Local development keeps the demo's own plan (the starter session, with the demo week's rest
+  // day); otherwise the get-stronger pack, three themed sessions a week (src/weeklyPlan.ts).
   const demoPlan = config.devMockIdentity && !training ? new DemoPlan() : undefined;
   const trainingService =
     training ??
     new TrainingService({
       approvals: approvalService,
       content: loadContent(config.contentRoot || undefined),
-      ...(demoPlan ? { plan: demoPlan } : {}),
+      plan: demoPlan ?? new WeeklyPlan(),
     });
+  // The parent sets the training days in the app, when the plan is the weekly pack.
+  const scheduleService =
+    schedule ??
+    (trainingService.plan instanceof WeeklyPlan
+      ? new ScheduleService({
+          store: new MemoryScheduleStore(),
+          plan: trainingService.plan,
+          audit: approvalService.audit,
+          content: () => trainingService.library,
+        })
+      : undefined);
+  await scheduleService?.load();
   if (own && !config.demoSeed) {
-    // The app asks the parent for today's session and its cards. Local development gives the
+    // The app asks the parent for the whole pack: each session and every card it uses. Local
+    // development gives the
     // parent's inbox something to show and approves the session as the demo parent, so the
     // player has something to run.
     if (config.devMockIdentity) {
@@ -185,6 +205,7 @@ export async function buildApp({
   registerPainRoutes(app, { pain: painService, roles: roleStore });
 
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused() });
+  if (scheduleService) registerScheduleRoutes(app, { schedule: scheduleService, roles: roleStore });
 
   const ownProgress = progress ? undefined : new MemoryProgressStore();
   const progressService =

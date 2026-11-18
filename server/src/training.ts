@@ -32,6 +32,11 @@ export interface SessionTemplate {
 /** Which session is planned for a date (YYYY-MM-DD); null is a planned rest day. */
 export interface TrainingPlan {
   sessionFor(date: string): SessionTemplate | null;
+  /**
+   * Every session the plan can offer, when it is a set pack (src/weeklyPlan.ts). The app then
+   * proposes the whole pack at startup, so the parent approves it in one sitting.
+   */
+  sessions?(): readonly SessionTemplate[];
 }
 
 /**
@@ -184,6 +189,11 @@ export class TrainingService {
     this.snapshots = snapshots;
   }
 
+  /** The exercise cards the sessions are built from. */
+  get library(): ContentLibrary {
+    return this.content;
+  }
+
   /** Swap in new content (an edit on disk, or a test); approvals of old versions stay with them. */
   setContent(content: ContentLibrary): void {
     this.content = content;
@@ -229,19 +239,27 @@ export class TrainingService {
   }
 
   /**
-   * Ask the parent for every card and the session the plan uses today, unless that exact
-   * version is already approved or waiting. Called at startup, never on a keeper's read, so
-   * a declined version is not asked again by itself.
+   * Ask the parent for every card and session the plan uses, unless that exact version is
+   * already approved or waiting: the whole pack when the plan has one, else today's session.
+   * Each card goes once, even when several sessions use it, then each session. Called at
+   * startup, never on a keeper's read, so a declined version is not asked again by itself.
    */
   async proposeFor(date: string): Promise<void> {
-    const template = this.plan.sessionFor(date);
-    if (!template) return;
-    const session = this.currentSession(template);
-    if (!session) return;
-    for (const c of session.cards) {
+    const templates = this.plan.sessions ? [...this.plan.sessions()] : [this.plan.sessionFor(date)];
+    const sessions: SessionSnapshot[] = [];
+    for (const t of templates) {
+      const s = t && this.currentSession(t);
+      if (s) sessions.push(s);
+    }
+    const asked = new Set<string>();
+    for (const c of sessions.flatMap((s) => s.cards)) {
+      if (asked.has(c.itemVersion)) continue;
+      asked.add(c.itemVersion);
       await this.approvals.propose({ kind: 'exercise', itemId: c.itemId, content: c.content });
     }
-    await this.approvals.propose({ kind: 'plan', itemId: session.itemId, content: session.content });
+    for (const s of sessions) {
+      await this.approvals.propose({ kind: 'plan', itemId: s.itemId, content: s.content });
+    }
   }
 
   private async playable(session: SessionSnapshot): Promise<boolean> {
