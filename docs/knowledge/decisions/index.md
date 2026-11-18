@@ -19,3 +19,7 @@
 ## Progression and habit
 
 * [Progression design for two people training together](/decisions/progression-design.md) - How the app's streaks, points, levels, quests and badges work for a keeper and a parent training together, with rest days that never break a streak, rewards for consistency and form over volume, the dark patterns refused, and no reward tied to finishing a session that should stop.
+
+## Safe training for U15 athletes
+
+* [Training rules for an early-teens keeper](/decisions/training-rules.md) - What the app may and must never prescribe, its progression limits, the warning signs that stop a session, and when the family should see a professional.
