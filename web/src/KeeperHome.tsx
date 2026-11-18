@@ -176,8 +176,12 @@ export function KeeperHome({
   now?: () => Date;
 }) {
   // The cues are computed only on the keeper's device, once its home is up and idle (story #98),
-  // so the first cue is ready by the Start tap.
-  useWarmCues();
+  // so the first cue is ready by the Start tap. The audio context is made right after the home's
+  // first paint (story 107), before Start shows: its long task is then over before the earliest
+  // tap, and before the pain report's warm-up, which waits for Start to be up a while. A paused
+  // home (even by a "Something hurts" tap quicker than that) offers no Start and makes none.
+  const primeUnlessPaused = useCallback(() => !pauseStore.read(), [pauseStore]);
+  useWarmCues(sound, { primeAfterPaint: primeUnlessPaused });
   // The player's code, ahead of the Start tap, so Start never waits on the network.
   useEffect(() => {
     const id = setTimeout(() => void player.preload().catch(() => {}), LOAD_PLAYER_AFTER_MS);

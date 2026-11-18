@@ -82,13 +82,16 @@ describe('a quick Start, before the idle prime made the audio context (story 103
       return audio;
     } as unknown as typeof AudioContext);
     const plays = vi.spyOn(sound, 'play');
+    // The home's prime, right after its first paint (story 107), has not come yet: a Start even
+    // quicker than that. The tap makes the context itself, not through `primeContext`.
+    vi.spyOn(sound, 'primeContext').mockImplementation(() => {});
     render(<App fetchImpl={keeperServer(todayWith()).fetchImpl} wakeLock={wake} />);
     const start = await screen.findByRole('button', { name: 'Start session' });
     // The start cue's samples are ready (a quick Start before they are plays its cue a moment
     // later: the engine tests cover that, with a controlled clock).
     sound.warm();
     await vi.waitFor(() => expect(cueStats.synthesised).toBeGreaterThan(0), { timeout: 10_000 });
-    // The full idle period never came: no context yet.
+    // Neither the prime nor a full idle period came: no context yet.
     expect(made).toHaveLength(0);
 
     fireEvent.pointerDown(start);

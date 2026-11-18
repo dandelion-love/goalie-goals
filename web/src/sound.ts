@@ -2,10 +2,11 @@
 // tap, a mute remembered on the device, and the moment each state change marks.
 //
 // The context is made ahead of the Start tap where it can be (story 103): making one is a long
-// task (~100 ms for the first in a browser process). It is made in a full idle period once the
-// keeper's home is up, forced after PRIME_TIMEOUT_MS if the page never settles, and the Start tap
-// then only resumes it. A Start tap that comes before that makes it in the tap itself, the only
-// tap that may: a context made in a tap is unlocked on the iPad, so the session-start cue plays.
+// task (~100 ms for the first in a browser process) that can't be split. On the keeper's home it
+// is made right after the home's first paint (story 107), while today's panel is still loading
+// and before Start or an early "Something hurts" tap can come; the Start tap then only resumes
+// it. A Start tap that comes before that makes it in the tap itself, the only tap that may: a
+// context made in a tap is unlocked on the iPad, so the session-start cue plays.
 // Every other tap in the player only resumes it, and "Something hurts" and Stop never make or
 // resume it.
 //
@@ -65,6 +66,11 @@ export interface SoundEngine {
    * is a long task, so the tap that unlocks it only resumes it. Safe to call more than once.
    */
   prime(): void;
+  /**
+   * Make the context alone, suspended and silent (story 107): `prime` without loading the cues'
+   * buffers, which `warm` or the next tap does. Safe to call more than once.
+   */
+  primeContext(): void;
   /**
    * Call from a tap handler only: resumes the context `prime` made, which unlocks sound on the
    * iPad. It never makes one (story 103): with no context yet, it only marks sound as wanted.
@@ -185,12 +191,21 @@ export function createSoundEngine(
       // Blocked: cues stay silent.
     }
   };
-  // The context, made once (again only if it was closed), with its buffers loading.
+  // The context whose buffers are loading.
+  let loadedFor: AudioContext | null = null;
+  // The current context's buffers, loading once. Loading asks for every cue's samples, so a
+  // context made alone (`primeContext`, story 107: right after the home's first paint) waits for
+  // `warm` or a tap: making it never starts the cues' work early, where the home's first taps land.
+  const loadOnce = () => {
+    if (!ctx || ctx.state === 'closed' || loadedFor === ctx) return;
+    loadedFor = ctx;
+    load(ctx);
+  };
+  // The context, made once (again only if it was closed). Assigned before `loadOnce`: `load`
+  // checks its buffers belong to the current context.
   const open = () => {
     if (ctx && ctx.state !== 'closed') return;
     ctx = make();
-    // Assigned first: `load` checks its buffers belong to the current context.
-    if (ctx) load(ctx);
   };
   return {
     get unlocked() {
@@ -201,6 +216,8 @@ export function createSoundEngine(
     },
     warm() {
       prepared();
+      // A context made alone loads its buffers now.
+      loadOnce();
     },
     warmStart() {
       // On the home, the start cue's slices take their turn with the page's own tasks, so it is
@@ -216,11 +233,17 @@ export function createSoundEngine(
     },
     prime() {
       open();
+      loadOnce();
+    },
+    primeContext() {
+      open();
     },
     unlock,
     unlockForStart() {
       started = true;
       if (!ctx || ctx.state === 'closed') open();
+      // In the tap: the start cue's buffer, if its samples are ready; the rest follow.
+      loadOnce();
       unlock();
     },
     play,
@@ -234,6 +257,7 @@ export function createSoundEngine(
       wanted = true;
       return;
     }
+    loadOnce();
     unlockedAt = now();
     if (ctx.state !== 'running') resume(ctx);
     try {
@@ -289,9 +313,23 @@ const FULL_IDLE_MS = 40;
 
 /**
  * A page that never settles still gets its context this long after the home appears (story
- * 103), so the Start tap finds one to resume rather than making it.
+ * 103), so the Start tap finds one to resume rather than making it. The keeper's home now makes
+ * it right after its first paint instead (story 107); this applies where that is not asked for.
  */
 export const PRIME_TIMEOUT_MS = 2000;
+
+export interface WarmOptions {
+  /**
+   * Make the audio context right after the first paint (story 107), in a task of its own, rather
+   * than on idle; alone (`primeContext`): its buffers load with the cues, on idle. The keeper's home asks for it: its first paint comes while today's panel is still
+   * loading, before Start shows, so the context's long task is over before the earliest tap. On
+   * idle it landed 0.4 to 0.85 s after the home appeared, where an early "Something hurts" lands.
+   * A function is asked when that task runs, and the context is made only if it says yes: the
+   * home says no once it is paused, so a "Something hurts" tap even quicker than the prime is
+   * never followed by a context (story 103 AC3).
+   */
+  primeAfterPaint?: boolean | (() => boolean);
+}
 
 /**
  * Warm the cues once the page is idle (story #98 AC4): only where they will play, the keeper's
@@ -300,22 +338,34 @@ export const PRIME_TIMEOUT_MS = 2000;
  *
  * The audio context is made here too (`prime`, story #98 AC5), suspended, so the Start tap
  * only resumes it: making one is a long task that would otherwise delay the tap's response.
+ * With `primeAfterPaint` it is made after the first paint instead, and idle only warms the cues.
  */
-export function warmWhenIdle(engine: SoundEngine = sound): () => void {
+export function warmWhenIdle(engine: SoundEngine = sound, options: WarmOptions = {}): () => void {
   const w = globalThis as typeof globalThis & {
     requestIdleCallback?: (cb: (deadline?: IdleDeadline) => void, opts?: { timeout: number }) => number;
     cancelIdleCallback?: (id: number) => void;
   };
+  // A context made after the paint is not made again on idle (story 107): that would only make a
+  // new one if it had been closed, a long task with no tap to unlock it, right where a later tap
+  // (or the pain report's idle warm-up) may come. `warm` loads its buffers.
   const run = () => {
     engine.warm();
-    engine.prime();
+    if (!options.primeAfterPaint) engine.prime();
   };
   // The start cue first, right after the first paint and ahead of the idle queue (story 103), in
-  // short slices: a quick Start finds it ready. The rest wait for idle, with the context.
+  // short slices: a quick Start finds it ready. The rest wait for idle, with the context, unless
+  // the context is asked for after the paint (story 107): then it follows in a task of its own.
   let live = true;
+  let primeId: ReturnType<typeof setTimeout> | undefined;
   afterPaint(
     () => {
-      if (live) engine.warmStart();
+      if (!live) return;
+      engine.warmStart();
+      const { primeAfterPaint } = options;
+      if (primeAfterPaint)
+        primeId = setTimeout(() => {
+          if (live && (primeAfterPaint === true || primeAfterPaint())) engine.primeContext();
+        }, 0);
     },
     () => {},
   );
@@ -341,19 +391,23 @@ export function warmWhenIdle(engine: SoundEngine = sound): () => void {
     ask();
     return () => {
       live = false;
+      clearTimeout(primeId);
       cancel(id);
     };
   }
   const id = setTimeout(run, WARM_FALLBACK_MS);
   return () => {
     live = false;
+    clearTimeout(primeId);
     clearTimeout(id);
   };
 }
 
 /** Warm the cues when the keeper's home or the player mounts (see `warmWhenIdle`). */
-export function useWarmCues(engine: SoundEngine = sound): void {
-  useEffect(() => warmWhenIdle(engine), [engine]);
+export function useWarmCues(engine: SoundEngine = sound, options: WarmOptions = {}): void {
+  const { primeAfterPaint = false } = options;
+  // Pass a function that keeps its identity (useCallback): a new one would warm again.
+  useEffect(() => warmWhenIdle(engine, { primeAfterPaint }), [engine, primeAfterPaint]);
 }
 
 /** The cue player for the components inside the session player (the countdown's ticks and pause). */

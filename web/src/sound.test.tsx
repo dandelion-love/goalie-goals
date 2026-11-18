@@ -4,7 +4,7 @@ import { App } from './App';
 import { SessionPlayer } from './SessionPlayer';
 import { STOP_UNDO_MS, initialState, reduce, stepsOf, type Action, type PlayerState } from './player';
 import { MUTE_KEY, createSoundEngine, cueForChange, sound } from './sound';
-import { CUE_NAMES, RUBRIC_MOMENTS, type CueName } from './cues';
+import { CUE_NAMES, CUE_RATE as CUE_RATE_FOR_TEST, RUBRIC_MOMENTS, type CueName } from './cues';
 import type { WakeLockController } from './wakeLock';
 import { PLANK, demoSession, keeperServer, todayWith } from './session.fixture';
 
@@ -120,6 +120,43 @@ describe('the sound engine', () => {
     expect(audio.resumes).toBe(1);
     expect(audio.started).toHaveLength(1);
     expect(engine.play('start')).toBe(true);
+  });
+
+  it('makes the context alone with primeContext: no cue work and no buffers until warm or a tap (story 107)', async () => {
+    const audio = fakeAudio('suspended');
+    const make = vi.fn(() => audio as unknown as AudioContext);
+    const prepare = readyCues();
+    const engine = createSoundEngine(make, () => 0, prepare);
+    engine.primeContext();
+    engine.primeContext();
+    await settle();
+    expect(make).toHaveBeenCalledTimes(1);
+    expect(prepare).not.toHaveBeenCalled();
+    expect(audio.buffers).toBe(0);
+    expect(engine.ready('start')).toBe(false);
+    // The cues, on idle: the context loads its buffers once.
+    engine.warm();
+    engine.warm();
+    await settle();
+    expect(engine.ready('start')).toBe(true);
+    expect(audio.buffers).toBe(CUE_NAMES.length);
+    expect(make).toHaveBeenCalledTimes(1);
+    expect(audio.resumes).toBe(0);
+  });
+
+  it('the Start tap loads a context made alone, and plays the start cue in the tap (story 107)', async () => {
+    const audio = fakeAudio('suspended');
+    const make = vi.fn(() => audio as unknown as AudioContext);
+    const engine = createSoundEngine(make, () => 0, readyCues(), CUE_RATE_FOR_TEST, async () => new Float32Array(100));
+    engine.warmStart();
+    await settle();
+    engine.primeContext();
+    engine.unlockForStart();
+    expect(make).toHaveBeenCalledTimes(1);
+    expect(audio.resumes).toBe(1);
+    expect(engine.play('start')).toBe(true);
+    await settle();
+    expect(engine.ready('done')).toBe(true);
   });
 
   it('skips a cue when audio stays blocked, rather than playing it late', async () => {
@@ -574,32 +611,89 @@ describe('warming the cues (story #98 AC4)', () => {
     expect(prime).not.toHaveBeenCalled();
   });
 
-  it('warms them, and makes the audio context, once the keeper’s home is up and the page is idle', async () => {
+  it('warms them once the keeper’s home is up and the page is idle, and makes the audio context right after its first paint (story 107)', async () => {
     const idle = idleQueue();
     const warm = vi.spyOn(sound, 'warm').mockImplementation(() => {});
-    const prime = vi.spyOn(sound, 'prime').mockImplementation(() => {});
+    const prime = vi.spyOn(sound, 'primeContext').mockImplementation(() => {});
+    vi.spyOn(sound, 'prime').mockImplementation(() => {
+      throw new Error('the home primes the context alone');
+    });
     render(<App fetchImpl={keeperServer(todayWith()).fetchImpl} wakeLock={wake} />);
     await screen.findByRole('button', { name: 'Start session' });
+    // The context, after the paint, with no idle period yet.
+    await vi.waitFor(() => expect(prime).toHaveBeenCalledTimes(1));
     expect(warm).not.toHaveBeenCalled();
-    expect(prime).not.toHaveBeenCalled();
     idle();
     expect(warm).toHaveBeenCalled();
-    expect(prime).toHaveBeenCalled();
+    // Idle only warms the cues: the context is not made again.
+    expect(prime).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the start cue right after the keeper’s home first paints, before the idle queue runs (story 103)', async () => {
+  it('renders the start cue right after the keeper’s home first paints, then makes the context in a task of its own, before the idle queue runs (stories 103, 107)', async () => {
     const idle = idleQueue();
     const order: string[] = [];
     vi.spyOn(sound, 'warmStart').mockImplementation(() => void order.push('warmStart'));
     vi.spyOn(sound, 'warm').mockImplementation(() => void order.push('warm'));
     vi.spyOn(sound, 'prime').mockImplementation(() => void order.push('prime'));
+    vi.spyOn(sound, 'primeContext').mockImplementation(() => void order.push('primeContext'));
     render(<App fetchImpl={keeperServer(todayWith()).fetchImpl} wakeLock={wake} />);
     await screen.findByRole('button', { name: 'Start session' });
-    // After the paint, with no idle period yet: the start cue only.
-    await vi.waitFor(() => expect(order).toContain('warmStart'));
-    expect(order.every((o) => o === 'warmStart')).toBe(true);
+    // After the paint, with no idle period yet: the start cue, then the context alone.
+    await vi.waitFor(() => expect(order).toEqual(['warmStart', 'primeContext']));
     idle();
-    expect(order.slice(-2)).toEqual(['warm', 'prime']);
+    expect(order).toEqual(['warmStart', 'primeContext', 'warm']);
+  });
+
+  it('without primeAfterPaint (the session player), makes the context on idle, as before', async () => {
+    const { warmWhenIdle } = await import('./sound');
+    const idle = idleQueue();
+    const calls: string[] = [];
+    const engine = { warm: () => calls.push('warm'), prime: () => calls.push('prime'), warmStart: () => calls.push('warmStart') } as unknown as Parameters<
+      typeof warmWhenIdle
+    >[0];
+    const cancel = warmWhenIdle(engine);
+    await vi.waitFor(() => expect(calls).toEqual(['warmStart']));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(calls).toEqual(['warmStart']);
+    idle();
+    expect(calls).toEqual(['warmStart', 'warm', 'prime']);
+    cancel();
+  });
+
+  it('asks first when given a check: a paused home makes no context, after the paint or on idle (story 107)', async () => {
+    const { warmWhenIdle } = await import('./sound');
+    const idle = idleQueue();
+    const calls: string[] = [];
+    const engine = {
+      warm: () => calls.push('warm'),
+      prime: () => calls.push('prime'),
+      primeContext: () => calls.push('primeContext'),
+      warmStart: () => calls.push('warmStart'),
+    } as unknown as Parameters<typeof warmWhenIdle>[0];
+    let paused = false;
+    const check = vi.fn(() => !paused);
+    const cancel = warmWhenIdle(engine, { primeAfterPaint: check });
+    // A "Something hurts" tap before the prime's task runs.
+    paused = true;
+    await vi.waitFor(() => expect(check).toHaveBeenCalled());
+    idle();
+    expect(calls).toEqual(['warmStart', 'warm']);
+    cancel();
+  });
+
+  it('an unmount before the paint makes no context (story 107)', async () => {
+    const { warmWhenIdle } = await import('./sound');
+    idleQueue();
+    const calls: string[] = [];
+    const engine = {
+      warm: () => calls.push('warm'),
+      prime: () => calls.push('prime'),
+      primeContext: () => calls.push('primeContext'),
+      warmStart: () => calls.push('warmStart'),
+    } as unknown as Parameters<typeof warmWhenIdle>[0];
+    warmWhenIdle(engine, { primeAfterPaint: true })();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls).toEqual([]);
   });
 
   it('computes the start cue first in slices well under 50 ms, and the rest share that work', async () => {
