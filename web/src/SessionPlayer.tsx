@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, type MutableRefObject, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, type MutableRefObject, type ReactNode, type RefObject } from 'react';
 import { Countdown } from './Countdown';
 import type { Layout } from './layout';
 import {
@@ -18,6 +18,8 @@ import { FinishProgressView } from './ProgressPanel';
 import { SEE_SOMEONE } from './PainScreens';
 import type { FinishProgressState } from './progress';
 import { CueContext, usePlayerSound, useStateCues } from './sound';
+import { loadRewards, play, Reward } from './motion';
+import { celebrate, preloadCelebration } from './celebrate';
 
 export interface SessionPlayerProps {
   session: Session;
@@ -67,6 +69,14 @@ export function SessionPlayer({
   const reported = useRef(false);
   const { muted, setMuted, cue, unlock } = usePlayerSound();
   useStateCues(state, cue);
+  // After the cue, in the same commit: the motion for the moment the change marks.
+  const playerRef = useRef<HTMLElement>(null);
+  useStateMotion(state, playerRef);
+  // The finish's confetti and Motion load while the session runs, so the finish never waits.
+  useEffect(() => {
+    void preloadCelebration();
+    void loadRewards();
+  }, []);
   const soundToggle = <SoundToggle muted={muted} onChange={setMuted} />;
 
   const resultOf = (outcome: Outcome): SessionResult => ({
@@ -107,6 +117,9 @@ export function SessionPlayer({
         hurtForm={hurtForm}
         soundToggle={soundToggle}
         onExit={onExit}
+        // Done is the one celebration. A stop or "Something hurts" gets a calm crossfade; the
+        // Resume window closing changes nothing on screen, so nothing moves.
+        enter={state.outcome === 'done' ? 'celebrate' : state.outcome === 'hurt' ? 'calm' : 'none'}
       />
     );
   }
@@ -123,6 +136,7 @@ export function SessionPlayer({
           outcome="stopped"
           praised={state.praised}
           soundToggle={soundToggle}
+          enter="calm"
           onResume={() => {
             lastTap.current = Date.now();
             dispatch({ type: 'resume' });
@@ -137,6 +151,7 @@ export function SessionPlayer({
       )}
       {/* Kept mounted while the stop screen shows, so Resume brings back the same set and timer. */}
       <section
+        ref={playerRef}
         className="player"
         data-layout={layout}
         aria-label="Session player"
@@ -148,7 +163,7 @@ export function SessionPlayer({
         }}
       >
         <header className="player-bar">
-          <div>
+          <div className="player-step">
             <span className="kind">
               Step {state.step + 1} of {steps.length}
             </span>
@@ -156,12 +171,12 @@ export function SessionPlayer({
           </div>
           <div className="player-bar-actions">
             {soundToggle}
-            <button type="button" className="danger session-control" onClick={() => dispatch({ type: 'stop', outcome: 'hurt' })}>
+            <button type="button" className="danger session-control safety-control" onClick={() => dispatch({ type: 'stop', outcome: 'hurt' })}>
               Something hurts
             </button>
             <button
               type="button"
-              className="secondary session-control"
+              className="secondary session-control safety-control"
               onClick={() => {
                 dispatch({ type: 'stop', outcome: 'stopped' });
                 onStop?.(resultOf('stopped'));
@@ -341,7 +356,12 @@ function CardStep({
   } else if (p.kind === 'feedback') {
     controls = (
       <div className="feedback-ask">
-        <h2>How did set {p.set} look?</h2>
+        <h2>
+          <svg className="set-check" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5 12.5l4.5 4.5L19 7.5" pathLength={1} />
+          </svg>
+          How did set {p.set} look?
+        </h2>
         <p className="meta">Parent: tap a cue that looked good.</p>
         <div className="cue-buttons">
           {card.cues.map((cue) => (
@@ -441,6 +461,34 @@ const FINISH: Record<Outcome, { title: string; body: string }> = {
 export const RESUME_TEXT = `Tapped Stop by mistake? Resume within ${STOP_UNDO_MS / 1000} seconds.`;
 
 /**
+ * The motion for each change of player state (story #78), played right after the cue in the
+ * same commit. The rubric's moments in the session: a set logged, a form cue rated, a step
+ * advanced on the path, and rest starting. Nothing here fires during a set: only the countdown
+ * moves then.
+ */
+function useStateMotion(state: PlayerState, root: RefObject<HTMLElement | null>): void {
+  const prev = useRef<PlayerState | null>(null);
+  useLayoutEffect(() => {
+    const before = prev.current;
+    prev.current = state;
+    if (!before || before === state || state.outcome || state.stopping || before.stopping) return;
+    const el = root.current;
+    if (!el) return;
+    const find = (selector: string) => el.querySelector(selector);
+    const a = before.phase;
+    const b = state.phase;
+    if (state.step !== before.step) play(find('.player-step'), 'step-advanced');
+    else if (a.kind === 'move' && b.kind === 'move' && a.index !== b.index) play(find('.move-name'), 'step-advanced');
+    if (b.kind === 'feedback' && a.kind === 'work') {
+      play(find('.feedback-ask'), 'set-logged');
+      play(find('.set-check path'), 'check-drawn');
+    }
+    if (state.praised.length > before.praised.length) play(find('.feedback'), 'cue-rated');
+    if (b.kind === 'rest' && a.kind !== 'rest') play(find('.player-controls'), 'rest-started');
+  }, [state, root]);
+}
+
+/**
  * Every ending is a positive one. No "one more?" prompt. Straight after Stop, the same screen
  * also offers Resume (`onResume`) until the Resume window closes.
  */
@@ -452,7 +500,9 @@ function FinishScreen({
   soundToggle,
   onResume,
   onExit,
+  enter = 'none',
 }: {
+  enter?: 'celebrate' | 'calm' | 'none';
   outcome: Outcome;
   praised: string[];
   progress?: FinishProgressState;
@@ -469,8 +519,22 @@ function FinishScreen({
   useEffect(() => {
     if (canResume) resume.current?.focus();
   }, [canResume]);
+  // Story #78: the summary card enters and one confetti burst plays when the session is done;
+  // a stop crossfades in calmly. "Done for today" works at once either way.
+  const card = useRef<HTMLElement>(null);
+  const fired = useRef(false);
+  useLayoutEffect(() => {
+    if (enter === 'calm') play(card.current, 'calm');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (enter !== 'celebrate' || fired.current) return;
+    fired.current = true;
+    void celebrate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
-    <section className="notice finish" aria-labelledby="finish-title">
+    <Reward as="section" kind="card" on={enter === 'celebrate'} ref={card} className="notice finish" aria-labelledby="finish-title">
       <h1 id="finish-title">{title}</h1>
       <p>{body}</p>
       {onResume && (
@@ -492,11 +556,11 @@ function FinishScreen({
           </ul>
         </>
       )}
-      <FinishProgressView progress={progress} />
+      <FinishProgressView progress={progress} celebrate={enter === 'celebrate'} />
       {soundToggle}
       <button type="button" className="primary session-control wide" onClick={onExit}>
         Done for today
       </button>
-    </section>
+    </Reward>
   );
 }

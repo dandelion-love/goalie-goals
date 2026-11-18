@@ -26,6 +26,7 @@ import type { Session, SessionResult } from './training';
 import { createWakeLock, type WakeLockController } from './wakeLock';
 import { LocalOfflineStore, useOnline, type OfflineStore } from './offline';
 import { Reveal } from './Loading';
+import { MotionRoot, useMoment } from './motion';
 
 /** `offline`: the server could not be reached, so the home shows what this device has saved. */
 type View = { kind: 'loading' } | MeResult | { kind: 'offline'; role: Role };
@@ -94,28 +95,30 @@ export function App({
   const role = view.kind === 'offline' ? view.role : view.kind === 'signed-in' ? view.role : null;
 
   return (
-    <div className="app" data-layout={layout}>
-      <header className="app-bar">
-        <span className="brand">Goalie Goals</span>
-      </header>
-      <main className="app-main">
-        {offline && <OfflineNotice role={role} onRetry={load} />}
-        <Screen
-          view={view.kind === 'offline' ? { kind: 'signed-in', role: view.role } : view}
-          layout={layout}
-          fetchImpl={fetchImpl}
-          onReconnect={onReconnect}
-          onRetry={load}
-          wakeLock={wake}
-          onSessionFinish={onSessionFinish}
-          pauseStore={store}
-          offlineStore={cache}
-          outboxStore={outbox}
-          epoch={epoch}
-          now={now}
-        />
-      </main>
-    </div>
+    <MotionRoot>
+      <div className="app" data-layout={layout}>
+        <header className="app-bar">
+          <span className="brand">Goalie Goals</span>
+        </header>
+        <main className="app-main">
+          {offline && <OfflineNotice role={role} onRetry={load} />}
+          <Screen
+            view={view.kind === 'offline' ? { kind: 'signed-in', role: view.role } : view}
+            layout={layout}
+            fetchImpl={fetchImpl}
+            onReconnect={onReconnect}
+            onRetry={load}
+            wakeLock={wake}
+            onSessionFinish={onSessionFinish}
+            pauseStore={store}
+            offlineStore={cache}
+            outboxStore={outbox}
+            epoch={epoch}
+            now={now}
+          />
+        </main>
+      </div>
+    </MotionRoot>
   );
 }
 
@@ -469,7 +472,7 @@ function KeeperHome({
         {!pause && (
           <button
             type="button"
-            className="danger session-control"
+            className="danger session-control safety-control"
             onClick={() => {
               start();
               setReporting(true);
@@ -528,6 +531,15 @@ function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; fetchImp
   const onDays = useCallback(() => setSettled((s) => ({ ...s, days: true })), []);
   const onInbox = useCallback(() => setSettled((s) => ({ ...s, inbox: true })), []);
   const changed = useCallback(() => setAnswered((n) => n + 1), []);
+  // An approval leaving the inbox (approved, declined, or undone back into it): what is left
+  // settles, in the same commit as the inbox's new list (story #78).
+  const [inboxChanges, setInboxChanges] = useState(0);
+  const inboxChanged = useCallback(() => {
+    setInboxChanges((n) => n + 1);
+    changed();
+  }, [changed]);
+  const inbox = useRef<HTMLDivElement>(null);
+  useMoment(() => inbox.current?.firstElementChild ?? null, 'approval-left', inboxChanges);
   // Each panel shows once every panel above it has settled (story #80 AC1).
   const daysOpen = settled.progress;
   const inboxOpen = daysOpen && settled.days;
@@ -541,7 +553,9 @@ function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; fetchImp
       </Reveal>
       <Reveal open={inboxOpen}>
         <div className={layout === 'expanded' ? 'panes' : 'stack'}>
-          <ParentInbox fetchImpl={fetchImpl} onChange={changed} refresh={answered + epoch} onSettled={onInbox} />
+          <div ref={inbox} className="inbox-pane">
+            <ParentInbox fetchImpl={fetchImpl} onChange={inboxChanged} refresh={answered + epoch} onSettled={onInbox} />
+          </div>
           <Reveal open={historyOpen}>
             <History fetchImpl={fetchImpl} refresh={answered + epoch} onChange={changed} />
           </Reveal>

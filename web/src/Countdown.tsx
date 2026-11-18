@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react';
 import { useCue } from './sound';
+import { useMoment } from './motion';
 
 /** With no wake lock, a running timer asks for a tap this often, which also keeps the screen awake. */
 export const KEEP_AWAKE_TAP_MS = 50_000;
@@ -55,6 +56,9 @@ export function Countdown({
   const cue = useCue();
   const shown = Math.ceil(remaining / 1000);
   const ticked = useRef(shown);
+  // Pause and Resume: a calm crossfade on the switch (story #78); the face itself never jumps.
+  const pauseButton = useRef<HTMLButtonElement>(null);
+  useMoment(pauseButton, 'calm', paused);
 
   // In the same commit as the face changing to 3, 2 and 1.
   useLayoutEffect(() => {
@@ -110,7 +114,7 @@ export function Countdown({
           </p>
         )}
       </div>
-      <button type="button" className="secondary session-control" onClick={() => {
+      <button ref={pauseButton} type="button" className="secondary session-control" onClick={() => {
           tap();
           if (!paused) cue('pause');
           setPaused((p) => !p);

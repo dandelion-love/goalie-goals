@@ -80,10 +80,28 @@
   --stripe: 6px;
   --press-depth: 4px;
   --press-depth-session: 6px;
+  --press-rest: 1px; /* what is left of the edge while a button is held */
+  --press-dim: 0.92; /* brightness while held, in every motion setting */
   --shadow-1: 0 1px 2px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%);
   --shadow-2: 0 4px 12px rgb(0 0 0 / 10%), 0 12px 32px rgb(0 0 0 / 8%);
   --card-line: transparent;
   --disabled-opacity: 0.5;
+
+  /* Motion (story #78; docs/knowledge/decisions/motion-libraries.md and
+   * docs/knowledge/motion/motion-principles.md). Nothing a person waits on runs past 400 ms;
+   * the confetti at the finish is the one longer effect, never blocks, and stops by
+   * --motion-celebrate. src/motion.ts reads these for the Web Animations API and Motion. */
+  --motion-press: 100ms; /* press feedback */
+  --motion-short: 200ms; /* a check, a chip, a crossfade */
+  --motion-medium: 300ms; /* a card entering, the streak bump */
+  --motion-celebrate: 1800ms; /* the finish's confetti, start to gone */
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1); /* arrives fast and settles */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* moving or changing size on screen */
+  --motion-settle: 4px; /* a block settling into place */
+  --motion-rise: 8px; /* the XP chip and the toast rising */
+  --motion-slide: 16px; /* the next step sliding in */
+  --motion-pop: 0.96; /* the scale a praise line grows from */
+  --motion-bump: 1.15; /* the streak count's one bump */
 
   /* Focus. */
   --focus-width: 3px;

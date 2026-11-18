@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Reward } from './motion';
 import { useSettled } from './Loading';
 import { useOnline } from './offline';
 import { fetchProgress, OfflineError, type FinishProgressState, type ProgressSummary, type Run } from './progress';
@@ -18,26 +19,61 @@ export const QUEUED_TEXT = 'Saved on this device; it will sync.';
 
 const days = (n: number) => `${n} training ${n === 1 ? 'day' : 'days'}`;
 
-function Streaks({ summary }: { summary: ProgressSummary }) {
+/** One value that bumps once when it arrives with a celebration or changes (story #78). */
+function Bump({ text, on }: { text: string; on: boolean }) {
+  return (
+    <Reward as="dd" kind="bump" on={on}>
+      {text}
+    </Reward>
+  );
+}
+
+/**
+ * The streak and XP tiles. `celebrate`: every value bumps as it arrives (the finish screen).
+ * Otherwise a value bumps only when it changes while on screen (a home that reloads).
+ */
+function Streaks({ summary, celebrate = false }: { summary: ProgressSummary; celebrate?: boolean }) {
+  const values = [
+    days(summary.team.current),
+    days(summary.keeper.current),
+    days(summary.parent.current),
+    `${summary.xp.total} XP`,
+  ];
+  const seen = useRef<string[] | null>(null);
+  const before = seen.current;
+  useEffect(() => {
+    seen.current = values;
+  });
+  // The key changes with the value, so a changed value is a new element that plays its bump.
+  const tile = (i: number) => <Bump key={values[i]} text={values[i]} on={celebrate || (before !== null && before[i] !== values[i])} />;
   return (
     <dl className="streaks">
       <div className="streak team">
         <dt>Team streak</dt>
-        <dd>{days(summary.team.current)}</dd>
+        {tile(0)}
       </div>
       <div className="streak">
         <dt>Keeper's streak</dt>
-        <dd>{days(summary.keeper.current)}</dd>
+        {tile(1)}
       </div>
       <div className="streak">
         <dt>Parent's streak</dt>
-        <dd>{days(summary.parent.current)}</dd>
+        {tile(2)}
       </div>
       <div className="streak">
         <dt>Team XP</dt>
-        <dd>{summary.xp.total} XP</dd>
+        {tile(3)}
       </div>
     </dl>
+  );
+}
+
+/** "+N XP": rises a few pixels into place as it arrives at the finish (story #78). */
+function XpChip({ total, celebrate }: { total: number; celebrate: boolean }) {
+  return (
+    <Reward as="p" kind="chip" on={celebrate} className="xp-earned">
+      +{total} XP
+    </Reward>
   );
 }
 
@@ -132,7 +168,14 @@ export function ProgressPanel({
 }
 
 /** This session's XP and the streaks after it, on the finish screen. */
-export function FinishProgressView({ progress }: { progress: FinishProgressState | undefined }) {
+export function FinishProgressView({
+  progress,
+  celebrate = false,
+}: {
+  progress: FinishProgressState | undefined;
+  /** The session is done: the XP chip and streaks arrive with motion. Never after a stop. */
+  celebrate?: boolean;
+}) {
   if (!progress) return null;
   if (progress === 'saving') return <p className="meta" role="status">Adding up today's XP…</p>;
   if (progress === 'queued') {
@@ -154,12 +197,12 @@ export function FinishProgressView({ progress }: { progress: FinishProgressState
   }
   return (
     <section className="earned" aria-label="Earned today">
-      <p className="xp-earned">+{credit.total} XP</p>
+      <XpChip total={credit.total} celebrate={celebrate} />
       <p className="meta">
         {credit.session} for showing up
         {credit.stars > 0 ? `, ${credit.form} for ${credit.stars} good-form ${credit.stars === 1 ? 'set' : 'sets'}` : ''}
       </p>
-      <Streaks summary={summary} />
+      <Streaks summary={summary} celebrate={celebrate} />
     </section>
   );
 }

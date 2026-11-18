@@ -89,9 +89,18 @@ motion down for either person even when the device does not ask.
 
 # Consequences
 
-- About 9 kB of motion code before the first reward (5 kB lazy core plus 4 kB confetti),
-  with Motion's `domAnimation` features (24 kB) fetched in the background and precached
-  for offline sessions.
+- As built (story #78), Motion's `m` core measured about 17 kB gzipped at motion 14.14.0,
+  not the 5 kB the docs give, so none of Motion is in the first render. `m`, `LazyMotion`
+  with `domAnimation`, and a `MotionConfig reducedMotion="user"` around each reward element
+  live in a lazy `rewards` chunk of about 31 kB gzipped. It loads 1 s after first render and
+  again at session start, and is precached for offline sessions. canvas-confetti is its own
+  lazy chunk of about 4 kB, loaded at session start. First render grows about 3 kB: the Web
+  Animations API moments, the tokens and the pressed states. A reward element that mounts
+  before the chunk arrives shows still, never hidden.
+- Two parts of the table above are not built yet and are left for a later story: the XP
+  bar filling (the app has no XP bar yet) and the larger streak bump with a "milestone"
+  label (the app has no milestone rule yet).
+- Something hurts and Stop never move: held, they darken only, in every motion setting.
 - Every moving component has a test that renders it with reduced motion on and checks the
   same text and numbers appear.
 - Frame timing has not been measured on an iPad; the first build story with motion checks
