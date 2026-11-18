@@ -38,3 +38,21 @@ variable "secret_names" {
   type        = list(string)
   default     = []
 }
+
+variable "custom_domain" {
+  description = "The app's custom hostname on the owner's domain (no trailing dot)."
+  type        = string
+  sensitive   = true
+}
+
+variable "dns_zone_name" {
+  description = "Name of the owner's existing Cloud DNS managed zone that holds the domain."
+  type        = string
+  sensitive   = true
+}
+
+variable "dns_zone_project" {
+  description = "Project that owns that DNS zone."
+  type        = string
+  sensitive   = true
+}

@@ -115,9 +115,16 @@ resource "google_cloud_run_v2_service" "app" {
   deletion_protection = false
 
   # The API adds a service-level scaling block of its own; instance limits live in the
-  # template below.
+  # template below. scripts/deploy.sh owns the running image and its environment (roles,
+  # audience), so Terraform must never put the placeholder image back or drop them.
   lifecycle {
-    ignore_changes = [scaling]
+    ignore_changes = [
+      scaling,
+      client,
+      client_version,
+      template[0].containers[0].image,
+      template[0].containers[0].env,
+    ]
   }
 
   template {

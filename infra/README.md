@@ -86,6 +86,22 @@ API, and the Terraform provider can't set one. The owner makes it once in the cl
 The script reads the secret into a private temporary file only, never onto a command line,
 deletes it on exit, and prints no values.
 
+## Custom subdomain
+
+`infra/app/domain.tf` maps the runtime to a subdomain of the owner's domain and adds the
+CNAME in the owner's existing DNS zone, which lives in another project. Set
+`custom_domain`, `dns_zone_name` and `dns_zone_project` in the variables file outside the
+repo; none has a default.
+
+- The deploying account must have verified the domain (Search Console). If the apply says
+  the caller doesn't own the domain, verify it there first.
+- Google issues the certificate after the CNAME resolves, usually within an hour. Until
+  then HTTPS on the subdomain fails; check the mapping's status conditions.
+- A hostname becomes public in certificate-transparency logs once the certificate is
+  issued; choose the label knowing that, and keep it out of the repo regardless.
+- `scripts/deploy.sh` owns the running image and its environment, and Terraform ignores
+  them, so an apply never rolls the app back to the placeholder image.
+
 ## Cost
 
 The budget alerts at 50%, 90% and 100% of actual spend and at 100% of forecast. It does
