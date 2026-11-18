@@ -20,8 +20,9 @@
 // render failed, is skipped: the screen still shows the moment, and the next cue plays as normal.
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { CUE_NAMES, CUE_RATE, bufferOf, prepareCues, schedule, yieldToPage, type CueName } from './cues';
+import { CUE_NAMES, CUE_RATE, bufferOf, prepareCue, prepareCues, schedule, yieldToPage, type CueName } from './cues';
 import type { PlayerState } from './player';
+import { afterPaint } from './defer';
 
 export const MUTE_KEY = 'goalie-goals.sound-muted';
 
@@ -46,13 +47,19 @@ const RESUME_GRACE_MS = 1000;
 
 /**
  * A quick Start can come before the start cue's samples are computed (story 103). Its cue then
- * plays as soon as they are, if that is within this long of the cue's moment; later, it is skipped.
+ * plays as soon as they are, if that is within this long of the cue's moment (inside the rubric's
+ * +125 ms sync window); later, it is skipped like every other cue.
  */
-export const START_CUE_LATE_MS = 500;
+export const START_CUE_LATE_MS = 120;
 
 export interface SoundEngine {
   /** Start computing the cues, in slices (safe to call any time, and more than once). */
   warm(): void;
+  /**
+   * Start computing the start cue alone, in slices, ahead of the rest (story 103): a quick Start
+   * then finds it ready. Safe to call any time, and more than once.
+   */
+  warmStart(): void;
   /**
    * Make the context ahead of the Start tap (story #98 AC5), suspended and silent: making one
    * is a long task, so the tap that unlocks it only resumes it. Safe to call more than once.
@@ -78,6 +85,9 @@ export interface SoundEngine {
 /** Each cue's samples, as a promise per cue (`prepareCues`); called more than once, it returns the same promises. */
 export type CuePreparer = () => Record<CueName, Promise<Float32Array>>;
 
+/** The start cue's samples alone (`prepareCue`); shares its work with the `CuePreparer`. */
+export type StartCuePreparer = () => Promise<Float32Array>;
+
 type AudioContextClass = new () => AudioContext;
 
 function defaultContext(): AudioContext | null {
@@ -96,6 +106,7 @@ export function createSoundEngine(
   now: () => number = () => Date.now(),
   prepare: CuePreparer = () => prepareCues(CUE_RATE),
   rate: number = CUE_RATE,
+  prepareStart: StartCuePreparer = () => prepareCue('start', CUE_RATE),
 ): SoundEngine {
   let ctx: AudioContext | null = null;
   let unlockedAt: number | null = null;
@@ -185,6 +196,16 @@ export function createSoundEngine(
     },
     warm() {
       prepared();
+    },
+    warmStart() {
+      prepareStart().then(
+        (data) => {
+          if (!settled.has('start')) settled.set('start', data);
+        },
+        () => {
+          // Left to `warm`: the start cue is tried again with the rest.
+        },
+      );
     },
     prime() {
       open();
@@ -281,6 +302,15 @@ export function warmWhenIdle(engine: SoundEngine = sound): () => void {
     engine.warm();
     engine.prime();
   };
+  // The start cue first, right after the first paint and ahead of the idle queue (story 103), in
+  // short slices: a quick Start finds it ready. The rest wait for idle, with the context.
+  let live = true;
+  afterPaint(
+    () => {
+      if (live) engine.warmStart();
+    },
+    () => {},
+  );
   const { requestIdleCallback: whenIdle, cancelIdleCallback: cancel } = w;
   if (whenIdle && cancel) {
     // Making the context is one task that can't be split (story 101): it waits for a whole idle
@@ -301,10 +331,16 @@ export function warmWhenIdle(engine: SoundEngine = sound): () => void {
       );
     };
     ask();
-    return () => cancel(id);
+    return () => {
+      live = false;
+      cancel(id);
+    };
   }
   const id = setTimeout(run, WARM_FALLBACK_MS);
-  return () => clearTimeout(id);
+  return () => {
+    live = false;
+    clearTimeout(id);
+  };
 }
 
 /** Warm the cues when the keeper's home or the player mounts (see `warmWhenIdle`). */

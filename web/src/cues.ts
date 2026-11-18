@@ -293,6 +293,36 @@ async function computeSliced(name: CueName, rate: number, o: Required<PrepareOpt
 }
 
 const jobs = new Map<number, Record<CueName, Promise<Float32Array>>>();
+/** Each cue's computation once begun, so `prepareCue` and `prepareCues` never compute one twice. */
+const running = new Map<string, Promise<Float32Array>>();
+
+function optionsOf(options: PrepareOptions): Required<PrepareOptions> {
+  return {
+    sliceMs: options.sliceMs ?? SLICE_MS,
+    pause: options.pause ?? yieldToPage,
+    clock: options.clock ?? (() => performance.now()),
+  };
+}
+
+function computeOnce(name: CueName, rate: number, o: Required<PrepareOptions>): Promise<Float32Array> {
+  const k = key(name, rate);
+  let p = running.get(k);
+  if (!p) {
+    p = computeSliced(name, rate, o);
+    // A failure can be tried again by a later call.
+    p.catch(() => running.delete(k));
+    running.set(k, p);
+  }
+  return p;
+}
+
+/**
+ * Compute one cue at `rate`, in slices of at most `sliceMs` of work (story 103: the start cue,
+ * ahead of the rest). `prepareCues` shares the work: the cue is computed once.
+ */
+export function prepareCue(name: CueName, rate: number = CUE_RATE, options: PrepareOptions = {}): Promise<Float32Array> {
+  return computeOnce(name, rate, optionsOf(options));
+}
 
 /**
  * Compute every cue at `rate` once, in slices of at most `sliceMs` of work, one cue after
@@ -303,15 +333,11 @@ const jobs = new Map<number, Record<CueName, Promise<Float32Array>>>();
 export function prepareCues(rate: number = CUE_RATE, options: PrepareOptions = {}): Record<CueName, Promise<Float32Array>> {
   const hit = jobs.get(rate);
   if (hit) return hit;
-  const o: Required<PrepareOptions> = {
-    sliceMs: options.sliceMs ?? SLICE_MS,
-    pause: options.pause ?? yieldToPage,
-    clock: options.clock ?? (() => performance.now()),
-  };
+  const o = optionsOf(options);
   const out = {} as Record<CueName, Promise<Float32Array>>;
   let chain: Promise<unknown> = Promise.resolve();
   for (const name of PREPARE_ORDER) {
-    const p = chain.then(() => computeSliced(name, rate, o));
+    const p = chain.then(() => computeOnce(name, rate, o));
     // Each caller handles its own cue's failure; this keeps a failure from going unhandled.
     p.catch(() => {});
     out[name] = p;
@@ -324,7 +350,10 @@ export function prepareCues(rate: number = CUE_RATE, options: PrepareOptions = {
 /** Drop the cached samples and prepare job at `rate` (tests only: the app keeps them for the visit). */
 export function forgetCues(rate: number): void {
   jobs.delete(rate);
-  for (const name of CUE_NAMES) cache.delete(key(name, rate));
+  for (const name of CUE_NAMES) {
+    cache.delete(key(name, rate));
+    running.delete(key(name, rate));
+  }
 }
 
 /** An AudioBuffer of the cue's samples, made on `ctx`. */

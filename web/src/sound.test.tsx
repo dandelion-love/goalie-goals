@@ -303,8 +303,26 @@ describe('the sound engine', () => {
     expect(audio.resumes).toBe(1);
   });
 
+  it('computes the start cue alone on warmStart, and the tap makes its buffer from it (story 103)', async () => {
+    const audio = fakeAudio('suspended');
+    const prepare = readyCues();
+    const prepareStart = vi.fn(() => Promise.resolve(new Float32Array(77)));
+    const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, prepare, 48000, prepareStart);
+    engine.warmStart();
+    expect(prepareStart).toHaveBeenCalledTimes(1);
+    expect(prepare).not.toHaveBeenCalled();
+    await settle();
+    // A quick Start: the start cue's buffer is made in the tap, and it plays at once.
+    engine.unlockForStart();
+    expect(engine.ready('start')).toBe(true);
+    expect(engine.play('start')).toBe(true);
+    expect(audio.started.at(-1)!.length).toBe(77);
+  });
+
   it('plays a quick Start’s cue once its samples are ready, if within START_CUE_LATE_MS, and skips it after', async () => {
     const { START_CUE_LATE_MS } = await import('./sound');
+    // Inside the rubric's +125 ms sync window: 120 ms late plays, 121 ms is skipped.
+    expect(START_CUE_LATE_MS).toBe(120);
     for (const late of [START_CUE_LATE_MS, START_CUE_LATE_MS + 1]) {
       const audio = fakeAudio('running');
       let finish!: (d: Float32Array) => void;
@@ -569,6 +587,47 @@ describe('warming the cues (story #98 AC4)', () => {
     expect(prime).toHaveBeenCalled();
   });
 
+  it('renders the start cue right after the keeper’s home first paints, before the idle queue runs (story 103)', async () => {
+    const idle = idleQueue();
+    const order: string[] = [];
+    vi.spyOn(sound, 'warmStart').mockImplementation(() => void order.push('warmStart'));
+    vi.spyOn(sound, 'warm').mockImplementation(() => void order.push('warm'));
+    vi.spyOn(sound, 'prime').mockImplementation(() => void order.push('prime'));
+    render(<App fetchImpl={keeperServer(todayWith()).fetchImpl} wakeLock={wake} />);
+    await screen.findByRole('button', { name: 'Start session' });
+    // After the paint, with no idle period yet: the start cue only.
+    await vi.waitFor(() => expect(order).toContain('warmStart'));
+    expect(order.every((o) => o === 'warmStart')).toBe(true);
+    idle();
+    expect(order.slice(-2)).toEqual(['warm', 'prime']);
+  });
+
+  it('computes the start cue first in slices well under 50 ms, and the rest share that work', async () => {
+    const { forgetCues, prepareCue, prepareCues, cueStats, SLICE_MS } = await import('./cues');
+    forgetCues(8000);
+    let t = 0;
+    const slices: number[] = [];
+    let sliceStart = 0;
+    const options = {
+      clock: () => (t += 0.01),
+      pause: async () => {
+        slices.push(t - sliceStart);
+        sliceStart = t;
+      },
+    };
+    const before = cueStats.synthesised;
+    const start = await prepareCue('start', 8000, options);
+    expect(cueStats.synthesised).toBe(before + 1);
+    expect(Math.max(...slices)).toBeLessThanOrEqual(SLICE_MS + 1);
+    expect(SLICE_MS).toBeLessThan(50);
+    // prepareCues reuses the start cue rather than computing it again.
+    const all = prepareCues(8000, options);
+    expect(await all.start).toBe(start);
+    await Promise.all(Object.values(all));
+    expect(cueStats.synthesised).toBe(before + CUE_NAMES.length);
+    forgetCues(8000);
+  });
+
   it('warms them when the session player mounts', () => {
     const idle = idleQueue();
     const warm = vi.spyOn(sound, 'warm').mockImplementation(() => {});
@@ -591,7 +650,7 @@ describe('warming without an idle callback (the iPad)', () => {
     vi.stubGlobal('requestIdleCallback', undefined);
     vi.stubGlobal('cancelIdleCallback', undefined);
     const calls: string[] = [];
-    const engine = { warm: () => calls.push('warm'), prime: () => calls.push('prime') } as unknown as Parameters<
+    const engine = { warm: () => calls.push('warm'), prime: () => calls.push('prime'), warmStart: () => {} } as unknown as Parameters<
       typeof warmWhenIdle
     >[0];
     const cancel = warmWhenIdle(engine);
@@ -616,7 +675,7 @@ describe('making the audio context before the Start tap (story 103)', () => {
     vi.stubGlobal('requestIdleCallback', (cb: (d: IdleDeadline) => void, opts?: { timeout?: number }) => asks.push({ cb, timeout: opts?.timeout }));
     vi.stubGlobal('cancelIdleCallback', () => {});
     const calls: string[] = [];
-    const engine = { warm: () => calls.push('warm'), prime: () => calls.push('prime') } as unknown as Parameters<typeof warmWhenIdle>[0];
+    const engine = { warm: () => calls.push('warm'), prime: () => calls.push('prime'), warmStart: () => {} } as unknown as Parameters<typeof warmWhenIdle>[0];
     warmWhenIdle(engine);
     expect(asks).toHaveLength(1);
     expect(asks[0].timeout).toBeGreaterThan(1900);
