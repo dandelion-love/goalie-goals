@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Quality rubric for look, feel and usability
-description: The rubric the reviewer scores to judge polish - 37 items across visual consistency, type and colour, layout and touch, motion, sound, feedback latency, copy tone and usability, each 0-3 with anchors, a numeric target and a repeatable method on a local demo-data run - plus the pair-check targets and an empty baseline table.
+description: The rubric the reviewer scores to judge polish - 37 items across visual consistency, type and colour, layout and touch, motion, sound, feedback latency, copy tone and usability, each 0-3 with anchors, a numeric target and a repeatable method on a local demo-data run - plus the pair-check targets and the baseline scores from the reviewer's first audit.
 tags: [decision, quality, rubric, clean-room, accessibility, performance]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T06:30:00Z }
@@ -597,7 +597,7 @@ Scores are copied from the reviewer's signed audit comment on #54; the builder n
 | Audit | Date (UTC) | Commit | Signed comment | VC1 | VC2 | VC3 | VC4 | VC5 | TC1 | TC2 | TC3 | TC4 | TC5 | LT1 | LT2 | LT3 | LT4 | MO1 | MO2 | MO3 | MO4 | MO5 | SO1 | SO2 | SO3 | SO4 | FL1 | FL2 | FL3 | FL4 | FL5 | CT1 | CT2 | CT3 | CT4 | US1 | US2 | US3 | US4 | US5 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Target (from this Decision, not a score) | | | | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
-| Baseline | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+| Baseline | 2026-11-18 | 8bb86c7 | [#54 audit](https://github.com/dandelion-love/goalie-goals/issues/54#issuecomment-6970879591) | 1 | 1 | 1 | 3 | 1 | 0 | 0 | 0 | 2 | 1 | 0 | 3 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 3 | 3 | 0 | 3 | 1 | 3 | 2 | 3 | 0 | 3 | 2 | 0 | 1 |
 
 # Consequences
 
