@@ -48,6 +48,8 @@ Public-domain (CC0) media for the app: exercise figures and pose references, rew
 * [Government exercise publications checked for figures](/cc0-media/government-exercise-publications.md) - Defence fitness guides and health-agency exercise guidance per country, their figure formats and credits, and which figures may be redrawn.
 * [Health organisations and physio exercise sheets as figure sources](/cc0-media/health-organisation-sources.md) - WHO, national health services, Physiopedia and physiotherapy leaflets, and why non-commercial, image-excluded and software-owned drawings are near misses.
 * [Government and health-body figures for each exercise](/cc0-media/government-coverage.md) - The best candidate figure for every card and goalkeeper move, or none found, with counts.
+* [Government video as private reference footage](/cc0-media/government-video.md) - Defence and space agency video libraries in five countries and on YouTube, with each licence and download term as stated, the made-by-the-publisher check and the rules for reference footage.
+* [Government reference video for each movement](/cc0-media/government-video-coverage.md) - The best public-domain clip per card, goalkeeper move and progression, mostly a US Marine Corps demo series on DVIDS; no government footage of goalkeeping technique.
 
 # Anatomy and muscle maps
 
