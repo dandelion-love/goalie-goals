@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Set position, from the front and from the side: feet shoulder width, knees bent, heels just off the floor, hands up in front with palms facing the parent, eyes on the parent</title>
+  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <g fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="284" y1="54" x2="336" y2="54" stroke-dasharray="6 8"/><polyline points="326,44 336,54 326,64"/></g>
+  <g fill="#2563eb"><rect x="58" y="62" width="14" height="18" rx="5"/><rect x="128" y="62" width="14" height="18" rx="5"/><rect x="294" y="74" width="10" height="20" rx="4"/></g>
+  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="100" cy="50" r="11"/>
+    <line x1="100" y1="66" x2="100" y2="116"/>
+    <polyline points="100,116 78,146 74,184"/>
+    <polyline points="100,116 122,146 126,184"/>
+    <polyline points="100,72 72,98 66,82"/>
+    <polyline points="100,72 128,98 134,82"/>
+    <circle cx="262" cy="52" r="11"/>
+    <line x1="256" y1="68" x2="242" y2="118"/>
+    <polyline points="242,118 262,148 252,176 268,184"/>
+    <polyline points="256,74 280,100 296,86"/>
+  </g>
+</svg>

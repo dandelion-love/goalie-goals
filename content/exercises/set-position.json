@@ -1,0 +1,94 @@
+{
+  "id": "set-position",
+  "name": "Set position",
+  "aliases": [
+    "ready stance",
+    "set stance"
+  ],
+  "category": "footwork",
+  "why": "Keepers set before every shot. A balanced stance lets you push off either way.",
+  "goal": [
+    "set-position",
+    "lateral-footwork"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only"
+    ],
+    "any": []
+  },
+  "space_m": [
+    1,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "A clear patch of floor about 1 m square.",
+    "equipment": "None. Wear trainers.",
+    "parent": "Stand in front like a shooter, about 3 m away. Call \"Set!\" for each rep."
+  },
+  "steps": [
+    "Stand tall and relaxed, facing the parent.",
+    "On the call, drop into your stance. Feet about shoulder width, knees bent.",
+    "Lift your heels just off the floor. Hands up in front, palms to the parent.",
+    "Hold still for 3 seconds, eyes on the parent. Then stand tall again."
+  ],
+  "cues": [
+    "Heels just up",
+    "Palms to parent",
+    "Head still"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Flat feet, heels on the floor",
+      "fix": "Lean forward a little until the heels just lift."
+    },
+    {
+      "mistake": "Hands down by the sides",
+      "fix": "Bring the hands up in front, palms to the parent."
+    },
+    {
+      "mistake": "Head bobbing or turning during the hold",
+      "fix": "Keep your eyes on the parent for the whole 3 seconds."
+    }
+  ],
+  "parent_check": [
+    "Feet shoulder width, knees bent, heels just up",
+    "Hands up in front, palms facing you",
+    "Head still for the whole 3 s"
+  ],
+  "stop_if": [
+    "Pain in an ankle, knee or hip",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
+    "Slipping on the floor (fix footwear or surface before going on)"
+  ],
+  "easier": {
+    "variant": "A slower call, and hold the stance for 5 s.",
+    "use_when": "The heels drop or the head moves."
+  },
+  "harder": {
+    "variant": "Walk 2 or 3 steps in, then set on a raised hand.",
+    "move_on_when": "Every rep clean at 2 x 15, two sessions in a row. Then the owner approves."
+  },
+  "dose": {
+    "kind": "reps",
+    "sets": 2,
+    "reps": 10,
+    "per_side": false,
+    "rest_s": 45,
+    "tempo": "drop on the call, hold still for 3 s"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "lateral-shuffle"
+  ],
+  "media": {
+    "figure": "content/figures/set-position.svg"
+  },
+  "spec": "content/exercises/set-position.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

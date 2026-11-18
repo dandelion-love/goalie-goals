@@ -82,6 +82,22 @@
       "checked": "2026-11-17"
     },
     {
+      "path": "content/exercises/set-position.json",
+      "title": "Set position exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-18"
+    },
+    {
+      "path": "content/exercises/set-position.spec.md",
+      "title": "Set position acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-18"
+    },
+    {
       "path": "content/exercises/side-plank.json",
       "title": "Side plank exercise card",
       "author": "the goalie-goals contributors",
@@ -184,6 +200,14 @@
       "licence": "CC-BY-SA-4.0",
       "source": "drawn for this repo",
       "checked": "2026-11-17"
+    },
+    {
+      "path": "content/figures/set-position.svg",
+      "title": "Set position figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-18"
     },
     {
       "path": "content/figures/samples/kenney-keeper-set-position.webp",

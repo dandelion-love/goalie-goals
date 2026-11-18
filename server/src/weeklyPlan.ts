@@ -40,7 +40,9 @@ export const STARTER_PACK: readonly SessionTemplate[] = [
     id: 'quick-feet-strong-arms',
     title: 'Quick feet, strong arms',
     warmUp,
-    cardIds: ['lateral-shuffle', 'broad-jump-stick', 'wall-push-up'],
+    // Story 109: the set position joins first, and the broad jump leaves the week in trade, so
+    // the session gets shorter, not longer (content/exercises/set-position.spec.md).
+    cardIds: ['set-position', 'lateral-shuffle', 'wall-push-up'],
     coolDown,
   },
 ];

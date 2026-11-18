@@ -63,7 +63,7 @@ describe('AC1: the weekly plan', () => {
     ]);
     expect(plan.sessionFor(MON)!.cardIds).toEqual(['plank', 'side-plank', 'glute-bridge']);
     expect(plan.sessionFor(WED)!.cardIds).toEqual(['pogo-hops', 'squat-to-box', 'split-squat']);
-    expect(plan.sessionFor(FRI)!.cardIds).toEqual(['lateral-shuffle', 'broad-jump-stick', 'wall-push-up']);
+    expect(plan.sessionFor(FRI)!.cardIds).toEqual(['set-position', 'lateral-shuffle', 'wall-push-up']);
     // The same pattern the next week.
     expect(titleOn('2026-01-12')).toBe('Strong middle');
   });
@@ -119,11 +119,11 @@ describe('AC2: the plan rules', () => {
     expect(checkPlanRules(plan.weekOn(MON), CONTENT)).toEqual([]);
   });
 
-  it('puts jumps on two days, at 18 and 9 contacts, under the starting cap', () => {
+  it('puts jumps on one day (story 109 traded the broad jump out), at 18 contacts, under the starting cap', () => {
     const perDay = week().map((s) =>
       s ? s.cardIds.map((id) => CONTENT.cards.get(id)!.card).filter(isJumpCard).reduce((n, c) => n + contacts(c.dose), 0) : 0,
     );
-    expect(perDay).toEqual([0, 0, 0, 18, 0, 9, 0]);
+    expect(perDay).toEqual([0, 0, 0, 18, 0, 0, 0]);
     expect(Math.max(...perDay)).toBeLessThanOrEqual(JUMP_CONTACTS_START_CAP);
   });
 
