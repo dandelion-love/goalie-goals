@@ -9,7 +9,7 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 * [Exercise media](/exercise-media/index.md) - open exercise media, illustration sets, animation, drawn figures and the stored format
 
-* [CC0 media](/cc0-media/index.md) - public-domain reward and path art (streaks, stars, badges, trophies, path nodes, backgrounds, an original coach) sounds for cues and celebrations, and rigged 3D characters as offline pose references, each licence checked at its source, with shortlists and a recommended style
+* [CC0 media](/cc0-media/index.md) - public-domain exercise figures and pose references with the best figure per exercise, reward and path art (streaks, stars, badges, trophies, path nodes, backgrounds, an original coach), sounds for cues and celebrations, and rigged 3D characters as offline pose references, each licence checked at its source, with shortlists and a recommended style
 
 * [How training apps explain exercises](/exercise-apps/index.md) - open-source and commercial training apps, how they explain exercises, and their licences
 
