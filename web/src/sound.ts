@@ -131,11 +131,17 @@ export function usePlayerSound(engine: SoundEngine = sound) {
 /**
  * The cue a player state change marks, or null. The rubric's seven moments: session start,
  * set start, set end, rest start, the last three seconds of rest (the countdown plays those),
- * session done, and a safety stop. Changing move or side plays "switch".
+ * session done, and a safety stop (on the Stop tap, or "Something hurts"). Changing move or side
+ * plays "switch".
  */
 export function cueForChange(prev: PlayerState | null, next: PlayerState): CueName | null {
   if (!prev) return next.outcome ? null : 'start';
   if (prev.outcome) return null;
+  // Stop (story #77): the safety cue plays on the tap, as the set ends. The stop screen and its
+  // Resume window are silent: Resume carries on without a start cue, and the window closing
+  // plays nothing more. "Something hurts" from the stop screen is a new stop and plays again.
+  if (next.stopping && !prev.stopping) return 'safety';
+  if (prev.stopping) return next.outcome === 'hurt' ? 'safety' : null;
   if (next.outcome) return next.outcome === 'done' ? 'done' : 'safety';
   const a = prev.phase;
   const b = next.phase;

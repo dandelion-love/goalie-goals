@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { App } from './App';
+import axe from 'axe-core';
+import css from './styles.css?raw';
 import { SessionPlayer } from './SessionPlayer';
-import { LocalPauseStore, MemoryPauseStore, PAUSE_KEY, type LocalPause } from './pain';
+import { PainReportForm } from './PainScreens';
+import { cascaded, parseRules, px } from './cssCascade';
+import { BODY_AREAS, LocalPauseStore, MemoryPauseStore, PAUSE_KEY, type LocalPause } from './pain';
 import type { AuditEntry } from './approvals';
 import type { WakeLockController } from './wakeLock';
 import { demoSession, todayWith } from './session.fixture';
@@ -162,7 +166,7 @@ describe('a pain report in a session (AC1)', () => {
     expect(store.value).toMatchObject({ sent: false, report: null });
 
     const form = screen.getByRole('form', { name: 'Pain report' });
-    const areas = within(form).getAllByRole('radio').map((r) => (r as HTMLInputElement).value);
+    const areas = within(form).getAllByRole('radio').map((r) => (r as HTMLButtonElement).value);
     expect(areas).toContain('knee');
     expect(areas.length).toBeLessThanOrEqual(12);
     fireEvent.click(within(form).getByRole('radio', { name: 'Knee' }));
@@ -301,5 +305,83 @@ describe('the parent clears the pause from the inbox (AC3)', () => {
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
     expect(await screen.findByRole('heading', { name: 'Training is paused' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /clear/i })).toBeNull();
+  });
+});
+
+describe('the body-area choices are large toggles with radio semantics (story #77, AC3)', () => {
+  const rules = parseRules(css);
+  const checked = () => screen.getAllByRole('radio').filter((r) => r.getAttribute('aria-checked') === 'true');
+
+  it('is one radio group of large toggles, none checked at first', () => {
+    render(<PainReportForm onSend={async () => true} />);
+    const group = screen.getByRole('radiogroup', { name: 'Where does it hurt?' });
+    const radios = within(group).getAllByRole('radio');
+    expect(radios.map((r) => r.textContent)).toEqual(BODY_AREAS.map(([, label]) => label));
+    expect(checked()).toEqual([]);
+    for (const r of radios) {
+      expect(r.tagName).toBe('BUTTON');
+      expect(r.getAttribute('aria-checked')).toBe('false');
+      // At least 56 px: an in-session control (the quality rubric's LT1).
+      expect(px(cascaded(rules, r, 'min-height')), r.textContent ?? '').toBeGreaterThanOrEqual(56);
+    }
+    // Tab reaches the group once, on the first area.
+    expect(radios.filter((r) => r.tabIndex === 0)).toEqual([radios[0]]);
+  });
+
+  it('one tap chooses an area, one at a time, and enables Tell my parent', () => {
+    render(<PainReportForm onSend={async () => true} />);
+    const send = screen.getByRole('button', { name: 'Tell my parent' }) as HTMLButtonElement;
+    fireEvent.click(screen.getByRole('radio', { name: 'Knee' }));
+    expect(checked().map((r) => r.textContent)).toEqual(['Knee']);
+    expect(send.disabled).toBe(false);
+    fireEvent.click(screen.getByRole('radio', { name: 'Back' }));
+    expect(checked().map((r) => r.textContent)).toEqual(['Back']);
+    expect(screen.getByRole('radio', { name: 'Back' }).tabIndex).toBe(0);
+    expect(screen.getByRole('radio', { name: 'Knee' }).tabIndex).toBe(-1);
+  });
+
+  it('the arrow keys move and choose, wrapping round, like native radios', () => {
+    render(<PainReportForm onSend={async () => true} />);
+    const radio = (name: string) => screen.getByRole('radio', { name });
+    fireEvent.click(radio('Knee'));
+    fireEvent.keyDown(radio('Knee'), { key: 'ArrowRight' });
+    expect(checked().map((r) => r.textContent)).toEqual(['Shin or calf']);
+    expect(document.activeElement).toBe(radio('Shin or calf'));
+    fireEvent.keyDown(radio('Shin or calf'), { key: 'ArrowUp' });
+    fireEvent.keyDown(radio('Knee'), { key: 'ArrowLeft' });
+    expect(checked().map((r) => r.textContent)).toEqual(['Hip or groin']);
+    fireEvent.keyDown(radio('Hip or groin'), { key: 'End' });
+    expect(checked().map((r) => r.textContent)).toEqual(['Somewhere else']);
+    fireEvent.keyDown(radio('Somewhere else'), { key: 'ArrowDown' });
+    expect(checked().map((r) => r.textContent)).toEqual(['Head']);
+    fireEvent.keyDown(radio('Head'), { key: 'ArrowLeft' });
+    expect(checked().map((r) => r.textContent)).toEqual(['Somewhere else']);
+    fireEvent.keyDown(radio('Somewhere else'), { key: 'Home' });
+    expect(checked().map((r) => r.textContent)).toEqual(['Head']);
+    expect(document.activeElement).toBe(radio('Head'));
+  });
+
+  it('sends the chosen area', async () => {
+    const onSend = vi.fn(async () => true);
+    render(<PainReportForm onSend={onSend} />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Ankle or foot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tell my parent' }));
+    expect(await screen.findByText(/Your parent has been told/)).toBeTruthy();
+    expect(onSend).toHaveBeenCalledWith('ankle_foot', '');
+  });
+
+  it('passes axe, before and after a choice', async () => {
+    render(<PainReportForm onSend={async () => true} />);
+    const form = screen.getByRole('form', { name: 'Pain report' });
+    const run = async () => {
+      const result = await axe.run(form, {
+        runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] },
+        rules: { 'color-contrast': { enabled: false } },
+      });
+      return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
+    };
+    expect(await run()).toEqual([]);
+    fireEvent.click(screen.getByRole('radio', { name: 'Neck' }));
+    expect(await run()).toEqual([]);
   });
 });

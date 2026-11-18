@@ -16,6 +16,8 @@ export interface CountdownProps {
   lastTap?: MutableRefObject<number>;
   /** Play a tick on each of the last three seconds, as the number on the face changes (rest). */
   ticks?: boolean;
+  /** Held from outside (the stop screen is showing): no time passes, and no cue plays, until it is false again. */
+  frozen?: boolean;
 }
 
 function mmss(ms: number): string {
@@ -30,7 +32,15 @@ function mmss(ms: number): string {
  * slow tick never stretches a rest. The face is a 56 px+ button: tapping it keeps the screen
  * awake in the fallback and resumes a timer that waited for a tap.
  */
-export function Countdown({ seconds, label, onDone, needsTaps = false, lastTap: sharedTap, ticks = false }: CountdownProps) {
+export function Countdown({
+  seconds,
+  label,
+  onDone,
+  needsTaps = false,
+  lastTap: sharedTap,
+  ticks = false,
+  frozen = false,
+}: CountdownProps) {
   const [remaining, setRemaining] = useState(seconds * 1000);
   const [paused, setPaused] = useState(false);
   const [waitingForTap, setWaitingForTap] = useState(false);
@@ -40,7 +50,7 @@ export function Countdown({ seconds, label, onDone, needsTaps = false, lastTap: 
   const done = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
-  const holding = paused || waitingForTap;
+  const holding = paused || waitingForTap || frozen;
   const labelId = useId();
   const cue = useCue();
   const shown = Math.ceil(remaining / 1000);
@@ -50,8 +60,8 @@ export function Countdown({ seconds, label, onDone, needsTaps = false, lastTap: 
   useLayoutEffect(() => {
     if (shown === ticked.current) return;
     ticked.current = shown;
-    if (ticks && shown >= 1 && shown <= 3) cue('tick');
-  }, [shown, ticks, cue]);
+    if (ticks && !frozen && shown >= 1 && shown <= 3) cue('tick');
+  }, [shown, ticks, frozen, cue]);
 
   useEffect(() => {
     lastTick.current = Date.now();

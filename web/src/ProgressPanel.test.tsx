@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { App } from './App';
+import { STOP_UNDO_MS } from './player';
 import type { ProgressSummary } from './progress';
 import type { SessionResult } from './training';
 import type { WakeLockController } from './wakeLock';
@@ -98,10 +99,16 @@ describe('finish screen (AC1, AC2)', () => {
     click('Start set 1');
     click('End set');
     click('Keep breathing');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     click('Stop');
 
     expect(screen.getByRole('heading', { name: 'Good call' })).toBeTruthy();
     expect(screen.getByText(/today counts as kept, the same as finishing/)).toBeTruthy();
+    // Nothing is sent while Resume is still offered; the session is over once the window closes.
+    expect(results).toEqual([]);
+    act(() => vi.advanceTimersByTime(STOP_UNDO_MS));
+    vi.useRealTimers();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
     const earned = await screen.findByRole('region', { name: 'Earned today' });
     expect(within(earned).getByText('+12 XP')).toBeTruthy();
     expect(within(earned).getByText('Team streak').nextSibling?.textContent).toBe('4 training days');

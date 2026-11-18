@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import css from './styles.css?raw';
 import { App } from './App';
-import { SessionPlayer, WAKE_FALLBACK_TEXT } from './SessionPlayer';
+import { RESUME_TEXT, SessionPlayer, WAKE_FALLBACK_TEXT } from './SessionPlayer';
+import { STOP_UNDO_MS } from './player';
+import { cascaded, parseRules, px } from './cssCascade';
 import { KEEP_AWAKE_TAP_MS } from './Countdown';
 import { fetchToday, type SessionResult } from './training';
 import type { WakeLockController, WakeStatus } from './wakeLock';
@@ -39,11 +41,18 @@ function fakeWake(result: WakeStatus) {
   return lock satisfies WakeLockController;
 }
 
-/** iPad sizes in CSS px: an 11-inch iPad in portrait and landscape. */
+/** The quality rubric's iPad sizes in CSS px (its audit rig): portrait and landscape. */
 const SIZES = [
-  { name: 'iPad portrait', width: 834, height: 1194, layout: 'medium', panes: 'player-stack' },
-  { name: 'iPad landscape', width: 1194, height: 834, layout: 'expanded', panes: 'player-panes' },
+  { name: 'iPad portrait', width: 820, height: 1180, layout: 'medium', panes: 'player-stack' },
+  { name: 'iPad landscape', width: 1180, height: 820, layout: 'expanded', panes: 'player-panes' },
 ] as const;
+
+const rules = parseRules(css);
+/** The declared minimum height and width of a control, from the stylesheet's cascade. */
+const minSize = (el: Element) => ({
+  h: px(cascaded(rules, el, 'min-height')),
+  w: px(cascaded(rules, el, 'min-width')),
+});
 
 function setViewport(width: number, height: number) {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
@@ -151,27 +160,92 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
     expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
   });
 
-  it('keeps every in-session control at 56 px or more', async () => {
+  it('keeps every in-session control at 56 px or more on every step (AC2)', async () => {
     setViewport(width, height);
     render(<SessionPlayer session={demoSession()} layout={layout} wakeLock={fakeWake('active')} onExit={() => {}} />);
+    const seen = new Set<string>();
     const check = () => {
-      for (const b of screen.getAllByRole('button')) expect(b.classList.contains('session-control')).toBe(true);
+      for (const b of screen.getAllByRole('button')) {
+        seen.add(b.textContent ?? '');
+        expect(b.classList.contains('session-control'), b.textContent ?? '').toBe(true);
+        const { h, w } = minSize(b);
+        expect(h, `${b.textContent} min-height`).toBeGreaterThanOrEqual(56);
+        expect(w, `${b.textContent} min-width`).toBeGreaterThanOrEqual(56);
+      }
     };
-    check();
+    check(); // warm-up move on a countdown (K2)
     click('Next');
     click('Next');
-    check();
+    check(); // ready
     click('Start set 1');
-    check();
+    check(); // timed hold (K3)
     click('End set');
-    check();
+    check(); // the form-cue rating
+    click('Keep breathing');
+    check(); // rest (K5)
+    click('Skip rest');
+    click('End set');
+    click('Skip');
+    click('Start set 1');
+    check(); // rep set (K4)
+    click('Stop');
+    check(); // the stop screen, Resume included
+    expect([...seen]).toEqual(
+      expect.arrayContaining(['Next', 'Start set 1', 'End set', 'Skip rest', 'Set done', '+1', 'Pause', 'Resume', 'Something hurts', 'Stop']),
+    );
+  });
+
+  it('puts the timer or counter and the next action ahead of the drill notes (AC1)', () => {
+    setViewport(width, height);
+    render(
+      <SessionPlayer session={demoSession({ warmUp: [], coolDown: [] })} layout={layout} wakeLock={fakeWake('active')} onExit={() => {}} />,
+    );
+    click('Start set 1');
+    const grid = document.querySelector(`.${panes}`)!;
+    const [main, controls, side] = [...grid.children];
+    expect(main.classList.contains('player-main')).toBe(true);
+    expect(controls.classList.contains('player-controls')).toBe(true);
+    expect(side.classList.contains('player-side')).toBe(true);
+    expect(within(controls as HTMLElement).getByRole('button', { name: '20 left', description: 'Hold, set 1 of 2' })).toBeTruthy();
+    expect(within(controls as HTMLElement).getByRole('button', { name: 'End set' })).toBeTruthy();
+    if (layout === 'expanded') {
+      // Landscape: the drill spans the left column, so the controls start the right column.
+      expect(grid.classList.contains('card-panes')).toBe(true);
+      expect(cascaded(rules, main, 'grid-row')).toBe('span 2');
+    }
   });
 });
 
 describe('touch targets in the stylesheet', () => {
   it('sets 44 px for every button and 56 px for in-session controls', () => {
     expect(css).toMatch(/\nbutton \{[^}]*min-height: 44px;[^}]*min-width: 44px;/);
-    expect(css).toMatch(/\.session-control \{[^}]*min-height: 56px;[^}]*min-width: 56px;/);
+    expect(css).toMatch(/\nbutton\.session-control \{[^}]*min-height: 56px;[^}]*min-width: 56px;/);
+  });
+
+  it('a session control stays 56 px whatever its look (AC2)', () => {
+    for (const look of ['primary', 'secondary', 'danger', 'timer-face']) {
+      const b = document.createElement('button');
+      b.className = `${look} session-control`;
+      expect(minSize(b), look).toEqual({ h: 56, w: 56 });
+    }
+    // Any other button is at least 44 px.
+    for (const look of ['primary', 'secondary', 'day-toggle', '']) {
+      const b = document.createElement('button');
+      b.className = look;
+      expect(minSize(b).h, look || 'plain').toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  it('keeps Stop at least 24 px from Something hurts (AC4)', () => {
+    render(<SessionPlayer session={demoSession()} layout="expanded" wakeLock={fakeWake('active')} onExit={() => {}} />);
+    const hurts = screen.getByRole('button', { name: 'Something hurts' });
+    const stop = screen.getByRole('button', { name: 'Stop' });
+    // Side by side in one row, with nothing between them but the row's gap.
+    expect(hurts.parentElement).toBe(stop.parentElement);
+    expect(hurts.nextElementSibling).toBe(stop);
+    expect(cascaded(rules, hurts.parentElement!, 'display')).toBe('flex');
+    expect(px(cascaded(rules, hurts.parentElement!, 'gap'))).toBeGreaterThanOrEqual(24);
+    expect(px(cascaded(rules, stop, 'margin-left'))).toBe(0);
   });
 });
 
@@ -193,6 +267,98 @@ describe('stopping', () => {
     render(<SessionPlayer session={demoSession()} layout="expanded" wakeLock={fakeWake('active')} onExit={() => {}} />);
     click('Stop');
     expect(screen.getByRole('heading', { name: 'Good call' })).toBeTruthy();
+  });
+
+  /** Front plank, set 1, five seconds into the 20 s hold. */
+  async function midHold(onFinish?: (r: SessionResult) => void, onExit = () => {}) {
+    vi.useFakeTimers();
+    const wake = fakeWake('active');
+    render(
+      <SessionPlayer
+        session={demoSession({ warmUp: [], coolDown: [] })}
+        layout="expanded"
+        wakeLock={wake}
+        onFinish={onFinish}
+        onExit={onExit}
+      />,
+    );
+    await act(async () => {});
+    click('Start set 1');
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(screen.getByRole('button', { name: '15 left', description: 'Hold, set 1 of 2' })).toBeTruthy();
+    return wake;
+  }
+
+  it('Stop ends the set at once, before Resume is offered (AC4)', async () => {
+    const results: SessionResult[] = [];
+    await midHold((r) => results.push(r));
+    click('Stop');
+    // The set is over: the player and its timer are gone from the screen at once.
+    expect(screen.queryByRole('region', { name: 'Session player' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /left$/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'End set' })).toBeNull();
+    // Then the calm stop screen offers Resume, with focus on it.
+    expect(screen.getByRole('heading', { name: 'Good call' })).toBeTruthy();
+    const resume = screen.getByRole('button', { name: 'Resume' });
+    expect(document.activeElement).toBe(resume);
+    expect(screen.getByText(RESUME_TEXT)).toBeTruthy();
+    // The held timer does not run on behind the stop screen.
+    act(() => vi.advanceTimersByTime(STOP_UNDO_MS - 1_000));
+    const held = document.querySelector('.timer-time')!;
+    expect(held.textContent).toBe('15');
+    expect(results).toEqual([]);
+  });
+
+  it('Resume brings back the same set and the same time left (AC4)', async () => {
+    const results: SessionResult[] = [];
+    await midHold((r) => results.push(r));
+    click('Stop');
+    act(() => vi.advanceTimersByTime(STOP_UNDO_MS - 1_000));
+    click('Resume');
+    expect(screen.getByRole('region', { name: 'Session player' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Front plank', level: 1 })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '15 left', description: 'Hold, set 1 of 2' })).toBeTruthy();
+    // The window is gone with the stop screen: the session goes on, and the timer runs again.
+    act(() => vi.advanceTimersByTime(STOP_UNDO_MS));
+    expect(screen.getByRole('button', { name: '10 left', description: 'Hold, set 1 of 2' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Good call' })).toBeNull();
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(screen.getByRole('heading', { name: 'How did set 1 look?' })).toBeTruthy();
+    expect(results).toEqual([]);
+  });
+
+  it(`after ${STOP_UNDO_MS / 1000} s without Resume, the session is over (AC4)`, async () => {
+    const results: SessionResult[] = [];
+    const wake = await midHold((r) => results.push(r));
+    click('Stop');
+    act(() => vi.advanceTimersByTime(STOP_UNDO_MS));
+    expect(screen.getByRole('heading', { name: 'Good call' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Done for today' })).toBeTruthy();
+    expect(results.map((r) => r.outcome)).toEqual(['stopped']);
+    await act(async () => {});
+    expect(wake.released).toBe(1);
+  });
+
+  it('Done for today during the Resume window ends the session once (AC4)', async () => {
+    const results: SessionResult[] = [];
+    const onExit = vi.fn();
+    await midHold((r) => results.push(r), onExit);
+    click('Stop');
+    click('Done for today');
+    expect(onExit).toHaveBeenCalledTimes(1);
+    expect(results.map((r) => r.outcome)).toEqual(['stopped']);
+    act(() => vi.advanceTimersByTime(STOP_UNDO_MS));
+    expect(results).toHaveLength(1);
+  });
+
+  it('Something hurts still pauses at once, mid-set, with no Resume (AC4)', async () => {
+    const results: SessionResult[] = [];
+    await midHold((r) => results.push(r));
+    click('Something hurts');
+    expect(screen.getByRole('heading', { name: 'Good call stopping' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+    expect(results.map((r) => r.outcome)).toEqual(['hurt']);
   });
 });
 

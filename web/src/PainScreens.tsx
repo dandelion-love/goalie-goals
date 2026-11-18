@@ -1,5 +1,61 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { BODY_AREAS, bodyAreaLabel, clearPause, fetchPauseStatus, type BodyArea, type PauseStatus } from './pain';
+
+/**
+ * Where it hurts as large toggles (each at least 56 px) with radio-group semantics: one tap
+ * chooses, one is checked at a time, and the arrow keys move and choose like native radios. Tab
+ * reaches the group once, on the chosen area (or the first one).
+ */
+export function BodyAreaChoice({ value, onChange }: { value: BodyArea | null; onChange: (area: BodyArea) => void }) {
+  const legendId = useId();
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  const index = BODY_AREAS.findIndex(([id]) => id === value);
+  const move = (to: number) => {
+    const i = (to + BODY_AREAS.length) % BODY_AREAS.length;
+    onChange(BODY_AREAS[i][0]);
+    buttons.current[i]?.focus();
+  };
+  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
+    const to =
+      e.key === 'ArrowRight' || e.key === 'ArrowDown'
+        ? i + 1
+        : e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+          ? i - 1
+          : e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? BODY_AREAS.length - 1
+              : null;
+    if (to === null) return;
+    e.preventDefault();
+    move(to);
+  };
+  return (
+    <fieldset>
+      <legend id={legendId}>Where does it hurt?</legend>
+      <div className="area-options" role="radiogroup" aria-labelledby={legendId}>
+        {BODY_AREAS.map(([id, label], i) => (
+          <button
+            key={id}
+            ref={(el) => {
+              buttons.current[i] = el;
+            }}
+            type="button"
+            role="radio"
+            value={id}
+            aria-checked={value === id}
+            tabIndex={i === (index < 0 ? 0 : index) ? 0 : -1}
+            className="area-option"
+            onClick={() => onChange(id)}
+            onKeyDown={(e) => onKeyDown(e, i)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 /** Where it hurts (a short fixed list) and an optional note. Nothing else is asked. */
 export function PainReportForm({ onSend }: { onSend: (area: BodyArea, note: string) => Promise<boolean> }) {
@@ -27,17 +83,7 @@ export function PainReportForm({ onSend }: { onSend: (area: BodyArea, note: stri
         void onSend(area, note.trim()).then((ok) => setState(ok ? 'sent' : 'saved'));
       }}
     >
-      <fieldset>
-        <legend>Where does it hurt?</legend>
-        <div className="area-options">
-          {BODY_AREAS.map(([id, label]) => (
-            <label key={id} className={area === id ? 'area-option chosen' : 'area-option'}>
-              <input type="radio" name="body-area" value={id} checked={area === id} onChange={() => setArea(id)} />
-              {label}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <BodyAreaChoice value={area} onChange={setArea} />
       <label className="pain-note">
         Anything else? (optional)
         <textarea value={note} maxLength={500} rows={3} onChange={(e) => setNote(e.target.value)} />

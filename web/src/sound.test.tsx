@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { App } from './App';
 import { SessionPlayer } from './SessionPlayer';
-import { initialState, reduce, stepsOf, type Action, type PlayerState } from './player';
+import { STOP_UNDO_MS, initialState, reduce, stepsOf, type Action, type PlayerState } from './player';
 import { MUTE_KEY, createSoundEngine, cueForChange, sound } from './sound';
 import { RUBRIC_MOMENTS, type CueName } from './cues';
 import type { WakeLockController } from './wakeLock';
@@ -140,6 +140,16 @@ describe('cue triggers', () => {
     expect(cuesFor([{ type: 'stop', outcome: 'hurt' }, next])).toEqual(['start', RUBRIC_MOMENTS['safety stop or pain report']]);
     expect(cuesFor([{ type: 'stop', outcome: 'stopped' }])).toEqual(['start', 'safety']);
   });
+
+  it('Stop plays the safety cue on the tap; the Resume window and Resume are silent (story #77)', () => {
+    const stop: Action = { type: 'stop', outcome: 'stopped' };
+    // Stop, input while stopped, then the window closes: one safety cue, at the tap.
+    expect(cuesFor([next, next, next, stop, next, { type: 'rep' }, { type: 'stop-final' }])).toEqual(['start', 'switch', 'switch', 'go', 'safety']);
+    // Stop then Resume: no start or go replayed; the session's own cues carry on after.
+    expect(cuesFor([next, next, next, stop, { type: 'resume' }, next])).toEqual(['start', 'switch', 'switch', 'go', 'safety', 'setDone']);
+    // "Something hurts" on the stop screen is a new stop.
+    expect(cuesFor([stop, { type: 'stop', outcome: 'hurt' }])).toEqual(['start', 'safety', 'safety']);
+  });
 });
 
 describe('the player’s sound', () => {
@@ -210,6 +220,39 @@ describe('the player’s sound', () => {
     expect(heard().slice(-2)).toEqual(['setDone', 'done']);
     // The switch stays on the finish screen.
     expect(screen.getByRole('button', { name: 'Sound' })).toBeTruthy();
+  });
+
+  it('plays nothing while the stop screen holds the set, and no start cue on Resume (story #77)', () => {
+    vi.useFakeTimers();
+    const plays = vi.spyOn(sound, 'play').mockReturnValue(true);
+    vi.spyOn(sound, 'unlock').mockImplementation(() => {});
+    render(<SessionPlayer session={demoSession({ warmUp: [], coolDown: [], cards: [PLANK] })} layout="medium" wakeLock={wake} onExit={() => {}} />);
+    const heard = () => plays.mock.calls.map((c) => c[0]);
+    click('Start set 1');
+    click('End set');
+    click('Skip');
+    // Rest, 4 s left: the last three seconds would tick if the timer ran.
+    act(() => vi.advanceTimersByTime(41_000));
+    expect(heard()).toEqual(['start', 'go', 'setDone', 'rest']);
+    click('Stop');
+    expect(heard().at(-1)).toBe('safety');
+    // The sound switch stays on the stop screen.
+    expect(screen.getByRole('button', { name: 'Sound' })).toBeTruthy();
+    act(() => vi.advanceTimersByTime(STOP_UNDO_MS - 500));
+    expect(heard()).toEqual(['start', 'go', 'setDone', 'rest', 'safety']);
+    click('Resume');
+    expect(screen.getByRole('button', { name: '4 left' })).toBeTruthy();
+    expect(heard()).toEqual(['start', 'go', 'setDone', 'rest', 'safety']);
+    // The rest runs on and ticks as before.
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(heard().at(-1)).toBe('tick');
+
+    // Stop again and let the window close: nothing more plays.
+    click('Stop');
+    const before = heard().length;
+    act(() => vi.advanceTimersByTime(STOP_UNDO_MS + 1_000));
+    expect(screen.queryByRole('button', { name: 'Resume' })).toBeNull();
+    expect(heard().slice(before - 1)).toEqual(['safety']);
   });
 
   it('unlocks sound in the Start tap, and plays nothing on the home before it', async () => {

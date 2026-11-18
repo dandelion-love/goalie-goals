@@ -79,6 +79,38 @@ describe('session player flow', () => {
     expect(s.step).toBe(0);
   });
 
+  // Glute bridge only: Start set 1, then three reps.
+  const bridge = () => demoSession({ warmUp: [], coolDown: [], cards: [BRIDGE] });
+  const midSet: Action[] = [next, rep, rep, rep];
+  const stop: Action = { type: 'stop', outcome: 'stopped' };
+
+  it('Stop ends the set at once: nothing counts or moves on while the stop screen shows', () => {
+    const before = run(midSet, bridge());
+    const stopped = run([...midSet, stop, rep, next], bridge());
+    expect(stopped.stopping).toBe(true);
+    expect(stopped.outcome).toBeNull();
+    expect(stopped.phase).toEqual({ kind: 'work', set: 1, side: 1, reps: 3 });
+    expect(stopped.phase).toEqual(before.phase);
+    expect(stopped.setsDone).toBe(before.setsDone);
+  });
+
+  it('Resume carries on with the same set; after the Resume window the session is over', () => {
+    expect(run([...midSet, stop, { type: 'resume' }], bridge())).toEqual(run(midSet, bridge()));
+    expect(run([...midSet, stop, { type: 'resume' }, rep], bridge()).phase).toMatchObject({ set: 1, reps: 4 });
+
+    const over = run([...midSet, stop, { type: 'stop-final' }, { type: 'resume' }, next], bridge());
+    expect(over.outcome).toBe('stopped');
+    expect(over.stopping).toBe(false);
+    // Without a stop, neither a late resume nor a late final does anything.
+    expect(run([...midSet, { type: 'stop-final' }, { type: 'resume' }], bridge())).toEqual(run(midSet, bridge()));
+  });
+
+  it('Something hurts ends the session at once, even from the stop screen', () => {
+    const s = run([next, { type: 'stop', outcome: 'stopped' }, { type: 'stop', outcome: 'hurt' }]);
+    expect(s.outcome).toBe('hurt');
+    expect(s.stopping).toBe(false);
+  });
+
   it('names the cue in feedback, never the person', () => {
     expect(praiseFor('Knees track over toes')).toBe('Knees track over toes: nice');
   });

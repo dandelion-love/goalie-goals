@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useReducer, useRef, type MutableRefObject, type ReactNode } from 'react';
 import { Countdown } from './Countdown';
 import type { Layout } from './layout';
-import { initialState, reduce, repTarget, stepsOf, stepTitle, type Outcome, type PlayerState, type Step } from './player';
+import {
+  initialState,
+  reduce,
+  repTarget,
+  STOP_UNDO_MS,
+  stepsOf,
+  stepTitle,
+  type Outcome,
+  type PlayerState,
+  type Step,
+} from './player';
 import type { Card, Session, SessionResult } from './training';
 import { useWakeLock, type WakeLockController } from './wakeLock';
 import { FinishProgressView } from './ProgressPanel';
@@ -41,20 +51,33 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
   useStateCues(state, cue);
   const soundToggle = <SoundToggle muted={muted} onChange={setMuted} />;
 
-  useEffect(() => {
-    if (!state.outcome || reported.current) return;
+  const report = (outcome: Outcome) => {
+    if (reported.current) return;
     reported.current = true;
     onFinish?.({
       itemId: session.itemId,
       itemVersion: session.itemVersion,
-      outcome: state.outcome,
+      outcome,
       praised: state.praised,
       setsDone: state.setsDone,
       warmUpLogged: state.warmUpLogged,
       startedAt: startedAt.current,
       endedAt: new Date().toISOString(),
     });
-  }, [state.outcome, state.praised, state.setsDone, state.warmUpLogged, session, onFinish]);
+  };
+  const reportRef = useRef(report);
+  reportRef.current = report;
+
+  useEffect(() => {
+    if (state.outcome) reportRef.current(state.outcome);
+  }, [state.outcome]);
+
+  // Stop has ended the set; Resume is offered for STOP_UNDO_MS, then the session is over.
+  useEffect(() => {
+    if (!state.stopping) return;
+    const id = setTimeout(() => dispatch({ type: 'stop-final' }), STOP_UNDO_MS);
+    return () => clearTimeout(id);
+  }, [state.stopping]);
 
   if (state.outcome) {
     return (
@@ -71,63 +94,85 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
 
   const step = steps[state.step];
   const needsTaps = wake === 'fallback';
+  const frozen = state.stopping;
   const next = () => dispatch({ type: 'next' });
 
   const player = (
-    <section
-      className="player"
-      data-layout={layout}
-      aria-label="Session player"
-      onPointerDown={() => {
-        lastTap.current = Date.now();
-        // Any tap can bring sound back after the iPad suspended it (the app was hidden).
-        unlock();
-      }}
-    >
-      <header className="player-bar">
-        <div>
-          <span className="kind">
-            Step {state.step + 1} of {steps.length}
-          </span>
-          <h1 className="player-title">{stepTitle(step)}</h1>
-        </div>
-        <div className="player-bar-actions">
-          {soundToggle}
-          <button type="button" className="danger session-control" onClick={() => dispatch({ type: 'stop', outcome: 'hurt' })}>
-            Something hurts
-          </button>
-          <button type="button" className="secondary session-control" onClick={() => dispatch({ type: 'stop', outcome: 'stopped' })}>
-            Stop
-          </button>
-        </div>
-      </header>
-
-      {needsTaps && (
-        <p className="wake-notice" role="status">
-          {WAKE_FALLBACK_TEXT}
-        </p>
-      )}
-      {state.feedback && (
-        <p className="feedback" role="status" aria-live="polite">
-          {state.feedback}
-        </p>
-      )}
-
-      {step.kind === 'moves' ? (
-        <MovesStep step={step} state={state} needsTaps={needsTaps} lastTap={lastTap} onNext={next} layout={layout} />
-      ) : (
-        <CardStep
-          card={step.card}
-          state={state}
-          needsTaps={needsTaps}
-          lastTap={lastTap}
-          layout={layout}
-          onNext={next}
-          onRep={() => dispatch({ type: 'rep' })}
-          onPraise={(cue) => dispatch({ type: 'praise', cue })}
+    <>
+      {state.stopping && (
+        <FinishScreen
+          outcome="stopped"
+          praised={state.praised}
+          soundToggle={soundToggle}
+          onResume={() => {
+            lastTap.current = Date.now();
+            dispatch({ type: 'resume' });
+          }}
+          onExit={() => {
+            // Leaving during the Resume window: the session is over now.
+            report('stopped');
+            onExit();
+          }}
         />
       )}
-    </section>
+      {/* Kept mounted while the stop screen shows, so Resume brings back the same set and timer. */}
+      <section
+        className="player"
+        data-layout={layout}
+        aria-label="Session player"
+        hidden={state.stopping}
+        onPointerDown={() => {
+          lastTap.current = Date.now();
+          // Any tap can bring sound back after the iPad suspended it (the app was hidden).
+          unlock();
+        }}
+      >
+        <header className="player-bar">
+          <div>
+            <span className="kind">
+              Step {state.step + 1} of {steps.length}
+            </span>
+            <h1 className="player-title">{stepTitle(step)}</h1>
+          </div>
+          <div className="player-bar-actions">
+            {soundToggle}
+            <button type="button" className="danger session-control" onClick={() => dispatch({ type: 'stop', outcome: 'hurt' })}>
+              Something hurts
+            </button>
+            <button type="button" className="secondary session-control" onClick={() => dispatch({ type: 'stop', outcome: 'stopped' })}>
+              Stop
+            </button>
+          </div>
+        </header>
+
+        {needsTaps && (
+          <p className="wake-notice" role="status">
+            {WAKE_FALLBACK_TEXT}
+          </p>
+        )}
+        {state.feedback && (
+          <p className="feedback" role="status" aria-live="polite">
+            {state.feedback}
+          </p>
+        )}
+
+        {step.kind === 'moves' ? (
+          <MovesStep step={step} state={state} needsTaps={needsTaps} lastTap={lastTap} frozen={frozen} onNext={next} layout={layout} />
+        ) : (
+          <CardStep
+            card={step.card}
+            state={state}
+            needsTaps={needsTaps}
+            lastTap={lastTap}
+            frozen={frozen}
+            layout={layout}
+            onNext={next}
+            onRep={() => dispatch({ type: 'rep' })}
+            onPraise={(cue) => dispatch({ type: 'praise', cue })}
+          />
+        )}
+      </section>
+    </>
   );
   // The countdowns inside play the rest ticks and the pause through the same cue function.
   return <CueContext.Provider value={cue}>{player}</CueContext.Provider>;
@@ -147,6 +192,7 @@ function MovesStep({
   state,
   needsTaps,
   lastTap,
+  frozen,
   onNext,
   layout,
 }: {
@@ -154,6 +200,7 @@ function MovesStep({
   state: PlayerState;
   needsTaps: boolean;
   lastTap: MutableRefObject<number>;
+  frozen: boolean;
   onNext: () => void;
   layout: Layout;
 }) {
@@ -171,6 +218,7 @@ function MovesStep({
           onDone={onNext}
           needsTaps={needsTaps}
           lastTap={lastTap}
+          frozen={frozen}
         />
         <button type="button" className="primary session-control wide" onClick={onNext}>
           Next
@@ -195,6 +243,7 @@ function CardStep({
   state,
   needsTaps,
   lastTap,
+  frozen,
   layout,
   onNext,
   onRep,
@@ -204,6 +253,7 @@ function CardStep({
   state: PlayerState;
   needsTaps: boolean;
   lastTap: MutableRefObject<number>;
+  frozen: boolean;
   layout: Layout;
   onNext: () => void;
   onRep: () => void;
@@ -230,6 +280,7 @@ function CardStep({
           onDone={onNext}
           needsTaps={needsTaps}
           lastTap={lastTap}
+          frozen={frozen}
         />
         <button type="button" className="secondary session-control wide" onClick={onNext}>
           End set
@@ -288,6 +339,7 @@ function CardStep({
           onDone={onNext}
           needsTaps={needsTaps}
           lastTap={lastTap}
+          frozen={frozen}
         />
         <button type="button" className="secondary session-control wide" onClick={onNext}>
           Skip rest
@@ -296,8 +348,10 @@ function CardStep({
     );
   }
 
+  // The timer or counter and the next action sit in their own block: below the drill in
+  // portrait, and at the top of the right-hand column in landscape, so both stay in view.
   return (
-    <div className={layout === 'expanded' ? 'player-panes' : 'player-stack'}>
+    <div className={layout === 'expanded' ? 'player-panes card-panes' : 'player-stack'}>
       <div className="player-main">
         <figure className="drill-figure">
           <img src={card.figureUrl} alt={`${card.name}: how the move looks`} />
@@ -307,8 +361,8 @@ function CardStep({
           {card.doseText}
           {dose.tempo ? `. Tempo: ${dose.tempo}.` : '.'}
         </p>
-        {controls}
       </div>
+      <div className="player-controls">{controls}</div>
       <div className="player-side">
         <h2>Steps</h2>
         <ol>
@@ -360,13 +414,19 @@ const FINISH: Record<Outcome, { title: string; body: string }> = {
   },
 };
 
-/** Every ending is a positive one. No "one more?" prompt. */
+export const RESUME_TEXT = `Tapped Stop by mistake? Resume within ${STOP_UNDO_MS / 1000} seconds.`;
+
+/**
+ * Every ending is a positive one. No "one more?" prompt. Straight after Stop, the same screen
+ * also offers Resume (`onResume`) until the Resume window closes.
+ */
 function FinishScreen({
   outcome,
   praised,
   progress,
   hurtForm,
   soundToggle,
+  onResume,
   onExit,
 }: {
   outcome: Outcome;
@@ -374,14 +434,29 @@ function FinishScreen({
   progress?: FinishProgress | 'saving' | 'unsaved' | null;
   hurtForm?: ReactNode;
   soundToggle?: ReactNode;
+  onResume?: () => void;
   onExit: () => void;
 }) {
   const { title, body } = FINISH[outcome];
   const unique = [...new Set(praised)];
+  const resume = useRef<HTMLButtonElement>(null);
+  const canResume = !!onResume;
+  // Stop was tapped and is gone from the screen: focus Resume, the one way to undo it.
+  useEffect(() => {
+    if (canResume) resume.current?.focus();
+  }, [canResume]);
   return (
     <section className="notice finish" aria-labelledby="finish-title">
       <h1 id="finish-title">{title}</h1>
       <p>{body}</p>
+      {onResume && (
+        <>
+          <p className="meta">{RESUME_TEXT}</p>
+          <button ref={resume} type="button" className="secondary session-control wide" onClick={onResume}>
+            Resume
+          </button>
+        </>
+      )}
       {outcome === 'hurt' && hurtForm}
       {unique.length > 0 && (
         <>

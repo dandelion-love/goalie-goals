@@ -296,7 +296,8 @@ button {
   min-width: 44px;
 }
 
-.session-control {
+/* `button.` so it outranks `button.primary` and `button.secondary`, which set 44 px. */
+button.session-control {
   min-height: 56px;
   min-width: 56px;
   font-size: 1.1rem;
@@ -340,7 +341,12 @@ button.danger {
 
 .player-bar-actions {
   display: flex;
-  gap: 10px;
+  /* Stop sits well away from Something hurts (at least 24 px), so one is not tapped for the other. */
+  gap: 32px;
+}
+
+.player[hidden] {
+  display: none;
 }
 
 .wake-notice {
@@ -377,13 +383,30 @@ button.danger {
   align-items: start;
 }
 
+/*
+ * A card step in landscape: the drill on the left; the timer or counter and the next action at
+ * the top right, so they are in view without scrolling; the steps and cues below them.
+ */
+.card-panes {
+  grid-template-rows: auto 1fr;
+}
+
+.card-panes .player-main {
+  grid-row: span 2;
+}
+
 @container (max-width: 700px) {
   .player-panes {
     grid-template-columns: 1fr;
   }
+
+  .card-panes .player-main {
+    grid-row: auto;
+  }
 }
 
 .player-main,
+.player-controls,
 .player-side {
   background: var(--surface);
   border-radius: var(--radius);
@@ -620,19 +643,27 @@ button.danger {
   gap: 8px;
 }
 
+/* Large toggles with radio semantics: one tap chooses, arrow keys move. */
 .area-option {
   display: flex;
   align-items: center;
-  gap: 8px;
   min-height: 56px;
-  padding: 8px 12px;
+  padding: 8px 16px;
+  border: 2px solid transparent;
   border-radius: var(--radius);
   background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: left;
   cursor: pointer;
 }
 
-.area-option.chosen {
-  outline: 3px solid var(--accent);
+.area-option[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
 
 .pain-note {

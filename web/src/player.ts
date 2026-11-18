@@ -4,6 +4,8 @@
 // ready -> work (set 1, side 1) -> [work side 2] -> feedback -> rest -> work (set 2) ... ->
 // feedback after the last set -> next step. Timers only time work and rest; nothing races the
 // clock. The keeper may stop at any time, and "Something hurts" ends the session at once.
+// Stop also ends the set at once: the player holds where it is (`stopping`) while the stop
+// screen offers Resume for STOP_UNDO_MS, and only then is the session over ('stop-final').
 
 import type { Card, Move, Session } from './training';
 
@@ -20,6 +22,9 @@ export type Phase =
 
 export type Outcome = 'done' | 'stopped' | 'hurt';
 
+/** How long the stop screen offers Resume before the session is over. */
+export const STOP_UNDO_MS = 5_000;
+
 export interface PlayerState {
   step: number;
   phase: Phase;
@@ -30,13 +35,21 @@ export interface PlayerState {
   setsDone: number;
   /** The warm-up was logged (or the session has none): the session credit is earned from here. */
   warmUpLogged: boolean;
+  /**
+   * Stop was tapped: the set has ended and nothing moves on, but the step, phase and timers are
+   * kept as they were, so Resume carries on with the same set. Cleared by 'resume'; the session
+   * is over at 'stop-final'.
+   */
+  stopping: boolean;
 }
 
 export type Action =
   | { type: 'next' }
   | { type: 'rep' }
   | { type: 'praise'; cue: string }
-  | { type: 'stop'; outcome: 'stopped' | 'hurt' };
+  | { type: 'stop'; outcome: 'stopped' | 'hurt' }
+  | { type: 'resume' }
+  | { type: 'stop-final' };
 
 export function stepsOf(session: Session): Step[] {
   const steps: Step[] = [];
@@ -59,6 +72,7 @@ export function initialState(steps: Step[]): PlayerState {
     praised: [],
     setsDone: 0,
     warmUpLogged: !steps.some((st) => st.kind === 'moves' && st.label === 'Warm-up'),
+    stopping: false,
   };
 }
 
@@ -82,7 +96,13 @@ function nextStep(steps: Step[], s: PlayerState): PlayerState {
 
 export function reduce(steps: Step[], s: PlayerState, action: Action): PlayerState {
   if (s.outcome) return s;
-  if (action.type === 'stop') return { ...s, outcome: action.outcome, feedback: null };
+  // Something hurts ends the session at once, even from the stop screen.
+  if (action.type === 'stop' && action.outcome === 'hurt') return { ...s, outcome: 'hurt', stopping: false, feedback: null };
+  if (action.type === 'stop') return { ...s, stopping: true };
+  if (action.type === 'resume') return s.stopping ? { ...s, stopping: false } : s;
+  if (action.type === 'stop-final') return s.stopping ? { ...s, outcome: 'stopped', stopping: false, feedback: null } : s;
+  // While stopped, the set is over: nothing counts or moves on until Resume.
+  if (s.stopping) return s;
   const step = steps[s.step];
   const p = s.phase;
 
