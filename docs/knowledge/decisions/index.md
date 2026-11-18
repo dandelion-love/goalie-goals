@@ -8,6 +8,10 @@
 
 * [Front-end approach for the iPad web app](/decisions/frontend-approach.md) - React and Vite as an installable web app with an offline session cache, iPad-first breakpoints, iPadOS 18.4 as the minimum, and sign-in run inside the installed app behind the proxy.
 
+## Visual identity
+
+* [Fonts and design tokens for a bold rounded look](/decisions/visual-identity.md) - Nunito as the one self-hosted variable font, and a small set of CSS custom-property tokens for type scale, spacing, radii, depth and five colour roles in light and dark, derived on our own.
+
 ## Parent approval
 
 * [Parent approval as a primary behaviour](/decisions/parent-approval.md) - The parent approves every new exercise, load increase, plan change and any sharing before the keeper sees it; a pain report pauses all training until the parent clears it; while anything waits, only already-approved sessions run.

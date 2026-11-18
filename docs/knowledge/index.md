@@ -21,6 +21,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 * [Parent approval](/parent-approval/index.md) - how a parent approves what the app asks of a teen, and the privacy rules for minors
 
+* [Visual identity](/visual-identity/index.md) - open rounded fonts, legibility at a distance, self-hosting, token tooling, the palette method with its contrast table, and licences
+
 * [Building for the iPad](/platform/index.md) - installing, layout, touch, push, offline, media and sign-in for an iPad home-screen web app
 
 ## Decisions
