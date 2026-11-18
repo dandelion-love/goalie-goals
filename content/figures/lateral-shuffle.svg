@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Lateral shuffle, seen from the front: low ready stance, shuffle between two spots 2 m apart</title>
+  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <g fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="124" y1="120" x2="66" y2="120"/><polyline points="76,110 66,120 76,130"/><line x1="236" y1="120" x2="294" y2="120"/><polyline points="284,110 294,120 284,130"/></g>
+  <polygon points="40,184 52,164 64,184" fill="#2563eb"/>
+  <polygon points="296,184 308,164 320,184" fill="#2563eb"/>
+  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="180" cy="54" r="11"/>
+    <line x1="180" y1="70" x2="180" y2="120"/>
+    <polyline points="180,120 160,150 146,184"/>
+    <polyline points="180,120 200,150 214,184"/>
+    <polyline points="180,70 158,100 164,84"/>
+    <polyline points="180,70 202,100 196,84"/>
+  </g>
+</svg>

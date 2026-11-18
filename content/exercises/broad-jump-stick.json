@@ -1,0 +1,96 @@
+{
+  "id": "broad-jump-stick",
+  "name": "Broad jump with stick landing",
+  "aliases": [
+    "jump and freeze",
+    "standing long jump to stick"
+  ],
+  "category": "power",
+  "why": "Landing well protects the knees on every dive and jump; a short forward jump teaches you to soak up force and hold still.",
+  "goal": [
+    "horizontal-power",
+    "landing",
+    "leg-strength"
+  ],
+  "risk": "medium",
+  "needs": {
+    "all": [
+      "body only"
+    ],
+    "any": []
+  },
+  "space_m": [
+    2,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "About 2 m of clear floor in the jump direction.",
+    "equipment": "None. Wear trainers.",
+    "surface_note": "A wooden floor, carpet over a firm floor, a thick mat or grass. Never on concrete or tiles laid on concrete.",
+    "parent": "Stand side-on near the landing spot."
+  },
+  "steps": [
+    "Stand behind a line, feet hip width.",
+    "Swing your arms back and bend into a quarter squat.",
+    "Swing the arms forward and jump forward a comfortable distance, not your longest.",
+    "Land on both feet with bent knees and hold still for two seconds.",
+    "Walk back to the line and reset before the next jump."
+  ],
+  "cues": [
+    "Comfortable distance",
+    "Land soft and freeze",
+    "Knees over toes"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Jumping as far as you can",
+      "fix": "Use about half effort; the landing is the skill."
+    },
+    {
+      "mistake": "Stiff, straight-knee landing",
+      "fix": "Bend knees and hips as you land, like sitting back."
+    },
+    {
+      "mistake": "Wobbling after landing",
+      "fix": "Shorten the jump until you can freeze for two seconds."
+    }
+  ],
+  "parent_check": [
+    "Freezes for two seconds on landing",
+    "Knees bend and stay over the toes",
+    "Lands quietly on both feet"
+  ],
+  "stop_if": [
+    "Pain in the knee, below the kneecap, heel or ankle",
+    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Landing on straight knees, or the knees cave in (end the set)"
+  ],
+  "easier": {
+    "variant": "Snap down: rise onto the toes, drop into the landing shape and freeze, with no jump.",
+    "use_when": "The landing cannot be frozen for two seconds."
+  },
+  "harder": {
+    "variant": "A slightly longer jump, still freezing for two seconds.",
+    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+  },
+  "dose": {
+    "kind": "contacts",
+    "sets": 3,
+    "reps": 3,
+    "per_side": false,
+    "rest_s": 90,
+    "tempo": "load, jump, freeze for two"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "pogo-hops",
+    "squat-to-box"
+  ],
+  "media": {
+    "figure": "content/figures/broad-jump-stick.svg"
+  },
+  "spec": "content/exercises/broad-jump-stick.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

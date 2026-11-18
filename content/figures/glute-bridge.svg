@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Glute bridge: lie with knees bent, then lift the hips to a straight line from shoulder to knee</title>
+  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <g fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="150" y1="120" x2="196" y2="120"/><polyline points="186,110 196,120 186,130"/></g>
+  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="172" r="11"/>
+    <line x1="40" y1="178" x2="92" y2="180"/>
+    <polyline points="92,180 118,144 140,184"/>
+    <polyline points="40,178 66,182 88,183"/>
+    <circle cx="206" cy="172" r="11"/>
+    <line x1="222" y1="178" x2="270" y2="150"/>
+    <polyline points="270,150 306,128 322,184"/>
+    <polyline points="222,178 246,182 268,183"/>
+  </g>
+</svg>

@@ -1,0 +1,93 @@
+{
+  "id": "split-squat",
+  "name": "Split squat",
+  "aliases": [
+    "static lunge"
+  ],
+  "category": "strength",
+  "why": "Keepers push off one leg to dive and jump, so strength and balance on one leg matter.",
+  "goal": [
+    "leg-strength",
+    "single-leg-strength",
+    "hip-strength"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only"
+    ],
+    "any": []
+  },
+  "space_m": [
+    2,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "About 1.5 m of floor, with a wall nearby for a hand if needed.",
+    "equipment": "None.",
+    "parent": "Stand side-on, about 2 m away."
+  },
+  "steps": [
+    "Take a long step forward and lift the back heel so you stand on the ball of that foot.",
+    "Stand tall with your hands on your hips.",
+    "Bend both knees and lower straight down until the back knee is just above the floor.",
+    "Push through the front foot to rise. Do all reps, then switch legs."
+  ],
+  "cues": [
+    "Straight down, straight up",
+    "Front knee over the foot",
+    "Tall chest"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Front knee falls inward",
+      "fix": "Point the knee over the middle toes."
+    },
+    {
+      "mistake": "Leaning far forward",
+      "fix": "Lower straight down like a lift in a shaft."
+    },
+    {
+      "mistake": "Back knee bumps the floor",
+      "fix": "Stop a hand width above the floor."
+    }
+  ],
+  "parent_check": [
+    "Front knee stays over the foot",
+    "Body stays upright",
+    "Same number of clean reps on both legs"
+  ],
+  "stop_if": [
+    "Pain in the knee, hip or lower back, or pain that changes how you move",
+    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Losing balance again and again (end the set)"
+  ],
+  "easier": {
+    "variant": "Shorter range with one hand on a wall.",
+    "use_when": "Balance is lost or the front knee wobbles."
+  },
+  "harder": {
+    "variant": "Pause for two seconds at the bottom.",
+    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+  },
+  "dose": {
+    "kind": "reps",
+    "sets": 2,
+    "reps": 10,
+    "per_side": true,
+    "rest_s": 60,
+    "tempo": "down for two, up smoothly"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "squat-to-box",
+    "glute-bridge"
+  ],
+  "media": {
+    "figure": "content/figures/split-squat.svg"
+  },
+  "spec": "content/exercises/split-squat.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

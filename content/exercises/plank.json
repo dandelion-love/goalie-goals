@@ -1,0 +1,91 @@
+{
+  "id": "plank",
+  "name": "Front plank",
+  "aliases": [
+    "forearm plank"
+  ],
+  "category": "trunk",
+  "why": "A strong, stiff middle lets you dive and land without the body folding.",
+  "goal": [
+    "trunk-stability"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only"
+    ],
+    "any": []
+  },
+  "space_m": [
+    2,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "A strip of floor about 2 m long.",
+    "equipment": "None.",
+    "parent": "Kneel side-on at hip level."
+  },
+  "steps": [
+    "Lie face down with your forearms under your shoulders.",
+    "Tuck your toes and lift so you rest on forearms and toes.",
+    "Make a straight line from head to heels by squeezing your bottom and tummy.",
+    "Breathe steadily, hold for the time, then lower your knees to the floor."
+  ],
+  "cues": [
+    "Straight like a board",
+    "Keep breathing",
+    "Squeeze your bottom"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Hips sagging toward the floor",
+      "fix": "Squeeze the bottom and tuck the hips a little."
+    },
+    {
+      "mistake": "Hips piked high",
+      "fix": "Lower the hips until the body is straight."
+    },
+    {
+      "mistake": "Holding the breath",
+      "fix": "Count the breaths out loud."
+    }
+  ],
+  "parent_check": [
+    "Straight line from shoulder to ankle",
+    "Hips do not sag or pike",
+    "Breathing steadily"
+  ],
+  "stop_if": [
+    "Pain in the lower back or shoulders, or pain that changes how you move",
+    "Chest pain, dizziness, feeling faint, a racing heartbeat or unusual shortness of breath",
+    "Hips sag and cannot be lifted again (end the set)"
+  ],
+  "easier": {
+    "variant": "Plank from the knees.",
+    "use_when": "The hips sag before the time is up."
+  },
+  "harder": {
+    "variant": "Lift one foot a little for two seconds, then the other.",
+    "move_on_when": "Every rep clean in two sessions in a row, and the owner approves the change."
+  },
+  "dose": {
+    "kind": "hold",
+    "sets": 2,
+    "seconds": 20,
+    "per_side": false,
+    "rest_s": 45,
+    "tempo": "still and steady"
+  },
+  "timer": "interval",
+  "substitutes": [
+    "side-plank",
+    "glute-bridge"
+  ],
+  "media": {
+    "figure": "content/figures/plank.svg"
+  },
+  "spec": "content/exercises/plank.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Side plank: on one forearm with hips lifted and a straight line from head to feet</title>
+  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <line x1="70" y1="112" x2="312" y2="168" stroke="#2563eb" stroke-width="3" stroke-dasharray="10 8" stroke-linecap="round"/>
+  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="76" cy="122" r="11"/>
+    <line x1="88" y1="138" x2="190" y2="160"/>
+    <polyline points="190,160 246,171 304,182"/>
+    <polyline points="88,138 88,182 122,182"/>
+    <polyline points="88,138 116,124 150,148"/>
+  </g>
+</svg>
