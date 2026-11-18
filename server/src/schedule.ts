@@ -36,6 +36,11 @@ export class MemoryScheduleStore implements ScheduleStore {
   async append(change: ScheduleChange): Promise<void> {
     this.#changes.push({ from: change.from, days: [...change.days] });
   }
+
+  /** Dev-only demo seed and reset (src/demo.ts). */
+  clear(): void {
+    this.#changes = [];
+  }
 }
 
 /**

@@ -36,12 +36,14 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
   it to `/app/content`). Each card is an approval item `card-<id>` (kind `exercise`) bound to
   a hash of the card and its figure; each session is `session-<id>` (kind `plan`) bound to
   its warm-up, its cards' doses and the exact card versions. At startup the app proposes
-  today's session and its cards to the parent. The card's credit line comes from the
+  the whole pack, each session and its cards, to the parent. The card's credit line comes from the
   figure's entry in `content/credits.json`, built as `tools/content_check.py` builds it. The
   `approved` flag in a card file is ignored: approval lives in the approvals service.
   Versions are kept in memory next to the in-memory approval store (`MemorySnapshotStore`).
-  `SingleSessionPlan` offers the starter session every day until weekly plans arrive; the
-  fallback's "approved maintenance session" rung is not built yet, so rest is offered.
+  The app runs the themed week (`WeeklyPlan`, `src/weeklyPlan.ts`) everywhere, the local
+  dev mock and the demo included; `SingleSessionPlan` (the starter session every day) is
+  kept for tests. The fallback's "approved maintenance session" rung is not built yet, so
+  rest is offered.
 - XP and streaks (`src/progression.ts`, `src/progress.ts`), per
   `docs/knowledge/decisions/progression-design.md`. The rules are pure functions with a test
   for each day type: trained together, trained solo, stopped for safety, planned rest,
@@ -127,19 +129,24 @@ shaped like the proxy's for each `/api` request that lacks one, then verifies it
 the same code path as production. Switch accounts with `/api/dev/as?account=sam@example.com`;
 `account=none` sends no header, so the app shows the expired-session state. With the mock
 on, the server also seeds three demo requests (a starter plan, an exercise and a harder
-version) for the parent's inbox, and approves today's session and its cards as the demo
-parent so the keeper's player has something to run. The key is
+version) for the parent's inbox, and approves the themed week's sessions and cards as the
+demo parent so the keeper's player has something to run on each training day (by default
+Monday, Wednesday and Friday; the parent's Training days panel changes them). The key is
 never written to disk, and the flag stops the server from starting when
 `NODE_ENV=production`.
 
 ## The demo household
 
 `src/demo.ts` seeds the household that [`docs/demo.md`](../docs/demo.md) scripts: keeper Kai
-(`kai@example.com`) and parent Sam (`sam@example.com`); today's starter session and its cards
-approved as the demo parent; the demo requests from `src/demoData.ts` waiting in the parent's
-inbox (real cards at their spec doses); and the week before today as history: five trained
-days, one planned rest day (`DemoPlan`) and one safety stop, so the team streak starts at 6.
-Dates are the machine's local date, as the web app's are.
+(`kai@example.com`) and parent Sam (`sam@example.com`); the themed week, its three sessions
+and their cards approved as the demo parent; the parent's training days, picked relative to
+today so that today is always one (`demoTrainingDays`: today's weekday and the weekdays two
+and four days on), with the themes starting on today (`DemoWeeklyPlan`), so today is always
+Strong middle while production keeps the Monday-first order; the demo requests from `src/demoData.ts` waiting in the parent's inbox
+(real cards at their spec doses); and the two weeks before today as history, on the training
+days only: five trained sessions and one safety stop (`DEMO_HISTORY`), with the plan's rest
+days between, so the team streak starts at 6 and XP at 94. Dates are the machine's local
+date, as the web app's are.
 
 ```bash
 npm run demo          # from the repo root: build the web app, then npm run demo:seed

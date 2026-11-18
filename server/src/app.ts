@@ -15,7 +15,7 @@ import { MemoryRoleStore, type Role, type RoleStore } from './roles.js';
 import { ApprovalService, MemoryApprovalStore, MemoryAuditLog } from './approvals.js';
 import { hasBadge, registerApprovalRoutes } from './approvalRoutes.js';
 import { seedDemoRequests, seedDemoSession } from './demoData.js';
-import { DemoAuditLog, DemoPlan, DemoRefused, localDate, resetDemoHousehold, seedDemoHousehold, type DemoTarget } from './demo.js';
+import { DemoAuditLog, DemoRefused, DemoWeeklyPlan, localDate, resetDemoHousehold, seedDemoHousehold, type DemoTarget } from './demo.js';
 import { loadContent } from './content.js';
 import { TrainingService, utcDate } from './training.js';
 import { registerTrainingRoutes } from './trainingRoutes.js';
@@ -131,22 +131,26 @@ export async function buildApp({
         notifier: new InAppNotifier(),
       };
   const approvalService = approvals ?? new ApprovalService(own!);
-  // Local development keeps the demo's own plan (the starter session, with the demo week's rest
-  // day); otherwise the get-stronger pack, three themed sessions a week (src/weeklyPlan.ts).
-  const demoPlan = config.devMockIdentity && !training ? new DemoPlan() : undefined;
+  // The get-stronger pack, three themed sessions a week (src/weeklyPlan.ts), in local
+  // development and the demo too (story 116). The dev mock's copy lets the demo seed start the
+  // themes on today (src/demo.ts); unseeded, it keeps the real Monday-first order.
+  const ownPlan = training ? undefined : config.devMockIdentity ? new DemoWeeklyPlan() : new WeeklyPlan();
   const trainingService =
     training ??
     new TrainingService({
       approvals: approvalService,
       content: loadContent(config.contentRoot || undefined),
-      plan: demoPlan ?? new WeeklyPlan(),
+      plan: ownPlan!,
     });
+  // The app's own in-memory store for the training days, kept by name for the demo seed.
+  const ownScheduleStore =
+    !schedule && !scheduleStore && config.scheduleStore !== 'firestore' ? new MemoryScheduleStore() : undefined;
   // The parent sets the training days in the app, when the plan is the weekly pack.
   const scheduleService =
     schedule ??
     (trainingService.plan instanceof WeeklyPlan
       ? new ScheduleService({
-          store: scheduleStore ?? (await defaultScheduleStore(config)),
+          store: scheduleStore ?? ownScheduleStore ?? (await defaultScheduleStore(config)),
           plan: trainingService.plan,
           audit: approvalService.audit,
           content: () => trainingService.library,
@@ -155,9 +159,8 @@ export async function buildApp({
   await scheduleService?.load();
   if (own && !config.demoSeed) {
     // The app asks the parent for the whole pack: each session and every card it uses. Local
-    // development gives the
-    // parent's inbox something to show and approves the session as the demo parent, so the
-    // player has something to run.
+    // development gives the parent's inbox something to show and approves the pack as the demo
+    // parent, so the player has something to run on each training day.
     if (config.devMockIdentity) {
       await seedDemoRequests(approvalService);
       await seedDemoSession(trainingService, utcDate(new Date()));
@@ -236,7 +239,15 @@ export async function buildApp({
 
   // The demo household (src/demo.ts): only on the app's own in-memory stores, with the mock on.
   const demo: DemoTarget | undefined =
-    config.devMockIdentity && own && own.audit instanceof DemoAuditLog && ownRoles && demoPlan && ownPain && ownProgress
+    config.devMockIdentity &&
+    own &&
+    own.audit instanceof DemoAuditLog &&
+    ownRoles &&
+    ownPlan instanceof DemoWeeklyPlan &&
+    scheduleService &&
+    ownScheduleStore &&
+    ownPain &&
+    ownProgress
       ? {
           production: config.production,
           devMockIdentity: config.devMockIdentity,
@@ -246,7 +257,9 @@ export async function buildApp({
           notifier: own.notifier,
           approvals: approvalService,
           training: trainingService,
-          plan: demoPlan,
+          plan: ownPlan,
+          schedule: scheduleService,
+          scheduleStore: ownScheduleStore,
           progressStore: ownProgress,
           progress: progressService,
           pain: ownPain,

@@ -455,8 +455,9 @@ describe('training routes', () => {
 
   it('runs an approved session out of the box with the dev mock, and leaves the demo inbox as it was', async () => {
     app = await buildApp({ config: { ...config(), audience: '', devMockIdentity: true } });
-    const kai = await app.inject({ method: 'GET', url: '/api/training/today', headers: { cookie: 'dev_as=kai%40example.com' } });
-    expect(kai.json().today.cards.map((c: { id: string }) => c.id)).toEqual(['plank', 'glute-bridge']);
+    // The dev mock runs the themed week (story 116); an invented Monday is a default training day.
+    const kai = await app.inject({ method: 'GET', url: '/api/training/today?date=2026-01-05', headers: { cookie: 'dev_as=kai%40example.com' } });
+    expect(kai.json().today.cards.map((c: { id: string }) => c.id)).toEqual(['plank', 'side-plank', 'glute-bridge']);
     const sam = await app.inject({ method: 'GET', url: '/api/approvals/pending', headers: { cookie: 'dev_as=sam%40example.com' } });
     expect(sam.json().requests).toHaveLength(DEMO_REQUESTS.length);
   });

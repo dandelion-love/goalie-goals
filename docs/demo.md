@@ -37,11 +37,39 @@ No real person's data is in it, and no deployed service is involved.
    - Window B: open `http://localhost:8080/api/dev/as?account=kai@example.com`, then
      `http://localhost:8080/`. It shows **Keeper home**.
 
-What the seed gives you: today's starter session **Strong middle** (Front plank and Glute
-bridge at their card doses) approved; four requests waiting in Sam's inbox; and a week of
-history with five trained days, one planned rest day and one safety stop (Stop pressed on a
-warning sign, which counts as a kept day). **Together so far** starts at a team streak of 6
-training days and 94 XP.
+What the seed gives you:
+
+- The themed week, as the app runs it: three sessions, **Strong middle**, **Spring
+  legs** and **Quick feet, strong arms**, each with its cards at their card doses, all
+  approved as Sam.
+- Sam's **Training days**, picked so that today is always one (below).
+- Four requests waiting in Sam's inbox.
+- Two weeks of history on the training days: five trained sessions and one safety stop (Stop
+  pressed on a warning sign, which counts as a kept day), with planned rest days between.
+  **Together so far** starts at a team streak of 6 training days and 94 XP.
+
+### How the demo picks today
+
+The seed sets Sam's training days to today's weekday and the weekdays two and four days
+later, so today is always a training day and no two training days are back to back. Today
+is always **Strong middle**, on any weekday: the demo starts the themes on today and goes on
+in week order, so **Spring legs** is two days later and **Quick feet, strong arms** four
+days later. (Outside the demo the themes start on the first training day of the week,
+Monday first.)
+
+| Today is | Training days | Strong middle | Spring legs | Quick feet, strong arms |
+| --- | --- | --- | --- | --- |
+| Monday | Mon, Wed, Fri | Mon | Wed | Fri |
+| Tuesday | Tue, Thu, Sat | Tue | Thu | Sat |
+| Wednesday | Wed, Fri, Sun | Wed | Fri | Sun |
+| Thursday | Mon, Thu, Sat | Thu | Sat | Mon |
+| Friday | Tue, Fri, Sun | Fri | Sun | Tue |
+| Saturday | Mon, Wed, Sat | Sat | Mon | Wed |
+| Sunday | Tue, Thu, Sun | Sun | Tue | Thu |
+
+If Sam saves days that leave out today, the themes go back to the Monday-first order until
+the next `npm run demo:reset`. The dates come from the machine's own clock and are never
+real training records.
 
 To start again at any time, run `npm run demo:reset` in a second terminal and reload both
 windows. It restores the seeded state as of today, and refuses if the data holds any account
@@ -55,10 +83,16 @@ In **Window A (Sam, phone)**:
 
 1. Point at **Together so far**: team streak 6 training days, Kai's and Sam's streaks 6 each,
    94 XP. "Rest days and pauses never break a streak."
-2. Scroll to **Inbox**, with its badge of **4**. Each request shows what would change and
+2. Point at **Training days**: today and the two days the table above gives are on, each
+   with its session, today's always **Strong middle** (on a Thursday: "Mon: Quick feet,
+   strong arms", "Thu: Strong middle", "Sat: Spring legs"). "Pick 3 days with a rest day
+   between each": the server refuses two days back to back and says why. Leave the days as
+   they are, so today stays the Strong middle day.
+3. Scroll to **Inbox**, with its badge of **4**. Each request shows what would change and
    when it lapses: "silence never approves".
-3. On **Squat to box** ("Bodyweight only, 2 sets of 10, 60 s rest"), tap **Approve**.
-4. The badge drops to **3**, and **History** shows "Parent approved Squat to box".
+4. On **Squat to box** ("Bodyweight only, 2 sets of 10, 60 s rest"), tap **Approve**.
+5. The badge drops to **3**, and the newest **History** entry is "Parent approved Squat to
+   box". (The entries below it are the seed approving the week's sessions and cards as Sam.)
 
 ![Parent home on a phone, the inbox with its badge of 4 and the Squat to box request](demo/01-parent-inbox-phone.png)
 
@@ -69,7 +103,7 @@ In **Window A (Sam, phone)**:
 In **Window B (Kai, iPad)**:
 
 1. **Keeper home** shows **Today**: the path of steps for **Strong middle** (warm-up, Front
-   plank, Glute bridge, cool-down, finish).
+   plank, Side plank, Glute bridge, cool-down, finish).
 2. Tap **Start session**.
 3. Warm-up: each move runs on a countdown. To keep the demo short, tap **Next** six times.
 4. **Front plank** (2 sets of a 20 s hold): the figure and its credit line sit beside the
@@ -78,10 +112,13 @@ In **Window B (Kai, iPad)**:
    2. Under "How did set 1 look?", tap the cue **Stay board-straight**. The app says
       "Stay board-straight: nice": the cue, never the person.
    3. Tap **Skip rest**, then **End set**, then tap **Keep breathing**.
-5. **Glute bridge** (2 sets of 12):
+5. **Side plank** (2 sets of a 15 s hold, each side):
+   1. Tap **Start set 1**, then **End set** twice (one side, then the other).
+   2. Tap **Hips high**, then **Skip rest**, **End set** twice and **Long body**.
+6. **Glute bridge** (2 sets of 12):
    1. Tap **Start set 1**, then **Set done** (or tap **+1** twelve times).
    2. Tap **Push through heels**, then **Skip rest**, **Set done** and **Ribs down**.
-6. Cool-down: tap **Next**.
+7. Cool-down: tap **Next**.
 
 ![Keeper home on an iPad, Today's path for Strong middle with Start session](demo/03-keeper-today-ipad.png)
 
@@ -92,10 +129,11 @@ In **Window B (Kai, iPad)**:
 Still in **Window B**:
 
 1. The finish screen says **Session done**, lists what looked good today, and shows the XP
-   earned: a fixed session credit for the logged warm-up plus one star for each of the 4 sets
-   rated well (18 XP). There is no "one more?" prompt.
+   earned: a fixed session credit of 10 for the logged warm-up plus 2 for each set rated well.
+   With every set of **Strong middle** rated, that is 6 sets and **+22 XP**. There is no
+   "one more?" prompt.
 2. Tap **Done for today**. **Together so far** now shows a team streak of 7 training days and
-   112 XP. Reps and minutes earn nothing: XP counts showing up and good form.
+   116 XP. Reps and minutes earn nothing: XP counts showing up and good form.
 
 ![the Session done screen with the XP and the streaks](demo/05-keeper-finish-ipad.png)
 
@@ -130,6 +168,15 @@ In **Window A (Sam, phone)**:
 
 Run `npm run demo:reset` and reload both windows to put the household back as it started.
 Stop the server with Ctrl+C; nothing is kept, since the demo stores live in memory.
+
+## Quality audits on the demo
+
+The quality rubric (`docs/knowledge/decisions/quality-rubric.md`, "Fixed for every audit")
+runs on this demo, on any weekday, since today is always **Strong middle**. Its Script C
+markers are unchanged: Start session gives "Knees up, arms swing", Next "Small circles, then
+big", **Set done** (on Glute bridge) "How did set 1 look?", and **Approve** on the inbox's
+first request "Parent approved Starter plan". K4 (Glute bridge set 2) and K5 (the Front
+plank rest) are in today's session.
 
 ## Taking the screenshots
 

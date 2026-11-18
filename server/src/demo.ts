@@ -1,6 +1,7 @@
 // The demo household, for local development and showing the app: keeper Kai and parent Sam
-// (the invented cast, at example.com), approved demo cards and today's starter session, a few
-// requests in the parent's inbox, and a week of history so XP and streaks show something.
+// (the invented cast, at example.com), the themed week (src/weeklyPlan.ts) on training days
+// picked relative to today, its sessions and cards approved, a few requests in the parent's
+// inbox, and two weeks of history so XP and streaks show something.
 //
 // Stores are in memory, so the seed runs inside the server: at startup with GOALIE_DEMO_SEED=1,
 // or through the dev-only reset route. Both refuse in production, without the mock identity,
@@ -21,7 +22,10 @@ import type { MemoryPainStore } from './pain.js';
 import type { MemoryProgressStore, ProgressService } from './progress.js';
 import type { Outcome } from './progression.js';
 import { normaliseAccount, type MemoryRoleStore, type Role } from './roles.js';
-import { STARTER_SESSION, type SessionTemplate, type TrainingPlan, type TrainingService } from './training.js';
+import { MemoryScheduleStore, type ScheduleService } from './schedule.js';
+import type { TrainingService } from './training.js';
+import type { SessionTemplate } from './training.js';
+import { sortWeekdays, weekdayOf, WeeklyPlan, type Week, type Weekday } from './weeklyPlan.js';
 
 export { DEMO_PARENT } from './demoData.js';
 export const DEMO_KEEPER = { account: 'kai@example.com', role: 'keeper' as const };
@@ -59,36 +63,63 @@ export class DemoAuditLog implements AuditLog {
 /** The seed or the reset would touch data that is not the demo household. */
 export class DemoRefused extends ConfigError {}
 
-/** The starter session every day, except the demo week's planned rest day. */
-export class DemoPlan implements TrainingPlan {
-  readonly restDates = new Set<string>();
-  constructor(private readonly template: SessionTemplate = STARTER_SESSION) {}
-  sessionFor(date: string): SessionTemplate | null {
-    return this.restDates.has(date) ? null : this.template;
+/**
+ * The demo's training days, picked so that today is always one (story 116): today's weekday
+ * and the weekdays two and four days on. They are three days apart round the end of the week,
+ * so no two are back to back, Sunday to Monday included.
+ */
+export function demoTrainingDays(today: string): Weekday[] {
+  const w = weekdayOf(today);
+  return sortWeekdays([w, ((w + 2) % 7) as Weekday, ((w + 4) % 7) as Weekday]);
+}
+
+/**
+ * The demo's themed week (story 116): the real weekly plan, with one difference. Where the
+ * real plan puts the first theme on the first training day of the week (Monday first), the
+ * demo starts the themes on its anchor day, the seed date's weekday, and goes on in week order
+ * from there, round the end of the week. So today is always Strong middle, on any weekday, and
+ * the quality rubric's fixed screens are always there. With no anchor, or when the parent
+ * picks days without it, the order is the real plan's. Only the dev mock uses this plan.
+ */
+export class DemoWeeklyPlan extends WeeklyPlan {
+  /** The weekday that carries the first theme; null keeps the real plan's order. */
+  anchor: Weekday | null = null;
+
+  override weekOn(date: string): Week {
+    const days = this.daysOn(date);
+    const at = this.anchor === null ? -1 : days.indexOf(this.anchor);
+    if (at < 0) return super.weekOn(date);
+    const week: (SessionTemplate | null)[] = [null, null, null, null, null, null, null];
+    days.forEach((_, i) => {
+      if (i < this.pack.length) week[days[(at + i) % days.length]] = this.pack[i];
+    });
+    return week;
   }
 }
 
 export interface DemoDay {
-  /** Days before the seed date. */
+  /** Days before the seed date; always one of the demo's training days. */
   daysAgo: number;
-  kind: 'trained' | 'rest' | 'safety_stop';
+  kind: 'trained' | 'safety_stop';
   /** Sets the parent rated well; the server caps it at the planned sets. */
   praisedSets: number;
 }
 
 /**
- * The week before the seed date: several trained days, one planned rest day and one safety
- * stop (Stop pressed on a warning sign, which counts as a kept day). No day is missed, so the
- * team streak runs the whole week; today is left open for the live demo.
+ * The two weeks before the seed date, on the demo's training days only (3, 5 and 7 days back,
+ * and a week before each): five trained sessions and one safety stop (Stop pressed on a
+ * warning sign, which counts as a kept day). The days between are the plan's rest days. No
+ * training day is missed, so the team streak runs 6 training days; today is left open for the
+ * live demo. Every praised count is within each theme's planned sets (6 or 7), so the XP is
+ * 6 session credits of 10 plus 17 stars of 2: 94.
  */
-export const DEMO_WEEK: readonly DemoDay[] = [
-  { daysAgo: 7, kind: 'trained', praisedSets: 3 },
-  { daysAgo: 6, kind: 'trained', praisedSets: 4 },
-  { daysAgo: 5, kind: 'trained', praisedSets: 2 },
-  { daysAgo: 4, kind: 'rest', praisedSets: 0 },
-  { daysAgo: 3, kind: 'safety_stop', praisedSets: 1 },
-  { daysAgo: 2, kind: 'trained', praisedSets: 4 },
-  { daysAgo: 1, kind: 'trained', praisedSets: 3 },
+export const DEMO_HISTORY: readonly DemoDay[] = [
+  { daysAgo: 14, kind: 'trained', praisedSets: 3 },
+  { daysAgo: 12, kind: 'trained', praisedSets: 4 },
+  { daysAgo: 10, kind: 'trained', praisedSets: 2 },
+  { daysAgo: 7, kind: 'safety_stop', praisedSets: 1 },
+  { daysAgo: 5, kind: 'trained', praisedSets: 4 },
+  { daysAgo: 3, kind: 'trained', praisedSets: 3 },
 ];
 
 /** Everything the seed writes to. Only the in-memory stores qualify. */
@@ -101,7 +132,11 @@ export interface DemoTarget {
   notifier: InAppNotifier;
   approvals: ApprovalService;
   training: TrainingService;
-  plan: DemoPlan;
+  /** The themed week the training service runs on. */
+  plan: DemoWeeklyPlan;
+  /** The parent's training days, on the in-memory store the seed writes to. */
+  schedule: ScheduleService;
+  scheduleStore: MemoryScheduleStore;
   progressStore: MemoryProgressStore;
   progress: ProgressService;
   pain: MemoryPainStore;
@@ -119,7 +154,11 @@ async function accountsIn(target: DemoTarget): Promise<string[]> {
 export async function assertDemoTarget(target: DemoTarget): Promise<void> {
   if (target.production) throw new DemoRefused('The demo household is refused in production.');
   if (!target.devMockIdentity) throw new DemoRefused('The demo household runs with the mock identity only.');
-  if (!(target.approvalStore instanceof MemoryApprovalStore) || !(target.audit instanceof DemoAuditLog)) {
+  if (
+    !(target.approvalStore instanceof MemoryApprovalStore) ||
+    !(target.audit instanceof DemoAuditLog) ||
+    !(target.scheduleStore instanceof MemoryScheduleStore)
+  ) {
     throw new DemoRefused('The demo household runs on the in-memory stores only.');
   }
   const outsiders = (await accountsIn(target)).filter((a) => !isDemoAccount(a));
@@ -145,23 +184,35 @@ async function populate(target: DemoTarget, today: string): Promise<void> {
   target.roles.set(DEMO_KEEPER.account, DEMO_KEEPER.role);
   target.roles.set(DEMO_PARENT.account, DEMO_PARENT.role);
 
-  target.plan.restDates.clear();
-  for (const d of DEMO_WEEK) if (d.kind === 'rest') target.plan.restDates.add(shiftDate(today, -d.daysAgo));
+  // The parent's training days, in effect from the first day of history, so every seeded day
+  // and today fall on the week the parent's panel shows. Written to the store as seed data,
+  // not as a parent's change, so the parent's History does not list it.
+  target.scheduleStore.clear();
+  await target.scheduleStore.append({ from: shiftDate(today, -DEMO_HISTORY[0].daysAgo), days: demoTrainingDays(today) });
+  await target.schedule.load();
+  // Today carries the first theme, Strong middle, whatever the weekday.
+  target.plan.anchor = weekdayOf(today);
 
   // The parent's inbox: real cards with their spec doses only (demoData.ts).
   await seedDemoRequests(target.approvals);
-  // Today's starter session and its cards, approved as the demo parent.
+  // The whole pack, its three sessions and their cards, approved as the demo parent.
   await seedDemoSession(target.training, today);
-  const session = (await target.training.today(today)).today;
-  if (!session) throw new Error('The demo session could not be approved: is a starter card missing from content/?');
+  if (!(await target.training.today(today)).today) {
+    throw new Error("The demo's session for today could not be approved: is a pack card missing from content/?");
+  }
 
-  for (const d of DEMO_WEEK) {
-    if (d.kind === 'rest') continue;
+  for (const d of DEMO_HISTORY) {
+    const date = shiftDate(today, -d.daysAgo);
+    // Each day's record names the session the plan had that day, so its stars are capped at
+    // that session's own planned sets.
+    const template = target.plan.sessionFor(date);
+    const session = template && target.training.currentSession(template);
+    if (!session) throw new Error(`The demo history day ${d.daysAgo} days back is not a training day.`);
     const outcome: Outcome = d.kind === 'safety_stop' ? 'stopped' : 'done';
     const recordedBy: Role = 'keeper';
     await target.progress.record(
       {
-        date: shiftDate(today, -d.daysAgo),
+        date,
         itemId: session.itemId,
         itemVersion: session.itemVersion,
         outcome,
