@@ -119,7 +119,8 @@ describe('Tapped by mistake on the "Where does it hurt?" form (AC2)', () => {
     expect(Object.keys(JSON.parse(call.body)).sort()).toEqual(['id', 'reportId']);
     expect(store.value).not.toBeNull();
 
-    click('Done for today');
+    // It follows the form's first frame (story 105).
+    fireEvent.click(await screen.findByRole('button', { name: 'Done for today' }));
     expect(await screen.findByRole('heading', { name: 'Training is paused' })).toBeTruthy();
     expect(screen.getByText(MISTAKE_NOTED)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Start session|Do last version|Rest today/ })).toBeNull();

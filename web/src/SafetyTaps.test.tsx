@@ -78,6 +78,30 @@ describe('the safety taps run in the tap’s own task (story 101 AC4)', () => {
     await act(async () => {});
   });
 
+  it('Something hurts in the player: its first frame is the form with "Tapped by mistake"; the rest follows after paint (story 105)', async () => {
+    const { pauseStore } = await keeperInPlayer();
+
+    const tap = tapOutsideAct(screen.getByRole('button', { name: 'Something hurts' }));
+    expect(pauseStore.value).not.toBeNull();
+    await tap;
+
+    await microtasksOnly();
+    // The tap's own frame: the card, the form and its "Tapped by mistake" control.
+    expect(screen.getByRole('heading', { name: 'Good call stopping' })).toBeTruthy();
+    const form = screen.getByRole('form', { name: 'Pain report' });
+    expect(form.querySelector('button.secondary')?.textContent).toBe('Tapped by mistake');
+    // Not needed for that frame: the XP line, the sound switch and "Done for today".
+    expect(screen.queryByRole('button', { name: 'Done for today' })).toBeNull();
+    expect(screen.queryByText("Adding up today's XP…")).toBeNull();
+    // The mistake note's bookkeeping waits for a tap on it: the pause holds no note.
+    expect(pauseStore.value?.mistake).toBeUndefined();
+
+    // After the paint, the rest of the finish screen.
+    expect(await screen.findByRole('button', { name: 'Done for today' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Sound/ })).toBeTruthy();
+    expect(screen.getByRole('form', { name: 'Pain report' })).toBe(form);
+  });
+
   it('Stop: the set ends and the stop is kept on the device before the click returns', async () => {
     const { outboxStore } = await keeperInPlayer();
 

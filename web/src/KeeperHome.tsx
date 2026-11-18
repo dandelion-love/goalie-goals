@@ -32,6 +32,7 @@ import type { OfflineStore } from './offline';
 import { Reveal } from './Loading';
 import { chunk } from './chunks';
 import { afterPaint } from './defer';
+import { warmPainReport } from './warmPain';
 
 // The keeper's home, in its own chunk (story 101 AC2): the parent's device never loads it.
 
@@ -69,6 +70,8 @@ function usePause(store: PauseStore, fetchImpl?: typeof fetch) {
   }, [store, fetchImpl]);
 
   const start = useCallback(() => setPause(startPause(store)), [store]);
+  /** Show the pause the device holds: after a tap that wrote it and painted first (story 105). */
+  const refresh = useCallback(() => setPause(store.read()), [store]);
 
   /** Put the report in the outbox and send it; false when it waits for the network. */
   const send = useCallback(
@@ -111,7 +114,7 @@ function usePause(store: PauseStore, fetchImpl?: typeof fetch) {
     [store, fetchImpl],
   );
 
-  return { pause, start, send, flush, sent, mistake };
+  return { pause, start, refresh, send, flush, sent, mistake };
 }
 
 /**
@@ -171,6 +174,8 @@ export function KeeperHome({
   // The cues are computed only on the keeper's device, once its home is up and idle (story #98),
   // so the first cue is ready by the Start tap.
   useWarmCues();
+  // "Something hurts" lays its report out warm (story 105): it is laid out once ahead, on idle.
+  useEffect(() => warmPainReport(), []);
   // The player's code, ahead of the Start tap, so Start never waits on the network.
   useEffect(() => {
     const id = setTimeout(() => void player.preload().catch(() => {}), LOAD_PLAYER_AFTER_MS);
@@ -184,7 +189,7 @@ export function KeeperHome({
   const [reporting, setReporting] = useState(false);
   const [changed, setChanged] = useState(0);
   const [settled, setSettled] = useState({ today: false, progress: false, training: false });
-  const { pause, start, send, flush, sent, mistake } = usePause(pauseStore, fetchImpl);
+  const { pause, start, refresh, send, flush, sent, mistake } = usePause(pauseStore, fetchImpl);
   // The playing session's start event, the stop kept while Resume is offered, and the finish
   // whose XP the finish screen shows.
   const startSent = useRef<{ id: string; session: Session } | null>(null);
@@ -232,10 +237,11 @@ export function KeeperHome({
 
   const finish = useCallback(
     (result: SessionResult) => {
+      const hurt = result.outcome === 'hurt';
       // In the tap's own task (story 101 AC4): the pause is written on the device first, before
       // anything goes over the network, and the session's end is kept in the outbox.
-      if (result.outcome === 'hurt') start();
-      setDoneToday(true);
+      if (hurt) startPause(pauseStore);
+      else setDoneToday(true);
       // A stop queued at the Stop tap goes out now. Any other ending is queued here, and a held
       // stop it replaces (Something hurts after Stop) is dropped.
       const held = stopHeld.current;
@@ -250,15 +256,24 @@ export function KeeperHome({
         id = event.id;
       }
       finishShown.current = id;
-      setProgress('saving');
+      if (!hurt) setProgress('saving');
       // After the finish screen is painted (story 101 AC1): the send. If it fails, the finish
       // line says so; the finish screen and the pause stay as they are.
       afterPaint(
-        () =>
-          flushOut().then(() => {
+        () => {
+          // "Something hurts" (story 105): the tap's own frame is the pain report form alone.
+          // The home's copy of the pause, today's state and the XP line wait for that paint:
+          // the finish screen shows none of them in its first frame.
+          if (hurt) {
+            refresh();
+            setDoneToday(true);
+            if (finishShown.current === id) setProgress('saving');
+          }
+          return flushOut().then(() => {
             // Still on the device: offline, so it syncs later and its XP shows then.
             if (finishShown.current === id && outboxStore.read().some((e) => e.id === id)) setProgress('queued');
-          }),
+          });
+        },
         () => {
           if (finishShown.current === id) setProgress('unsaved');
         },
@@ -266,7 +281,7 @@ export function KeeperHome({
       onSessionFinish?.(result);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [flushOut, outboxStore, onSessionFinish, start],
+    [flushOut, outboxStore, onSessionFinish, pauseStore, refresh],
   );
 
   // Stop keeps the session's end on the device at once, so it is recorded even if the app

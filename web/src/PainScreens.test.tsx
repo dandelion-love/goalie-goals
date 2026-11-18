@@ -186,7 +186,8 @@ describe('a pain report in a session (AC1)', () => {
       for (const args of spy.mock.calls) expect(JSON.stringify(args)).not.toMatch(/zq7-marker|knee/i);
     }
 
-    click('Done for today');
+    // It follows the form's first frame (story 105).
+    fireEvent.click(await screen.findByRole('button', { name: 'Done for today' }));
     expect(await screen.findByRole('heading', { name: 'Training is paused' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Start session|Do last version/ })).toBeNull();
     expect(screen.queryByRole('article', { name: 'Your training' })).toBeNull();
@@ -198,7 +199,8 @@ describe('a pain report in a session (AC1)', () => {
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} pauseStore={store} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Start session' }));
     click('Something hurts');
-    click('Done for today');
+    // It follows the form's first frame (story 105).
+    fireEvent.click(await screen.findByRole('button', { name: 'Done for today' }));
     await waitFor(() => expect(server.state.reports).toHaveLength(1));
     expect(server.state.reports[0]).toMatchObject({ bodyArea: 'unsure', note: null });
   });
@@ -221,7 +223,8 @@ describe('the pause holds offline (AC2)', () => {
     const saved = JSON.parse(localStorage.getItem(PAUSE_KEY)!) as LocalPause;
     expect(saved).toMatchObject({ sent: false, report: { bodyArea: 'ankle_foot', note: NOTE } });
 
-    click('Done for today');
+    // It follows the form's first frame (story 105).
+    fireEvent.click(await screen.findByRole('button', { name: 'Done for today' }));
     expect(await screen.findByRole('heading', { name: 'Training is paused' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
     cleanup();

@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useLayoutEffect, useMemo, useReducer, useRef, type MutableRefObject, type ReactNode, type RefObject } from 'react';
+import { startTransition, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type MutableRefObject, type ReactNode, type RefObject } from 'react';
 import { Countdown } from './Countdown';
 import type { Layout } from './layout';
 import {
@@ -20,6 +20,7 @@ import type { FinishProgressState } from './progress';
 import { CueContext, usePlayerSound, useStateCues } from './sound';
 import { loadRewards, play, Reward } from './motion';
 import { celebrate, preloadCelebration } from './celebrate';
+import { afterPaint } from './defer';
 
 export interface SessionPlayerProps {
   session: Session;
@@ -528,6 +529,13 @@ function FinishScreen({
 }) {
   const { title, body } = FINISH[outcome];
   const unique = [...new Set(praised)];
+  // "Something hurts" (story 105): the tap's own frame is the card and the pain report form,
+  // "Tapped by mistake" included. The rest of the screen (the praise, the XP line, the sound
+  // switch and "Done for today") follows after that paint, so the safety tap stays the quickest.
+  const [rest, setRest] = useState(outcome !== 'hurt');
+  useEffect(() => {
+    if (!rest) afterPaint(() => startTransition(() => setRest(true)));
+  }, [rest]);
   const resume = useRef<HTMLButtonElement>(null);
   const canResume = !!onResume;
   // Stop was tapped and is gone from the screen: focus Resume, the one way to undo it.
@@ -566,7 +574,7 @@ function FinishScreen({
         </>
       )}
       {outcome === 'hurt' && hurtForm}
-      {unique.length > 0 && (
+      {rest && unique.length > 0 && (
         <>
           <h2>Looked good today</h2>
           <ul className="praised">
@@ -576,11 +584,15 @@ function FinishScreen({
           </ul>
         </>
       )}
-      <FinishProgressView progress={progress} celebrate={enter === 'celebrate'} />
-      {soundToggle}
-      <button type="button" className="primary session-control wide" onClick={onExit}>
-        Done for today
-      </button>
+      {rest && (
+        <>
+          <FinishProgressView progress={progress} celebrate={enter === 'celebrate'} />
+          {soundToggle}
+          <button type="button" className="primary session-control wide" onClick={onExit}>
+            Done for today
+          </button>
+        </>
+      )}
     </Reward>
   );
 }

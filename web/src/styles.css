@@ -752,6 +752,16 @@ button:active:not(:disabled) {
   font-weight: var(--weight-bold);
 }
 
+/* The pain report laid out once ahead of "Something hurts" (story 105): never seen, never in
+ * the way, never moves the page. */
+.warm-only {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* Training days on Parent home: seven toggles, exactly three on. Each at least 44 px both
  * ways with 8 px between (story #96 AC4): one row where it fits, 4 + 3 on a phone. */
 .day-toggles {
