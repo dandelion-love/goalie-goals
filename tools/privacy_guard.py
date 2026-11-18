@@ -77,6 +77,14 @@ RULES: list[tuple[str, re.Pattern[str], bool]] = [
     ("cloud host, bucket or account", re.compile(
         r"([\w-]+\.run\.app|[\w-]+\.iam\.gserviceaccount\.com|[\w-]+\.cloudfunctions\.net"
         r"|[\w-]+\.firebaseapp\.com|[\w-]+\.appspot\.com|gs://[\w.-]+)"), True),
+    # An age is identifying: public text uses a band ("U15", "early teens"). A narrow
+    # range of years is an age too. Research cites ages as bands as well.
+    ("age or birthday", re.compile(
+        r"(?i)\b(?:\d{1,2}(?:\s*(?:to|or|[^\w\s])\s*\d{1,2})?[- ](?:years?|yrs?)[- ]olds?\b"
+        r"|aged?\s+\d{1,2}(?:\s*(?:to|or|[^\w\s])\s*\d{1,2})?(?![\w.])"
+        r"(?!\s*(?:days?|weeks?|months?|hours?|minutes?|seconds?|%|ms|s)\b)"
+        r"|turn(?:s|ed|ing)\s+\d{1,2}\b|\d{1,2}(?:st|nd|rd|th)\s+birthday"
+        r"|birthday\s+(?:is|on)\s+\w+)"), True),
     ("IP address", re.compile(
         r"(?<![\w.])(?!127\.0\.0\.1(?![\w.])|0\.0\.0\.0(?![\w.]))\d{1,3}(?:\.\d{1,3}){3}"
         r"(?![\w.])"), True),

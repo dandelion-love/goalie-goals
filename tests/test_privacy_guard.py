@@ -80,6 +80,16 @@ class Rules(unittest.TestCase):
         self.assertClean("bind to 127.0.0.1 or 0.0.0.0")
         self.assertClean("save 12 of 15 shots, 3x10 reps, version 1.2.3")
 
+    def test_ages(self) -> None:
+        self.assertFlags(j("a 1", "4-ye", "ar-old keeper"), "age or birthday", message=True)
+        self.assertFlags(j("for 1", "4 to 15 ye", "ar olds"), "age or birthday")
+        self.assertFlags(j("athletes ag", "ed 13", "\u2013", "15"), "age or birthday")
+        self.assertFlags(j("he is 1", "4 ye", "ars old"), "age or birthday")
+        self.assertFlags(j("he tur", "ns 1", "5 in May"), "age or birthday")
+        self.assertFlags(j("her 1", "4th bir", "thday"), "age or birthday")
+        self.assertClean("guidance for U15 and early-teens athletes, U13 to U17 bands")
+        self.assertClean("a 3-year roadmap; rest 90 s; 12 of 15 shots; cache aged 30 days")
+
     def test_emails(self) -> None:
         self.assertFlags(j("kid", AT, "gmail", ".com"), "email address")
         self.assertClean(j("player", AT, "example", ".com"))

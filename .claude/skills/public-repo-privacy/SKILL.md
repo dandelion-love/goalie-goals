@@ -30,7 +30,8 @@ data at runtime, never in this repo.
 
 - Say **the keeper** for the young athlete and **the parent** for the training partner.
   Both are users of the app.
-- Use an age band ("U15", "early teens"), never an age or birthday.
+- Use an age band ("U15", "early teens"), never an age or birthday. A narrow range of
+  years is an age too; research cites age groups as bands as well.
 - State needs as training goals: "vertical jump and lateral speed lag the older age group",
   not a personal story.
 - Fixtures, seed data, screenshots and examples use the invented cast: keeper **Kai**,
