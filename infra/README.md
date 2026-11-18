@@ -24,7 +24,7 @@ privacy guard refuses them).
    billing_account = "<billing account id>"
    quota_project   = "<an existing project with the budgets API on>"
    state_bucket    = "<globally unique bucket name>"
-   budget_currency = "<your billing currency, e.g. CAD>"
+   budget_currency = "<your billing account's currency code>"
    ```
 
 3. From `infra/bootstrap`:
