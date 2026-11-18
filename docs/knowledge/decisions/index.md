@@ -36,6 +36,10 @@
 
 * [Training rules for an early-teens keeper](/decisions/training-rules.md) - What the app may and must never prescribe, its progression limits, the warning signs that stop a session, and when the family should see a professional.
 
+## Progression library
+
+* [Progression library to build](/decisions/progression-library.md) - Every rung's id, pattern, rung number and prerequisite - 56 rungs in 16 ladders, 9 of them existing cards - each still needing its own acceptance spec and the owner's in-app approval.
+
 ## Equipment at home
 
 * [Equipment model](/decisions/equipment-model.md) - How the app records each household's equipment, how every exercise declares what it needs, how substitutes are chosen, the generic default profile, and the rule that an exercise with no safe substitute is left out.

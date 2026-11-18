@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Added**: progression-library research: sixteen movement patterns tied to goalkeeper needs, ladders of three to five rungs with household equipment only (doses inside the training rules, sources, parent-checkable clean cues, unlock dose and step-down), the unlock rules with the cue test and its rejection case, and the library Decision listing 56 rungs, 9 of them existing cards.
 * **Changed**: quality-rubric method, after the baseline audit: wrapped native inputs measured by their label (Scripts D and F), no gap in the LT3 anchors, CT2 searches only user-facing text (Script J), SO2 measures synthesised cues from an OfflineAudioContext render (Script K), and the rig records headed or headless plus the fixed Script C markers, Script H selector and K4 and K5; baseline scores unchanged.
 * **Added**: government and health-body research for exercise figures: licences side by side (US federal works, UK, Canadian, Australian and New Zealand open licences, WHO), the publications checked per country, health organisations and physio sheets, and a coverage table for every card and goalkeeper move; the media Decision and the credits check gain public-domain US federal works and OGL v3.0.
 
