@@ -215,6 +215,43 @@ class ContentCheck(unittest.TestCase):
         found = self.edit_card(lambda c: c["dose"].update(tempo=self.LONG.rstrip(".")))
         self.assertFinding(found, "dose.tempo: ")
 
+    # Story 117: the player's intro shows every setup line and the parent checks (story 112).
+    def test_long_setup_lines(self) -> None:
+        def change(c):
+            c["setup"]["space"] = "About 1.5 m of floor, with a wall nearby for a hand if needed."
+            c["setup"]["equipment"] = self.LONG
+            c["setup"]["parent"] = ("Stand in front like a shooter and point left or right "
+                                    "to start each effort.")
+        found = self.edit_card(change, "split-squat")
+        rel = "content/exercises/split-squat.json"
+        self.assertFinding(found, f"{rel}: setup.space: 'About 1.5 m of floor")
+        self.assertFinding(found, "if needed.' is 14 words")
+        self.assertFinding(found, f"{rel}: setup.equipment: 'Keep both")
+        self.assertFinding(found, f"{rel}: setup.parent: 'Stand in front")
+        self.assertFinding(found, "each effort.' is 15 words")
+
+    def test_long_surface_note(self) -> None:
+        found = self.edit_card(lambda c: c["setup"].update(
+            surface_note="A wooden floor, carpet over a firm floor, a thick mat or grass."),
+            "pogo-hops")
+        self.assertFinding(found, "content/exercises/pogo-hops.json: setup.surface_note: ")
+        self.assertFinding(found, "is 13 words")
+
+    def test_long_parent_check(self) -> None:
+        found = self.edit_card(lambda c: c["parent_check"].__setitem__(1, self.LONG),
+                               "split-squat")
+        self.assertFinding(found, "content/exercises/split-squat.json: parent_check[1]: 'Keep")
+        self.assertFinding(found, "is 14 words")
+
+    def test_setup_and_parent_check_of_twelve_words_pass(self) -> None:
+        twelve = "Stand side-on, about 2 m away, where you can see the knees."
+        self.assertEqual(len(twelve.split()), 12)
+
+        def change(c):
+            c["setup"]["parent"] = twelve
+            c["parent_check"][0] = twelve
+        self.assertEqual(self.edit_card(change, "split-squat"), [])
+
     def _drop_stop(self, needle: str) -> list[str]:
         return self.edit_card(lambda c: c.update(
             stop_if=[s for s in c["stop_if"] if needle not in s]), "plank")

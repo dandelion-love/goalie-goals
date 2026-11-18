@@ -25,7 +25,7 @@
   "setup": {
     "space": "A strip of floor about 2 m wide. Pick two spots on the floor 2 m apart.",
     "equipment": "None. Wear trainers.",
-    "parent": "Stand in front like a shooter and point left or right to start each effort."
+    "parent": "Stand in front like a shooter. Point left or right to start each effort."
   },
   "steps": [
     "Start in a ready stance, hands up in front. Feet wider than the hips, knees bent.",

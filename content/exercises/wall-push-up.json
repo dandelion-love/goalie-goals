@@ -24,7 +24,7 @@
   ],
   "surface": "any",
   "setup": {
-    "space": "Floor in front of a solid wall, about an arm and a half away.",
+    "space": "Floor reaching about an arm and a half from a solid wall.",
     "equipment": "A solid wall.",
     "parent": "Stand side-on, about 2 m away."
   },

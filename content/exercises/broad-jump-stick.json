@@ -27,7 +27,7 @@
   "setup": {
     "space": "About 2 m of clear floor in the jump direction.",
     "equipment": "None. Wear trainers.",
-    "surface_note": "A wooden floor, carpet over a firm floor, a thick mat or grass. Never on concrete or tiles laid on concrete.",
+    "surface_note": "Wooden floor, carpet over a firm floor, a thick mat or grass. Never on concrete or tiles laid on concrete.",
     "parent": "Stand side-on near the landing spot."
   },
   "steps": [

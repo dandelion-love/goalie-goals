@@ -25,9 +25,9 @@
   ],
   "surface": "any",
   "setup": {
-    "space": "About 1 m by 1 m of floor in front of the box.",
+    "space": "Floor about 1 m by 1 m in front of the box.",
     "equipment": "A stable low box or step that does not slide.",
-    "parent": "Stand side-on, about 2 m away, where you can see knees and back."
+    "parent": "Stand side-on, about 2 m away, to see knees and back."
   },
   "steps": [
     "Stand a short step in front of the box. Feet about shoulder width, toes turned out a little.",

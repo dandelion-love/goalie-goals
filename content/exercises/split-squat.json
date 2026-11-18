@@ -24,7 +24,7 @@
   ],
   "surface": "any",
   "setup": {
-    "space": "About 1.5 m of floor, with a wall nearby for a hand if needed.",
+    "space": "About 1.5 m of floor near a wall, for balance if needed.",
     "equipment": "None.",
     "parent": "Stand side-on, about 2 m away."
   },

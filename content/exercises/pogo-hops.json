@@ -25,7 +25,7 @@
   "setup": {
     "space": "About 1 m by 1 m.",
     "equipment": "None. Wear trainers.",
-    "surface_note": "A wooden floor, carpet over a firm floor, a thick mat or grass. Never on concrete or tiles laid on concrete.",
+    "surface_note": "Wooden floor, carpet over a firm floor, a thick mat or grass. Never on concrete or tiles laid on concrete.",
     "parent": "Stand in front, about 2 m away, and listen to the landings."
   },
   "steps": [

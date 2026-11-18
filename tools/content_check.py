@@ -16,8 +16,9 @@ equipment-model Decision. The check fails a card when:
   sign, chest pain, a racing heartbeat, shortness of breath, dizziness and feeling faint,
   from the training-rules Decision's warning signs);
 - text the player shows mid-session is too long for the quality rubric's CT1: a cue label
-  over 3 words, or a sentence over 12 words in the reason, a step, a cue's feedback line,
-  a mistake or its fix, a stop sign, the easier or harder hint, or the tempo (shown_text);
+  over 3 words, or a sentence over 12 words in the reason, a setup line, a parent check,
+  a step, a cue's feedback line, a mistake or its fix, a stop sign, the easier or harder
+  hint, or the tempo (shown_text);
 - its acceptance spec, content/exercises/<id>.spec.md, is missing, does not cite the
   training-rules Decision, has a dose that differs from the card's, or lists other stop
   signs;
@@ -213,6 +214,9 @@ def shown_text(card: dict) -> list[tuple[str, str]]:
     """The card lines the player shows, as (field, text) pairs, in the shape the screen
     renders them (web/src/SessionPlayer.tsx and the cue feedback of web/src/player.ts)."""
     out = [("why", card["why"])]
+    # Story 117: the player's intro shows every setup line and the parent checks (story 112).
+    out += [(f"setup.{k}", v) for k, v in card["setup"].items() if isinstance(v, str)]
+    out += [(f"parent_check[{i}]", c) for i, c in enumerate(card["parent_check"])]
     out += [(f"steps[{i}]", s) for i, s in enumerate(card["steps"])]
     out += [(f"cues[{i}] feedback", f"{c}: nice") for i, c in enumerate(card["cues"])]
     for i, m in enumerate(card["mistakes"]):

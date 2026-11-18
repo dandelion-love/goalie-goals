@@ -373,6 +373,57 @@ describe('story #91 AC3: reworded card text is a new version the parent approves
   });
 });
 
+/** The squat-to-box setup line the player showed before story 117 shortened it. */
+const OLD_SQUAT_PARENT = 'Stand side-on, about 2 m away, where you can see knees and back.';
+
+/** The repo's content through loadContent (real hashes), with squat-to-box's old setup line. */
+function contentWithOldSquatSetup(): ContentLibrary {
+  const dir = mkdtempSync(join(tmpdir(), 'goalie-content-'));
+  try {
+    cpSync(defaultContentRoot(), join(dir, 'content'), { recursive: true });
+    const file = join(dir, 'content', 'exercises', 'squat-to-box.json');
+    const card = JSON.parse(readFileSync(file, 'utf8')) as { setup: Record<string, string> };
+    card.setup.parent = OLD_SQUAT_PARENT;
+    writeFileSync(file, JSON.stringify(card, null, 2));
+    return loadContent(join(dir, 'content'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+describe('story 117 AC3: a shortened setup line is a new version the parent approves', () => {
+  it('changes the hash, asks the parent again and serves the old setup until approved', async () => {
+    const old = contentWithOldSquatSetup();
+    const now = CONTENT.cards.get('squat-to-box')!;
+    expect(now.card.setup.parent).not.toBe(OLD_SQUAT_PARENT);
+    expect(old.cards.get('squat-to-box')!.contentHash).not.toBe(now.contentHash);
+
+    plan.template = { ...STARTER_SESSION, cardIds: ['squat-to-box'] };
+    training.setContent(old);
+    await training.proposeFor(DATE);
+    await approveAllPending();
+    const before = (await training.today(DATE)).today!;
+    expect(before.cards[0].setup.parent).toBe(OLD_SQUAT_PARENT);
+
+    // The new wording arrives as a change request; the keeper keeps the approved version.
+    training.setContent(CONTENT);
+    await training.proposeFor(DATE);
+    const ask = (await approvals.pending()).find((r) => r.itemId === 'card-squat-to-box');
+    expect(ask).toBeDefined();
+    expect(ask!.itemVersion).not.toBe(before.cards[0].itemVersion);
+    const waiting = await training.today(DATE);
+    expect(waiting.today).toBeNull();
+    expect(waiting.lastApproved?.cards[0].setup.parent).toBe(OLD_SQUAT_PARENT);
+    expect(JSON.stringify(waiting)).not.toContain(now.card.setup.parent);
+
+    await approveAllPending();
+    const after = await training.today(DATE);
+    expect(after.lastApproved).toBeNull();
+    expect(after.today!.cards[0].setup.parent).toBe(now.card.setup.parent);
+    expect(JSON.stringify(after)).not.toContain(OLD_SQUAT_PARENT);
+  });
+});
+
 describe('training routes', () => {
   const signer = new TestSigner();
   let app: FastifyInstance | undefined;
