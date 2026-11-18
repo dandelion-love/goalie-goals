@@ -511,3 +511,43 @@ button.danger {
   font-weight: 700;
   color: var(--accent);
 }
+
+/* XP and streaks: gain framing only, no countdowns, no bars one step from full. */
+.streaks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.streak {
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.streak dt {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.streak dd {
+  margin: 4px 0 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.streak.team dd {
+  color: var(--accent);
+}
+
+.xp-earned {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin: 0;
+}
+
+.runs {
+  padding-left: 20px;
+}

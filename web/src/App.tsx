@@ -4,6 +4,8 @@ import { useLayout, type Layout } from './layout';
 import { ApprovedTraining, History, ParentInbox } from './ApprovalScreens';
 import { TodayPanel } from './LessonPath';
 import { SessionPlayer } from './SessionPlayer';
+import { ProgressPanel } from './ProgressPanel';
+import { recordSession, type FinishProgress } from './progress';
 import type { Session, SessionResult } from './training';
 import { createWakeLock, type WakeLockController } from './wakeLock';
 
@@ -15,7 +17,7 @@ export interface AppProps {
   onReconnect?: () => void;
   /** Injected in tests; the browser's Screen Wake Lock otherwise. */
   wakeLock?: WakeLockController;
-  /** Hook for a finished session. XP and streaks (a later story) are recorded from here. */
+  /** Hook for a finished session, called after the app sends it for XP and streaks. */
   onSessionFinish?: (result: SessionResult) => void;
 }
 
@@ -124,6 +126,21 @@ function KeeperHome({
 }) {
   const [playing, setPlaying] = useState<Session | null>(null);
   const [doneToday, setDoneToday] = useState(false);
+  const [progress, setProgress] = useState<FinishProgress | 'saving' | 'unsaved' | null>(null);
+  const [recorded, setRecorded] = useState(0);
+
+  const finish = useCallback(
+    (result: SessionResult) => {
+      setDoneToday(true);
+      setProgress('saving');
+      recordSession(result, fetchImpl)
+        .then((p) => setProgress(p))
+        .catch(() => setProgress('unsaved'))
+        .finally(() => setRecorded((n) => n + 1));
+      onSessionFinish?.(result);
+    },
+    [fetchImpl, onSessionFinish],
+  );
 
   if (playing) {
     return (
@@ -131,11 +148,12 @@ function KeeperHome({
         session={playing}
         layout={layout}
         wakeLock={wakeLock}
-        onFinish={(result) => {
-          setDoneToday(true);
-          onSessionFinish?.(result);
+        onFinish={finish}
+        progress={progress}
+        onExit={() => {
+          setPlaying(null);
+          setProgress(null);
         }}
-        onExit={() => setPlaying(null)}
       />
     );
   }
@@ -144,6 +162,7 @@ function KeeperHome({
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Keeper home</h1>
       <TodayPanel fetchImpl={fetchImpl} onStart={setPlaying} doneToday={doneToday} />
+      <ProgressPanel fetchImpl={fetchImpl} refresh={recorded} />
       <div className={layout === 'expanded' ? 'panes' : 'stack'}>
         <ApprovedTraining fetchImpl={fetchImpl} />
         <History fetchImpl={fetchImpl} />
@@ -158,6 +177,7 @@ function ParentHome({ layout, fetchImpl }: { layout: Layout; fetchImpl?: typeof 
   return (
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Parent home</h1>
+      <ProgressPanel fetchImpl={fetchImpl} />
       <div className={layout === 'expanded' ? 'panes' : 'stack'}>
         <ParentInbox fetchImpl={fetchImpl} onChange={() => setAnswered((n) => n + 1)} />
         <History fetchImpl={fetchImpl} refresh={answered} />

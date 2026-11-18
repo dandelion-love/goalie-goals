@@ -4,13 +4,17 @@ import type { Layout } from './layout';
 import { initialState, reduce, repTarget, stepsOf, stepTitle, type Outcome, type PlayerState, type Step } from './player';
 import type { Card, Session, SessionResult } from './training';
 import { useWakeLock, type WakeLockController } from './wakeLock';
+import { FinishProgressView } from './ProgressPanel';
+import type { FinishProgress } from './progress';
 
 export interface SessionPlayerProps {
   session: Session;
   layout: Layout;
   wakeLock: WakeLockController;
-  /** Called once when the session ends, however it ends. XP and streaks hook in here later. */
+  /** Called once when the session ends, however it ends. XP and streaks are recorded from here. */
   onFinish?: (result: SessionResult) => void;
+  /** What the finished session earned, once recorded; shown on the finish screen. */
+  progress?: FinishProgress | 'saving' | 'unsaved' | null;
   /** Leave the finish screen. */
   onExit: () => void;
 }
@@ -18,7 +22,7 @@ export interface SessionPlayerProps {
 export const WAKE_FALLBACK_TEXT = 'Screen may dim: tap the timer to keep it awake.';
 
 /** The ~10 minute session: warm-up, each approved card, cool-down, then a finish screen. */
-export function SessionPlayer({ session, layout, wakeLock, onFinish, onExit }: SessionPlayerProps) {
+export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, onExit }: SessionPlayerProps) {
   const steps = useMemo(() => stepsOf(session), [session]);
   const [state, dispatch] = useReducer(
     (s: PlayerState, a: Parameters<typeof reduce>[2]) => reduce(steps, s, a),
@@ -39,12 +43,15 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, onExit }: S
       outcome: state.outcome,
       praised: state.praised,
       setsDone: state.setsDone,
+      warmUpLogged: state.warmUpLogged,
       startedAt: startedAt.current,
       endedAt: new Date().toISOString(),
     });
-  }, [state.outcome, state.praised, state.setsDone, session, onFinish]);
+  }, [state.outcome, state.praised, state.setsDone, state.warmUpLogged, session, onFinish]);
 
-  if (state.outcome) return <FinishScreen outcome={state.outcome} praised={state.praised} onExit={onExit} />;
+  if (state.outcome) {
+    return <FinishScreen outcome={state.outcome} praised={state.praised} progress={progress} onExit={onExit} />;
+  }
 
   const step = steps[state.step];
   const needsTaps = wake === 'fallback';
@@ -315,7 +322,7 @@ const FINISH: Record<Outcome, { title: string; body: string }> = {
   },
   stopped: {
     title: 'Good call',
-    body: 'Stopping when it feels right is part of training, and this session still counts.',
+    body: 'Stopping when it feels right is part of training: today counts as kept, the same as finishing.',
   },
   hurt: {
     title: 'Good call stopping',
@@ -327,7 +334,17 @@ const FINISH: Record<Outcome, { title: string; body: string }> = {
 };
 
 /** Every ending is a positive one. No "one more?" prompt. */
-function FinishScreen({ outcome, praised, onExit }: { outcome: Outcome; praised: string[]; onExit: () => void }) {
+function FinishScreen({
+  outcome,
+  praised,
+  progress,
+  onExit,
+}: {
+  outcome: Outcome;
+  praised: string[];
+  progress?: FinishProgress | 'saving' | 'unsaved' | null;
+  onExit: () => void;
+}) {
   const { title, body } = FINISH[outcome];
   const unique = [...new Set(praised)];
   return (
@@ -344,6 +361,7 @@ function FinishScreen({ outcome, praised, onExit }: { outcome: Outcome; praised:
           </ul>
         </>
       )}
+      <FinishProgressView progress={progress} />
       <button type="button" className="primary session-control wide" onClick={onExit}>
         Done for today
       </button>

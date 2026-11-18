@@ -9,6 +9,7 @@ The installable web app: TypeScript, React, Vite and
 - **Keeper home** and **Parent home**, chosen by the role from `/api/me`.
   - Parent home: the **Inbox** of pending requests, each with **Approve** and **Decline**,
     and a badge with the pending count (the in-app stand-in for push); then **History**.
+  - Both homes show **Together so far** (XP and streaks) under the first panel.
   - Keeper home: **Today** at the top, then **Your training** (approved items only, and a
     count of changes waiting for the parent without their content), then the same
     **History**.
@@ -21,9 +22,14 @@ The installable web app: TypeScript, React, Vite and
   common mistakes and stop signs; a countdown for holds and rests and a rep counter for
   counted work; after each set the parent taps a cue that looked good and the app says
   "<cue>: nice" (the cue, never the person). **Something hurts** and **Stop** are always on
-  screen. Every ending has a positive finish screen with no "one more?" prompt. The
-  `onSessionFinish` prop on `App` receives the result: XP and streaks hook in there later.
+  screen. Every ending has a positive finish screen with no "one more?" prompt. The keeper's
+  home sends each finished session to `/api/progress/sessions` and the finish screen shows
+  its XP and the streaks; the `onSessionFinish` prop on `App` also receives the result.
   The pain report form and the training pause come in a later story.
+- **Together so far** (`src/ProgressPanel.tsx`, client in `src/progress.ts`), on both homes:
+  team XP, the team streak and each person's streak. A run that ended shows under
+  **Completed runs** with "A new run starts with your next session": no "lost" screen and
+  no repair offer.
 - **Wake lock** (`src/wakeLock.ts`): requested on Start, re-requested when the page is
   visible again, released at the end. Without it (a Home Screen app below iPadOS 18.4, or a
   refused request) the player shows "Screen may dim: tap the timer to keep it awake" and a

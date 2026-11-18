@@ -84,7 +84,7 @@ export async function fetchToday(fetchImpl: typeof fetch = fetch, now: Date = ne
   };
 }
 
-/** What a finished session hands on. XP and streaks (a later story) start from here. */
+/** What a finished session hands on: XP and streaks are recorded from here (progress.ts). */
 export interface SessionResult {
   itemId: string;
   itemVersion: string;
@@ -92,6 +92,8 @@ export interface SessionResult {
   /** Cues the parent marked as looking good, in order. */
   praised: string[];
   setsDone: number;
+  /** The warm-up was logged (or the session had none): the session credit is earned from here. */
+  warmUpLogged: boolean;
   startedAt: string;
   endedAt: string;
 }

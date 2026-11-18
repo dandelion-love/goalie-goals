@@ -19,6 +19,8 @@ import { loadContent } from './content.js';
 import { TrainingService, utcDate } from './training.js';
 import { registerTrainingRoutes } from './trainingRoutes.js';
 import { InAppNotifier } from './notifier.js';
+import { MemoryProgressStore, ProgressService } from './progress.js';
+import { registerProgressRoutes } from './progressRoutes.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -34,6 +36,8 @@ export interface AppDeps {
   approvals?: ApprovalService;
   /** Today's session and the card library; built from `content/` unless given. */
   training?: TrainingService;
+  /** XP and streaks; in memory, on the training plan, unless given. */
+  progress?: ProgressService;
   logger?: boolean;
 }
 
@@ -52,7 +56,7 @@ function cookie(header: string | undefined, name: string): string | undefined {
   return undefined;
 }
 
-export async function buildApp({ config, verifier, roles, approvals, training, logger = false }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ config, verifier, roles, approvals, training, progress, logger = false }: AppDeps): Promise<FastifyInstance> {
   if (config.devMockIdentity && config.production) {
     throw new ConfigError(`${DEV_MOCK_FLAG} is refused in production.`);
   }
@@ -144,6 +148,15 @@ export async function buildApp({ config, verifier, roles, approvals, training, l
   });
 
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore });
+
+  const progressService =
+    progress ??
+    new ProgressService({
+      store: new MemoryProgressStore(),
+      plan: trainingService.plan,
+      plannedSets: (version) => trainingService.plannedSets(version),
+    });
+  registerProgressRoutes(app, { progress: progressService, roles: roleStore });
 
   const webRoot = config.webRoot ? resolve(config.webRoot) : '';
   if (webRoot && existsSync(join(webRoot, 'index.html'))) {

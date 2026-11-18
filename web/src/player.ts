@@ -28,6 +28,8 @@ export interface PlayerState {
   feedback: string | null;
   praised: string[];
   setsDone: number;
+  /** The warm-up was logged (or the session has none): the session credit is earned from here. */
+  warmUpLogged: boolean;
 }
 
 export type Action =
@@ -56,6 +58,7 @@ export function initialState(steps: Step[]): PlayerState {
     feedback: null,
     praised: [],
     setsDone: 0,
+    warmUpLogged: !steps.some((st) => st.kind === 'moves' && st.label === 'Warm-up'),
   };
 }
 
@@ -70,9 +73,11 @@ export function repTarget(card: Card): number {
 }
 
 function nextStep(steps: Step[], s: PlayerState): PlayerState {
+  const leaving = steps[s.step];
+  const warmUpLogged = s.warmUpLogged || (leaving.kind === 'moves' && leaving.label === 'Warm-up');
   const step = s.step + 1;
-  if (step >= steps.length) return { ...s, outcome: 'done', feedback: null };
-  return { ...s, step, phase: firstPhase(steps[step]), feedback: null };
+  if (step >= steps.length) return { ...s, warmUpLogged, outcome: 'done', feedback: null };
+  return { ...s, warmUpLogged, step, phase: firstPhase(steps[step]), feedback: null };
 }
 
 export function reduce(steps: Step[], s: PlayerState, action: Action): PlayerState {

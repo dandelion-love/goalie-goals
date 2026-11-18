@@ -21,6 +21,13 @@ describe('session player flow', () => {
     ]);
   });
 
+  it('logs the warm-up once its last move is done, and never takes it back', () => {
+    expect(run([next]).warmUpLogged).toBe(false);
+    expect(run([next, next]).warmUpLogged).toBe(true);
+    expect(run([next, next, { type: 'stop', outcome: 'hurt' }]).warmUpLogged).toBe(true);
+    expect(run([], demoSession({ warmUp: [] })).warmUpLogged).toBe(true);
+  });
+
   it('walks the warm-up moves, then readies the first card', () => {
     expect(run([next]).phase).toEqual({ kind: 'move', index: 1 });
     const s = run([next, next]);

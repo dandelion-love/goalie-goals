@@ -254,6 +254,16 @@ export class TrainingService {
     return { date, planned: true, today: null, lastApproved: null, waiting };
   }
 
+  /**
+   * Sets planned in an approved session version: the cap on form stars. Null when the version
+   * is unknown or not approved, so a client can never raise its own cap.
+   */
+  async plannedSets(version: string): Promise<number | null> {
+    const snap = this.snapshots.sessions.get(version);
+    if (!snap || !(await this.playable(snap))) return null;
+    return snap.cards.reduce((s, c) => s + c.source.card.dose.sets, 0);
+  }
+
   /** The latest approved version of each card: the keeper's card library. */
   async approvedCards(): Promise<ClientCard[]> {
     const items = await this.approvals.approvedItems();

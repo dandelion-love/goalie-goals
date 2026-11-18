@@ -42,6 +42,26 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
   Versions are kept in memory next to the in-memory approval store (`MemorySnapshotStore`).
   `SingleSessionPlan` offers the starter session every day until weekly plans arrive; the
   fallback's "approved maintenance session" rung is not built yet, so rest is offered.
+- XP and streaks (`src/progression.ts`, `src/progress.ts`), per
+  `docs/knowledge/decisions/progression-design.md`. The rules are pure functions with a test
+  for each day type: trained together, trained solo, stopped for safety, planned rest,
+  paused and missed.
+
+  | Route | Roles | What it does |
+  | --- | --- | --- |
+  | `POST /api/progress/sessions` | keeper, parent | Records a finished session (`date`, `itemId`, `itemVersion`, `outcome`, `warmUpLogged`, `praised`) and returns its credit and the summary. |
+  | `GET /api/progress/summary?date=YYYY-MM-DD` | keeper, parent | Team XP, the team streak, the keeper's and the parent's streaks, today's state and completed runs. |
+
+  XP is a fixed session credit once the warm-up is logged plus one form star per set the
+  parent rated well, capped at the planned sets of the approved session version (the
+  server's own count, never the client's). Sets, reps and minutes earn nothing, nor does an
+  extra session the same day or a session on a rest day. A safety stop (`stopped` or
+  `hurt`) earns the same credit as finishing and counts as a kept day. Planned rest and a
+  pause hold every streak; a missed planned day ends the run, which is kept as a completed
+  run with no repair. Records sit behind `ProgressStore` (`MemoryProgressStore` for now);
+  pauses come in through `PauseSource`. Not built yet: spare days and the habit-strength
+  score from the Decision, and a solo path in the player (the content has no safe-solo flag
+  yet, so the player records a together session).
 - Every other path that is not `/api/...` gets the web app (`WEB_ROOT`), with
   `index.html` for app routes. Hashed assets are cached for a year; the shell, manifest and
   service worker never.
