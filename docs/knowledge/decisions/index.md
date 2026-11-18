@@ -43,3 +43,7 @@
 ## Exercise media
 
 * [Exercise media](/decisions/exercise-media.md) - The media and text sources the app uses to illustrate exercises, how attribution is shown, the stored format, how an exercise with no open media is illustrated, and what is never used.
+
+## Quality
+
+* [Quality rubric for look, feel and usability](/decisions/quality-rubric.md) - The rubric the reviewer scores to judge polish: 37 items across visual consistency, type and colour, layout and touch, motion, sound, feedback latency, copy tone and usability, each 0-3 with a numeric target and a repeatable method on a local demo-data run, plus the pair-check targets.
