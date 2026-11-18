@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Added**: exercise-media research: open databases, icon and illustration sets, video and animation, drawn figures and storage format, with the media Decision.
 * **Added**: exercise-app research: open-source and commercial apps, how they explain an exercise, licences, and the content-reuse Decision.
 * **Added**: equipment research: a bodyweight minimum, home and outdoor options and substitutions, with the equipment-model Decision.
 * **Added**: training research: youth resistance training safety, plyometrics, speed, goalkeeper power, recovery, sleep and nutrition, with the training-rules Decision.

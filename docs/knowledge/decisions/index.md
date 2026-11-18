@@ -31,3 +31,7 @@
 ## How training apps explain exercises
 
 * [Reuse of exercise content](/decisions/exercise-content-reuse.md) - What the app reuses as-is, adapts, and builds to explain exercises, with each licence named and checked for a public repo and hosted app, and what it rejects.
+
+## Exercise media
+
+* [Exercise media](/decisions/exercise-media.md) - The media and text sources the app uses to illustrate exercises, how attribution is shown, the stored format, how an exercise with no open media is illustrated, and what is never used.

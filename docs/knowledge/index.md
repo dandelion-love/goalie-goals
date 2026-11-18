@@ -7,6 +7,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 ## Research
 
+* [Exercise media](/exercise-media/index.md) - open exercise media, illustration sets, animation, drawn figures and the stored format
+
 * [How training apps explain exercises](/exercise-apps/index.md) - open-source and commercial training apps, how they explain exercises, and their licences
 
 * [Equipment at home](/equipment/index.md) - bodyweight minimum, home and outdoor equipment, substitutions and an open equipment vocabulary
