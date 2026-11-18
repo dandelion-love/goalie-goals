@@ -72,7 +72,7 @@ afterEach(() => {
 });
 
 describe('the sound engine', () => {
-  it('plays nothing before the unlocking tap, then plays cues on the context it made', async () => {
+  it('plays nothing before the unlocking tap, then plays cues on the primed context', async () => {
     const audio = fakeAudio('suspended');
     const make = vi.fn(() => audio as unknown as AudioContext);
     let now = 0;
@@ -82,6 +82,7 @@ describe('the sound engine', () => {
     expect(make).not.toHaveBeenCalled();
     expect(audio.started).toHaveLength(0);
 
+    engine.prime();
     engine.unlock();
     expect(make).toHaveBeenCalledTimes(1);
     expect(audio.resumes).toBe(1);
@@ -125,13 +126,15 @@ describe('the sound engine', () => {
     const audio = fakeAudio('suspended');
     let now = 0;
     const engine = createSoundEngine(() => audio as unknown as AudioContext, () => now, readyCues());
+    engine.prime();
     engine.unlock();
     await settle();
     expect(engine.ready('rest')).toBe(true);
     now = 5_000;
     expect(engine.play('rest')).toBe(false);
     expect(audio.started).toHaveLength(1);
-    expect(audio.resumes).toBeGreaterThan(1);
+    // A play never resumes the context (story 103): only a tap's unlock does.
+    expect(audio.resumes).toBe(1);
   });
 
   it('makes each cue’s buffer once, after the unlock, and a play only starts a source on it (story #97 AC1)', async () => {
@@ -140,6 +143,7 @@ describe('the sound engine', () => {
     const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, prepare);
     engine.warm();
     expect(audio.buffers).toBe(0);
+    engine.prime();
     engine.unlock();
     await settle();
     // The silent unlock buffer, then one buffer per cue.
@@ -163,7 +167,7 @@ describe('the sound engine', () => {
     audio.state = 'suspended';
     engine.unlock();
     expect(audio.buffers).toBe(1 + CUE_NAMES.length + 1);
-    expect(prepare).toHaveBeenCalledTimes(2); // warm() and the first unlock; prepare returns the same work
+    expect(prepare).toHaveBeenCalledTimes(2); // warm() and prime(); prepare returns the same work
   });
 
   it('plays the start cue in the unlocking tap itself once the cues were warmed before it', async () => {
@@ -171,8 +175,9 @@ describe('the sound engine', () => {
     const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, readyCues());
     engine.warm();
     await settle();
-    // The tap: unlock and the first cue, with no wait between them. Only the start cue's
-    // buffer is made in the tap; the rest follow in their own tasks.
+    // Primed, then the tap: unlock and the first cue, with no wait between them. Only the start
+    // cue's buffer is made at once; the rest follow in their own tasks.
+    engine.prime();
     engine.unlock();
     expect(engine.ready('start')).toBe(true);
     expect(engine.play('start')).toBe(true);
@@ -189,6 +194,7 @@ describe('the sound engine', () => {
     let finish!: (d: Float32Array) => void;
     const slow = new Promise<Float32Array>((resolve) => (finish = resolve));
     const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, readyCues({ done: slow }));
+    engine.prime();
     engine.unlock();
     await settle();
     expect(engine.ready('done')).toBe(false);
@@ -207,6 +213,7 @@ describe('the sound engine', () => {
   it('skips a cue whose render failed, silently, and plays the next as normal (story #97 AC2)', async () => {
     const audio = fakeAudio();
     const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, readyCues({ setDone: Promise.reject(new Error('render failed')) }));
+    engine.prime();
     engine.unlock();
     await settle();
     expect(engine.ready('setDone')).toBe(false);
@@ -224,14 +231,52 @@ describe('the sound engine', () => {
       return make(c, length);
     };
     const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, readyCues());
+    engine.prime();
     engine.unlock();
     await settle();
     expect(engine.play('go')).toBe(false);
     expect(engine.play('tick')).toBe(true);
   });
 
+  it('never makes the context in a tap: an early unlock only marks sound as wanted (story 103 AC1)', async () => {
+    const audio = fakeAudio('suspended');
+    const make = vi.fn(() => audio as unknown as AudioContext);
+    const engine = createSoundEngine(make, () => 0, readyCues());
+    engine.unlock();
+    expect(make).not.toHaveBeenCalled();
+    expect(engine.unlocked).toBe(false);
+    expect(engine.play('start')).toBe(false);
+
+    // Made later (after the player's paint), the iPad keeps it suspended: no resume, no cue.
+    engine.prime();
+    await settle();
+    expect(make).toHaveBeenCalledTimes(1);
+    expect(audio.resumes).toBe(0);
+    expect(engine.play('switch')).toBe(false);
+    expect(audio.started).toHaveLength(0);
+
+    // The next tap resumes it, and its cue plays as normal.
+    engine.unlock();
+    expect(make).toHaveBeenCalledTimes(1);
+    expect(audio.resumes).toBe(1);
+    expect(engine.play('switch')).toBe(true);
+  });
+
+  it('plays on a context made after an early tap once the browser runs it (a desktop browser)', async () => {
+    const audio = fakeAudio('running');
+    const engine = createSoundEngine(() => audio as unknown as AudioContext, () => 0, readyCues());
+    // Primed with no tap at all: nothing plays.
+    engine.prime();
+    await settle();
+    expect(engine.play('start')).toBe(false);
+    // A tap asked for sound: the running context plays.
+    engine.unlock();
+    expect(engine.play('go')).toBe(true);
+  });
+
   it('does nothing where there is no Web Audio at all', () => {
     const engine = createSoundEngine(() => null);
+    engine.prime();
     engine.unlock();
     expect(engine.unlocked).toBe(false);
     expect(engine.play('start')).toBe(false);
@@ -506,5 +551,34 @@ describe('warming without an idle callback (the iPad)', () => {
     vi.advanceTimersByTime(1);
     expect(calls).toEqual(['warm', 'prime']);
     cancel();
+  });
+});
+
+describe('making the audio context before the Start tap (story 103)', () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it('asks for an idle period with a ~2 s timeout, and makes it at the timeout on a page that never settles (AC1)', async () => {
+    const { warmWhenIdle, PRIME_TIMEOUT_MS } = await import('./sound');
+    expect(PRIME_TIMEOUT_MS).toBe(2000);
+    const asks: { cb: (d: IdleDeadline) => void; timeout?: number }[] = [];
+    vi.stubGlobal('requestIdleCallback', (cb: (d: IdleDeadline) => void, opts?: { timeout?: number }) => asks.push({ cb, timeout: opts?.timeout }));
+    vi.stubGlobal('cancelIdleCallback', () => {});
+    const calls: string[] = [];
+    const engine = { warm: () => calls.push('warm'), prime: () => calls.push('prime') } as unknown as Parameters<typeof warmWhenIdle>[0];
+    warmWhenIdle(engine);
+    expect(asks).toHaveLength(1);
+    expect(asks[0].timeout).toBeGreaterThan(1900);
+    expect(asks[0].timeout).toBeLessThanOrEqual(PRIME_TIMEOUT_MS);
+    // A short idle period, before the timeout: wait for a longer one, within the same 2 s.
+    asks[0].cb({ didTimeout: false, timeRemaining: () => 5 } as IdleDeadline);
+    expect(calls).toEqual([]);
+    expect(asks).toHaveLength(2);
+    expect(asks[1].timeout).toBeLessThanOrEqual(asks[0].timeout!);
+    // The timeout: made now, however busy the page, so the Start tap only resumes it.
+    asks[1].cb({ didTimeout: true, timeRemaining: () => 0 } as IdleDeadline);
+    expect(calls).toEqual(['warm', 'prime']);
   });
 });

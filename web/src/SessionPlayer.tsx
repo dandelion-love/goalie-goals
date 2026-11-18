@@ -159,9 +159,12 @@ export function SessionPlayer({
         data-layout={layout}
         aria-label="Session player"
         hidden={state.stopping}
-        onPointerDown={() => {
+        onPointerDown={(e) => {
           lastTap.current = Date.now();
-          // Any tap can bring sound back after the iPad suspended it (the app was hidden).
+          // Any tap can bring sound back after the iPad suspended it (the app was hidden), or
+          // unlock a context made after the player's first paint (story 103). Not "Something
+          // hurts" or Stop: a safety tap never touches audio.
+          if (e.target instanceof Element && e.target.closest('.safety-control')) return;
           unlock();
         }}
       >

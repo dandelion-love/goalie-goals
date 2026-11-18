@@ -127,6 +127,77 @@ describe('the safety taps run in the tap’s own task (story 101 AC4)', () => {
   });
 });
 
+describe('the safety taps never touch audio (story 103 AC3)', () => {
+  /** Every AudioContext made, with the resumes asked of it. */
+  const made: { state: AudioContextState; resumes: number }[] = [];
+  function FakeAudioContext() {
+    const fake = {
+      state: 'suspended' as AudioContextState,
+      sampleRate: 48000,
+      currentTime: 0,
+      destination: {},
+      resumes: 0,
+      resume() {
+        fake.resumes += 1;
+        return Promise.resolve();
+      },
+      createBuffer: (_c: number, length: number) => ({ length, getChannelData: () => new Float32Array(length) }),
+      createBufferSource: () => ({ buffer: null, connect() {}, start() {} }),
+    };
+    made.push(fake);
+    return fake;
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** A whole tap outside act(): the pointer going down on the button, then its click. */
+  async function pressOutsideAct(el: HTMLElement) {
+    const env = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    const before = env.IS_REACT_ACT_ENVIRONMENT;
+    env.IS_REACT_ACT_ENVIRONMENT = false;
+    try {
+      el.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true }));
+      el.click();
+    } finally {
+      env.IS_REACT_ACT_ENVIRONMENT = before;
+    }
+  }
+
+  // Suspended: a tap that resumed it would show. Closed: a tap that made a new one would show.
+  for (const button of ['Something hurts', 'Stop']) {
+    for (const state of ['suspended', 'closed'] as const) {
+      it(`${button} in the player, with the context ${state}: no context made and none resumed`, async () => {
+        vi.stubGlobal('AudioContext', FakeAudioContext);
+        await keeperInPlayer();
+        // The player makes the context after its first paint, if the home had not.
+        await vi.waitFor(() => expect(made.length).toBeGreaterThan(0));
+        const current = made[made.length - 1];
+        current.state = state;
+        const count = made.length;
+        const resumes = made.map((c) => c.resumes);
+
+        await pressOutsideAct(screen.getByRole('button', { name: button }));
+        await microtasksOnly();
+        expect(made).toHaveLength(count);
+        expect(made.map((c) => c.resumes)).toEqual(resumes);
+        await act(async () => {});
+      });
+    }
+  }
+
+  it('the method catches a tap that touches audio: any other tap in the player resumes it', async () => {
+    vi.stubGlobal('AudioContext', FakeAudioContext);
+    await keeperInPlayer();
+    await vi.waitFor(() => expect(made.length).toBeGreaterThan(0));
+    const current = made[made.length - 1];
+    current.state = 'suspended';
+    const before = current.resumes;
+    await pressOutsideAct(screen.getByRole('button', { name: 'Next' }));
+    expect(current.resumes).toBe(before + 1);
+    await act(async () => {});
+  });
+});
+
 describe('a deferred step that fails later (story 101 AC4)', () => {
   it('shows its error and leaves the finish screen and the pause in place', async () => {
     // An outbox whose send fails after the tap: the device's store breaks once the tap has

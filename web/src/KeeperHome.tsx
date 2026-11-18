@@ -290,7 +290,8 @@ export function KeeperHome({
   const tryStart = (session: Session) => {
     // Paused, or already started (a second tap while the player is still rendering).
     if (pauseStore.read() || startSent.current) return;
-    // The Start tap unlocks sound for the session (iPadOS plays audio only after a tap).
+    // The Start tap unlocks sound for the session (iPadOS plays audio only after a tap). It only
+    // resumes the context the home made on idle; it never makes one (story 103).
     sound.unlock();
     // A transition (story #98 AC5): the tap paints its response at once, and the player, a
     // large render, follows without holding the tap's frame. Its start cue plays as it shows.

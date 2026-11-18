@@ -1,6 +1,13 @@
 // Playing the cues in the session player (story #79): one AudioContext, unlocked by the Start
 // tap, a mute remembered on the device, and the moment each state change marks.
 //
+// No tap ever makes the context (story 103): making one is a long task (~100 ms for the first
+// in a browser process). It is made on idle once the keeper's home is up, forced after
+// PRIME_TIMEOUT_MS if the page never settles. A Start tap that comes earlier only marks sound as
+// wanted, and the player makes the context after its first paint. Such a context is not unlocked
+// by a tap on the iPad, so it stays silent (the first cues are skipped) until the next tap in the
+// player resumes it. "Something hurts" and Stop never make or resume the context.
+//
 // Sound is never the only signal: every cue fires on a change the screen also shows, and if
 // the iPad blocks audio the session runs exactly the same without it.
 //
@@ -14,6 +21,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CUE_NAMES, CUE_RATE, bufferOf, prepareCues, schedule, yieldToPage, type CueName } from './cues';
 import type { PlayerState } from './player';
+import { afterPaint } from './defer';
 
 export const MUTE_KEY = 'goalie-goals.sound-muted';
 
@@ -44,7 +52,10 @@ export interface SoundEngine {
    * is a long task, so the tap that unlocks it only resumes it. Safe to call more than once.
    */
   prime(): void;
-  /** Call from a tap handler only: resumes the context (making it first if `prime` has not), which unlocks sound on the iPad. */
+  /**
+   * Call from a tap handler only: resumes the context `prime` made, which unlocks sound on the
+   * iPad. It never makes one (story 103): with no context yet, it only marks sound as wanted.
+   */
   unlock(): void;
   /** Play a cue now. False when sound is not unlocked, is blocked, the cue is not ready, or failed: the screen carries on alone. */
   play(name: CueName): boolean;
@@ -77,6 +88,10 @@ export function createSoundEngine(
 ): SoundEngine {
   let ctx: AudioContext | null = null;
   let unlockedAt: number | null = null;
+  // A tap asked for sound before the context existed (story 103): a context made later plays
+  // once the browser runs it (a desktop browser that remembers the tap), and stays silent while
+  // it is suspended (the iPad), until a tap resumes it.
+  let wanted = false;
   // Samples already computed, so the unlocking tap can make their buffers at once.
   const settled = new Map<CueName, Float32Array>();
   let watching = false;
@@ -156,8 +171,11 @@ export function createSoundEngine(
     unlock() {
       // Already unlocked and playing: a tap has nothing to do (the player calls this on every tap).
       if (unlockedAt !== null && ctx?.state === 'running') return;
-      open();
-      if (!ctx) return;
+      // No context yet (or it was closed): never make one in a tap, it would hold the tap's frame.
+      if (!ctx || ctx.state === 'closed') {
+        wanted = true;
+        return;
+      }
       unlockedAt = now();
       if (ctx.state !== 'running') resume(ctx);
       try {
@@ -171,12 +189,17 @@ export function createSoundEngine(
       }
     },
     play(name) {
-      if (!ctx || unlockedAt === null || ctx.state === 'closed') return false;
+      if (!ctx || ctx.state === 'closed') return false;
+      // Never resumed here (story 103): only `unlock`, in a tap, resumes the context, so a cue
+      // played in the Stop or "Something hurts" tap does no more than start a source.
       if (ctx.state !== 'running') {
-        resume(ctx);
-        // Past the grace period a suspended context means sound is blocked (or the app was
-        // hidden): skip the cue rather than play it late, out of step with the screen.
-        if (now() - unlockedAt > RESUME_GRACE_MS) return false;
+        // Within the grace period the resume asked for in the unlocking tap may still be settling.
+        // Past it, or with no unlocking tap at all, a suspended context means sound is blocked (or
+        // the app was hidden): skip the cue rather than play it late, out of step with the screen.
+        if (unlockedAt === null || now() - unlockedAt > RESUME_GRACE_MS) return false;
+      } else if (unlockedAt === null && !wanted) {
+        // Primed ahead of any tap: nothing plays before the Start tap.
+        return false;
       }
       const buffer = buffers.get(name);
       // Not ready yet (or its render failed): skip it rather than compute it now.
@@ -195,14 +218,6 @@ export function createSoundEngine(
 export const sound = createSoundEngine();
 
 /**
- * Warm the cues once the page is idle (story #98 AC4): only where they will play, the keeper's
- * home and the session player. The parent's phone never computes them. `warm()` returns the
- * same work when called again, so a remount costs nothing. Returns a cancel for an unmount.
- *
- * The audio context is made here too (`prime`, story #98 AC5), suspended, so the Start tap
- * only resumes it: making one is a long task that would otherwise delay the tap's response.
- */
-/**
  * Where there is no idle callback (Safari on the iPad), wait this long after mount so the
  * first paint and any early tap come before the long, unsplittable context creation.
  */
@@ -211,6 +226,20 @@ export const WARM_FALLBACK_MS = 1000;
 /** An idle period this long (of the browser's 50 ms at most) means nothing else is due. */
 const FULL_IDLE_MS = 40;
 
+/**
+ * A page that never settles still gets its context this long after the home appears (story
+ * 103), so the Start tap finds one to resume rather than making it.
+ */
+export const PRIME_TIMEOUT_MS = 2000;
+
+/**
+ * Warm the cues once the page is idle (story #98 AC4): only where they will play, the keeper's
+ * home and the session player. The parent's phone never computes them. `warm()` returns the
+ * same work when called again, so a remount costs nothing. Returns a cancel for an unmount.
+ *
+ * The audio context is made here too (`prime`, story #98 AC5), suspended, so the Start tap
+ * only resumes it: making one is a long task that would otherwise delay the tap's response.
+ */
 export function warmWhenIdle(engine: SoundEngine = sound): () => void {
   const w = globalThis as typeof globalThis & {
     requestIdleCallback?: (cb: (deadline?: IdleDeadline) => void, opts?: { timeout: number }) => number;
@@ -223,14 +252,19 @@ export function warmWhenIdle(engine: SoundEngine = sound): () => void {
   const { requestIdleCallback: whenIdle, cancelIdleCallback: cancel } = w;
   if (whenIdle && cancel) {
     // Making the context is one task that can't be split (story 101): it waits for a whole idle
-    // period, with nothing else due, so an early tap is not held behind it. Never forced by a
-    // timeout: if the page is never idle, the Start tap makes it.
+    // period, with nothing else due, so an early tap is not held behind it. A page that is never
+    // idle gets it PRIME_TIMEOUT_MS after mount (story 103), never in the Start tap.
     let id = 0;
+    const started = Date.now();
     const ask = () => {
-      id = whenIdle((deadline) => {
-        if (deadline && deadline.timeRemaining() < FULL_IDLE_MS) ask();
-        else run();
-      });
+      const timeout = Math.max(1, PRIME_TIMEOUT_MS - (Date.now() - started));
+      id = whenIdle(
+        (deadline) => {
+          if (deadline && !deadline.didTimeout && deadline.timeRemaining() < FULL_IDLE_MS) ask();
+          else run();
+        },
+        { timeout },
+      );
     };
     ask();
     return () => cancel(id);
@@ -251,6 +285,21 @@ export const useCue = () => useContext(CueContext);
 /** The player's sound: the mute switch (remembered on the device) and a cue function that honours it. */
 export function usePlayerSound(engine: SoundEngine = sound) {
   useWarmCues(engine);
+  // A Start tap before the context existed (story 103 AC2): make it after the player's first
+  // paint, never in the tap. The first cues are skipped if it isn't ready; the next tap in the
+  // player resumes it. Nothing to do when the home already made it.
+  useEffect(() => {
+    let live = true;
+    afterPaint(
+      () => {
+        if (live) engine.prime();
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [engine]);
   const [muted, setMutedState] = useState(readMuted);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
