@@ -32,6 +32,10 @@
 
 * [Progression design for two people training together](/decisions/progression-design.md) - How the app's streaks, points, levels, quests and badges work for a keeper and a parent training together, with rest days that never break a streak, rewards for consistency and form over volume, the dark patterns refused, and no reward tied to finishing a session that should stop.
 
+## Progression library
+
+* [The themed weekly rotation the engine implements](/decisions/weekly-rotation.md) - Each weekday keeps one theme every week; three strength themes on non-consecutive days (two in a match week), at most two jump days (one in a match week), capped light days between and one full rest day, inside a four-week block with a lighter fourth week; the parent sets the training weekdays, team days and match day in the app.
+
 ## Safe training for U15 athletes
 
 * [Training rules for an early-teens keeper](/decisions/training-rules.md) - What the app may and must never prescribe, its progression limits, the warning signs that stop a session, and when the family should see a professional.

@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Added**: themed weekly rotation research: habit from stable cues (implementation intentions, context-dependent repetition, time and day consistency), themed-day rotations described generically, youth periodisation and the football year, a proposed themed week with capped light days checked rule by rule against the training rules, a four-week block with a lighter week, and the weekly-rotation Decision.
 * **Added**: progression-library research: sixteen movement patterns tied to goalkeeper needs, ladders of three to five rungs with household equipment only (doses inside the training rules, sources, parent-checkable clean cues, unlock dose and step-down), the unlock rules with the cue test and its rejection case, and the library Decision listing 56 rungs, 9 of them existing cards.
 * **Added**: a survey of open content on GitHub: 58 public repositories for exercise data, figures, anatomy, drills, UI kits, timers, icons, sounds, programme data and pose data, each graded with code and content licences read apart, and the top finds mapped to the open gaps.
 * **Changed**: quality-rubric method, after the baseline audit: wrapped native inputs measured by their label (Scripts D and F), no gap in the LT3 anchors, CT2 searches only user-facing text (Script J), SO2 measures synthesised cues from an OfflineAudioContext render (Script K), and the rig records headed or headless plus the fixed Script C markers, Script H selector and K4 and K5; baseline scores unchanged.

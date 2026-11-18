@@ -32,7 +32,7 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 * [Exercise dossiers](/dossiers/index.md) - what an exercise dossier holds: its sections, the claim rules, the youth evidence behind "what to expect", a worked front plank example, and the policy, record and check for linking clips of professional goalkeepers
 
 * [Quality measures](/quality/index.md) - usability heuristics, SUS, WCAG 2.2, platform guidelines, legibility at a distance, visual consistency, game feel, motion, sound, copy and response times, and what each means for a two-person training app
-* [Progression library](/progression-library/index.md) - movement patterns for a young keeper, a ladder of three to five rungs for each with household equipment only, and the rules for unlocking a rung and stepping back down
+* [Progression library](/progression-library/index.md) - movement patterns for a young keeper, a ladder of three to five rungs for each with household equipment only, the rules for unlocking a rung and stepping back down, and a themed weekly rotation built on habit cues and youth periodisation, with a proposed week and a four-week block
 * [Usability](/usability/index.md) - lightweight usability methods for one household, and the privacy-safe ten-minute home check with its proxy check
 
 ## Decisions

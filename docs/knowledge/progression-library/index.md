@@ -1,8 +1,6 @@
 # Progression library
 
-The movement patterns a young keeper trains, a ladder of three to five rungs for each from
-basic to harder with household equipment only, and the rules for when a rung unlocks and
-when it steps back down.
+How the keeper's training grows: the movement patterns the keeper trains, a ladder of three to five rungs for each from basic to harder with household equipment only, the rules for when a rung unlocks and steps back down, and a themed weekly rotation that turns training into a weekly pattern.
 
 # Patterns
 
@@ -19,6 +17,15 @@ when it steps back down.
 
 * [Unlock rules for the progression library](/progression-library/unlock-rules.md) - How a rung unlocks and steps back down, refining the training-rules progression rule - what a clean repetition is, the test every parent cue must pass (and the rejection when it fails), steps inside a rung, two clean sessions in a row, the parent's in-app approval as the last step, and the step-down triggers.
 
-# Decision
+# Weekly rotation
+
+* [Stable cues build a training habit](/progression-library/stable-cues-and-habit.md) - The evidence that an if-then plan, the same context repeated, and a steady day and time turn training into a habit, how strong that evidence is, and what it asks of a weekly rotation.
+* [Themed-day rotations in home training](/progression-library/themed-day-rotations.md) - How home training programmes commonly give each weekday a fixed focus, why that helps a habit and recovery, where it goes wrong for a young athlete, and what this app borrows, described generically.
+* [Youth periodisation and the football year](/progression-library/youth-periodisation.md) - How youth strength guidance plans training in short blocks with a lighter week, how much strength work keeps or builds strength around team training, and the general shape of a football year from off-season to in-season.
+* [A proposed themed week](/progression-library/proposed-week.md) - Three strength themes on non-consecutive days, at most two jump days, capped light skills-and-mobility days between them and one full rest day, fitted around team training and a match in an invented example week, and checked rule by rule against the training rules.
+* [A four-week block with a lighter week](/progression-library/four-week-block.md) - Three building weeks and a lighter fourth week that keeps every day but cuts the volume, where unlocks qualify, get approved and start, and what the block does in a match week, a tournament week and after a break.
+
+# Decisions
 
 * [Progression library to build](/decisions/progression-library.md) - Every rung's id, pattern, rung number and prerequisite: 56 rungs in 16 ladders, 9 of them existing cards, each still needing its own acceptance spec and the owner's in-app approval.
+* [The themed weekly rotation the engine implements](/decisions/weekly-rotation.md) - The rotation, the parent's settings for training weekdays, team days and match day, and the engine's rules.
