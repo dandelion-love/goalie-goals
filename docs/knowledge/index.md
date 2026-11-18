@@ -23,6 +23,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 * [Building for the iPad](/platform/index.md) - installing, layout, touch, push, offline, media and sign-in for an iPad home-screen web app
 
+* [CC0 media](/cc0-media/index.md) - public-domain sounds for cues and celebrations: sources, per-file licence checks, a shortlist per app moment and the stored format
+
 ## Decisions
 
 * [Decisions](/decisions/index.md) - choices the app is built on, each with its sources
