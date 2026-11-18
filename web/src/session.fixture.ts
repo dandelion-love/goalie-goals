@@ -80,6 +80,7 @@ export function keeperServer(
     if (url.startsWith('/api/training/today')) return json(typeof today === 'function' ? today() : today);
     if (url === '/api/training/approved') return json({ items: [], waiting: 0 });
     if (url === '/api/audit') return json({ events: [] });
+    if (url === '/api/history/sessions') return json({ sessions: [] });
     if (url.startsWith('/api/progress/summary')) {
       const date = new URL(url, 'http://test').searchParams.get('date') ?? '';
       const streak = { current: 0, best: 0 };

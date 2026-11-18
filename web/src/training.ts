@@ -103,4 +103,19 @@ export interface SessionResult {
   warmUpLogged: boolean;
   startedAt: string;
   endedAt: string;
+  /** Each card's sets done and the cue ids rated good: the session's history record (story 113). */
+  cards?: CardLog[];
+}
+
+/**
+ * One card of a session as its history record keeps it (story 113). A cue's id is its position
+ * in that card version's `cues` list: any change to the cues is a new card version, so an id
+ * with its version always names the same cue. The cue text itself is never sent or kept.
+ */
+export interface CardLog {
+  cardId: string;
+  itemVersion: string;
+  setsDone: number;
+  /** One cue id for each set the parent rated good. */
+  cues: number[];
 }

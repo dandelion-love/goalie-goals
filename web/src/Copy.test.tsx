@@ -76,6 +76,21 @@ const ELSEWHERE = 20;
 
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 
+/** A recent session on the parent's home (story 113), stopped for safety, one cue rated. */
+const HISTORY_STOPPED = {
+  id: 'rec-1',
+  date: '2026-01-05',
+  title: 'Strong middle',
+  outcome: 'hurt',
+  setsDone: 1,
+  setsPlanned: 4,
+  goodCount: 1,
+  cards: [
+    { cardId: 'plank', name: PLANK.name, setsDone: 1, setsPlanned: 2, work: '20 s hold', goodCount: 1, goodCues: [PLANK.cues[0]] },
+    { cardId: 'glute-bridge', name: BRIDGE.name, setsDone: 0, setsPlanned: 2, work: '12 reps', goodCount: 0, goodCues: [] },
+  ],
+};
+
 /** A parent's fake API: requests in the server's own plain wording, a pause, and the history. */
 function parentServer() {
   const at = '2026-01-05T09:00:00Z';
@@ -123,6 +138,7 @@ function parentServer() {
     if (url === '/api/approvals/pending') return json({ requests });
     if (url === '/api/notifications/badge') return json({ unread: requests.length + 1 });
     if (url === '/api/audit') return json({ events: audit });
+    if (url === '/api/history/sessions') return json({ sessions: [HISTORY_STOPPED] });
     if (url === '/api/pain/status') {
       return json({ paused: true, since: '2026-01-05', reports: [{ id: 'p1', bodyArea: 'knee', note: null, date: '2026-01-05', mistakeAt: '2026-01-05T17:02:00Z' }] });
     }
@@ -144,6 +160,10 @@ describe('the words on both homes (AC1)', () => {
     await screen.findByRole('heading', { name: 'Training paused: something hurts' });
     // Story 104: the keeper's mistake note, in the same copy rules.
     await screen.findByText('Check in before clearing.');
+    // Story 113: a recent session, opened, in the same copy rules.
+    const recent = await screen.findByText('Jan 5: Strong middle, Stopped for safety');
+    fireEvent.click(recent.closest('summary')!);
+    expect(screen.getByText(`Looked good: ${PLANK.cues[0]}.`)).toBeTruthy();
     // The lapse date in the copy rules' own reading (AC3 of story #96).
     expect(copyOnScreen().lines).toContain('Lapses unanswered on Jan 12; silence never approves.');
     checkCopy('P1 parent home', ELSEWHERE);

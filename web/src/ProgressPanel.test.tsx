@@ -114,7 +114,8 @@ describe('finish screen (AC1, AC2)', () => {
     expect(within(earned).getByText('Team streak').nextSibling?.textContent).toBe('4 training days');
     expect(results.map((r) => r.outcome)).toEqual(['stopped']);
     // Start tells the server the session began (story #80); the finish sends the result once.
-    expect(server.posts.map((p) => p.url)).toEqual(['/api/training/started', '/api/progress/sessions']);
+    // The history record follows the finish (story 113).
+    expect(server.posts.map((p) => p.url)).toEqual(['/api/training/started', '/api/progress/sessions', '/api/history/sessions']);
     const sent = server.posts[1];
     expect(sent).toMatchObject({
       url: '/api/progress/sessions',

@@ -4,6 +4,7 @@ import { ApprovedTraining as ApprovedTrainingPanel, History as HistoryPanel } fr
 import { TodayPanel as TodayPanelBody } from './LessonPath';
 import { sound, useWarmCues } from './sound';
 import { ProgressPanel as ProgressPanelBody } from './ProgressPanel';
+import { SessionHistory as SessionHistoryPanel } from './SessionHistory';
 import { PainReportForm, PausedPanel, STOP_AND_REST } from './PainScreens';
 import { fetchProgress, isDoneForToday, type FinishProgressState } from './progress';
 import {
@@ -55,6 +56,7 @@ const TodayPanel = memo(TodayPanelBody);
 const ProgressPanel = memo(ProgressPanelBody);
 const ApprovedTraining = memo(ApprovedTrainingPanel);
 const History = memo(HistoryPanel);
+const SessionHistory = memo(SessionHistoryPanel);
 const deviceNow = () => new Date();
 
 /** The training pause on this device: set at once, kept offline, synced when online. */
@@ -194,7 +196,7 @@ export function KeeperHome({
   const [recorded, setRecorded] = useState(0);
   const [reporting, setReporting] = useState(false);
   const [changed, setChanged] = useState(0);
-  const [settled, setSettled] = useState({ today: false, progress: false, training: false });
+  const [settled, setSettled] = useState({ today: false, progress: false, sessions: false, training: false });
   const { pause, refresh, send, flush, sent, mistake } = usePause(pauseStore, fetchImpl);
   // The playing session's start event, the stop kept while Resume is offered, and the finish
   // whose XP the finish screen shows.
@@ -226,12 +228,14 @@ export function KeeperHome({
   const settle = useCallback((panel: keyof typeof settled) => () => setSettled((s) => ({ ...s, [panel]: true })), []);
   const onToday = useMemo(() => settle('today'), [settle]);
   const onProgress = useMemo(() => settle('progress'), [settle]);
+  const onSessions = useMemo(() => settle('sessions'), [settle]);
   const onTraining = useMemo(() => settle('training'), [settle]);
   // Each panel shows once every panel above it has settled, so nothing on screen moves as
   // the home fills in (story #80 AC1).
   const todaySettled = !!pause || settled.today;
   const progressSettled = todaySettled && settled.progress;
-  const trainingSettled = progressSettled && (!!pause || settled.training);
+  const sessionsSettled = progressSettled && settled.sessions;
+  const trainingSettled = sessionsSettled && (!!pause || settled.training);
 
   // "Something hurts" lays its report out warm (story 105): once ahead, on idle. It starts only
   // a while after Start appears (story 106), so it never lands on a quick Start, and its steps
@@ -444,7 +448,11 @@ export function KeeperHome({
       <Reveal open={todaySettled}>
         <ProgressPanel fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onProgress} />
       </Reveal>
+      {/* Recent sessions (story 113): their own panel, above the approvals. */}
       <Reveal open={progressSettled}>
+        <SessionHistory fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onSessions} />
+      </Reveal>
+      <Reveal open={sessionsSettled}>
         <div className={layout === 'expanded' ? 'panes' : 'stack'}>
           {!pause && <ApprovedTraining fetchImpl={fetchImpl} refresh={changed + epoch} onSettled={onTraining} />}
           <Reveal open={trainingSettled}>

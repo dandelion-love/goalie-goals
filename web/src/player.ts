@@ -7,7 +7,7 @@
 // Stop also ends the set at once: the player holds where it is (`stopping`) while the stop
 // screen offers Resume for STOP_UNDO_MS, and only then is the session over ('stop-final').
 
-import type { Card, Move, Session } from './training';
+import type { Card, CardLog, Move, Session } from './training';
 
 export type Step =
   | { kind: 'moves'; label: 'Warm-up' | 'Cool-down'; moves: Move[] }
@@ -33,6 +33,8 @@ export interface PlayerState {
   feedback: string | null;
   praised: string[];
   setsDone: number;
+  /** Each card's sets done and cue ids rated good, in the session's order (story 113). */
+  cards: CardLog[];
   /** The warm-up was logged (or the session has none): the session credit is earned from here. */
   warmUpLogged: boolean;
   /**
@@ -71,6 +73,9 @@ export function initialState(steps: Step[]): PlayerState {
     feedback: null,
     praised: [],
     setsDone: 0,
+    cards: steps.flatMap((st) =>
+      st.kind === 'card' ? [{ cardId: st.card.id, itemVersion: st.card.itemVersion, setsDone: 0, cues: [] }] : [],
+    ),
     warmUpLogged: !steps.some((st) => st.kind === 'moves' && st.label === 'Warm-up'),
     stopping: false,
   };
@@ -93,6 +98,12 @@ export function cueForSet(card: Card, set: number): string | null {
 /** How many reps make a set's target for counted work; holds are timed instead. */
 export function repTarget(card: Card): number {
   return card.dose.kind === 'hold' ? 0 : card.dose.reps ?? 0;
+}
+
+/** The card log of the step the player is on, changed by `f` (story 113). */
+function logCard(steps: Step[], s: PlayerState, f: (log: CardLog) => CardLog): CardLog[] {
+  const index = steps.slice(0, s.step).filter((st) => st.kind === 'card').length;
+  return s.cards.map((log, i) => (i === index ? f(log) : log));
 }
 
 function nextStep(steps: Step[], s: PlayerState): PlayerState {
@@ -131,10 +142,25 @@ export function reduce(steps: Step[], s: PlayerState, action: Action): PlayerSta
       }
       if (action.type !== 'next') return s;
       if (dose.per_side && p.side === 1) return { ...s, phase: { kind: 'work', set: p.set, side: 2, reps: 0 } };
-      return { ...s, phase: { kind: 'feedback', set: p.set }, setsDone: s.setsDone + 1, feedback: null };
+      return {
+        ...s,
+        phase: { kind: 'feedback', set: p.set },
+        setsDone: s.setsDone + 1,
+        cards: logCard(steps, s, (log) => ({ ...log, setsDone: log.setsDone + 1 })),
+        feedback: null,
+      };
     case 'feedback': {
       if (action.type === 'rep') return s;
-      const praised = action.type === 'praise' ? { praised: [...s.praised, action.cue], feedback: praiseFor(action.cue) } : { feedback: null };
+      // The rating is kept as the cue's position in the card's list, never its text (story 113).
+      const cueId = action.type === 'praise' ? step.card.cues.indexOf(action.cue) : -1;
+      const praised =
+        action.type === 'praise'
+          ? {
+              praised: [...s.praised, action.cue],
+              feedback: praiseFor(action.cue),
+              cards: cueId < 0 ? s.cards : logCard(steps, s, (log) => ({ ...log, cues: [...log.cues, cueId] })),
+            }
+          : { feedback: null };
       if (p.set < dose.sets) return { ...s, ...praised, phase: { kind: 'rest', set: p.set } };
       const moved = nextStep(steps, s);
       return { ...moved, ...praised, outcome: moved.outcome, feedback: praised.feedback };

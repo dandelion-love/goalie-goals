@@ -2,12 +2,13 @@
 //
 // The front-end Decision lets the device hold these until the server confirms them: the date,
 // the session id and version, the outcome, and the form ratings (the approved cue tapped for a
-// rated set). Never notes or free text. Each event is deleted as soon as the server answers it,
+// rated set), and the session's history record (story 113): each card's id, version, sets done
+// and the ids of the cues rated good. Never notes or free text. Each event is deleted as soon as the server answers it,
 // so an empty outbox leaves nothing on the device. Events go in the order they were made, one
 // at a time; a send that fails on the network stops the run and waits for the next try (back
 // online, the app opened again). Pain reports keep their own outbox in pain.ts.
 
-import { localDate, type Session, type SessionResult } from './training';
+import { localDate, type CardLog, type Session, type SessionResult } from './training';
 import type { Credit, FinishProgress, ProgressSummary } from './progress';
 
 export interface StartEvent {
@@ -34,6 +35,12 @@ export interface FinishEvent {
   /** The form ratings: the approved cue tapped for each rated set. */
   praised: string[];
   /**
+   * The session's history record (story 113): each card's sets done and cue ids rated good. Sent
+   * to the history after the finish; absent on an event queued before story 113, which then
+   * leaves no record.
+   */
+  cards?: CardLog[];
+  /**
    * A stop queued at the Stop tap while Resume is still offered: kept, not sent. Resume deletes
    * it; the end of the Resume window, Done, or the app opening again releases it.
    */
@@ -50,6 +57,21 @@ export interface OutboxStore {
 export const OUTBOX_KEY = 'goalie-goals.outbox';
 
 const str = (v: unknown): v is string => typeof v === 'string';
+const count = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0;
+
+/** A card log with only its allowed fields; null when it is not well formed. */
+function cleanCard(value: unknown): CardLog | null {
+  const c = value as Record<string, unknown> | null;
+  if (!c || !str(c.cardId) || !str(c.itemVersion) || !count(c.setsDone) || !Array.isArray(c.cues)) return null;
+  if (!c.cues.every(count)) return null;
+  return { cardId: c.cardId, itemVersion: c.itemVersion, setsDone: c.setsDone, cues: [...(c.cues as number[])] };
+}
+
+function cleanCards(value: unknown): CardLog[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const cards = value.map(cleanCard);
+  return cards.every((c): c is CardLog => c !== null) ? cards : undefined;
+}
 const OUTCOMES: readonly string[] = ['done', 'stopped', 'hurt'];
 
 /** Only the fields the Decision allows survive a read: anything else is dropped. */
@@ -65,11 +87,14 @@ function clean(value: unknown): OutboxEvent | null {
       outcome: e.outcome as FinishEvent['outcome'],
       warmUpLogged: e.warmUpLogged === true,
       praised: Array.isArray(e.praised) ? e.praised.filter(str) : [],
+      ...withCards(cleanCards(e.cards)),
       held: e.held === true,
     };
   }
   return null;
 }
+
+const withCards = (cards: CardLog[] | undefined) => (cards ? { cards } : {});
 
 /** localStorage, with an in-memory copy when storage is blocked or full. Empty: no key at all. */
 export class LocalOutboxStore implements OutboxStore {
@@ -131,6 +156,7 @@ export function finishEvent(result: SessionResult, now: Date = new Date(), held 
     outcome: result.outcome,
     warmUpLogged: result.warmUpLogged,
     praised: [...result.praised],
+    ...withCards(result.cards?.map((c) => ({ ...c, cues: [...c.cues] }))),
     held,
   };
 }
@@ -191,6 +217,34 @@ function isFinishProgress(body: unknown): body is FinishProgress {
   return !!b && typeof b.credit?.total === 'number' && typeof b.summary?.xp?.total === 'number' && Array.isArray(b.summary.runs);
 }
 
+/**
+ * Send a finish's history record (story 113), after the finish itself. True once the server
+ * answered (kept, or refused for good: the record is then dropped); false to try again later.
+ * The server keeps a resend with the same id once, so a retry after a lost answer is safe.
+ */
+async function sendRecord(event: FinishEvent, fetchImpl: typeof fetch): Promise<boolean> {
+  if (!event.cards) return true;
+  try {
+    const res = await fetchImpl('/api/history/sessions', {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: HEADERS,
+      body: JSON.stringify({
+        id: event.id,
+        date: event.date,
+        itemId: event.itemId,
+        itemVersion: event.itemVersion,
+        outcome: event.outcome,
+        cards: event.cards,
+      }),
+    });
+    return !retry(res.status);
+  } catch {
+    return false;
+  }
+}
+
 /** Send one event. Null: not answered, keep it for the next try. */
 async function send(event: OutboxEvent, fetchImpl: typeof fetch): Promise<Answer | null> {
   const body =
@@ -221,12 +275,17 @@ async function send(event: OutboxEvent, fetchImpl: typeof fetch): Promise<Answer
   if (event.kind === 'start' && res.status === 409) return { kind: 'refused' };
   if (!res.ok) return { kind: 'rejected' };
   if (event.kind === 'start') return { kind: 'confirmed', progress: null };
+  let progress: FinishProgress | null = null;
   try {
     const answer: unknown = await res.json();
-    return { kind: 'confirmed', progress: isFinishProgress(answer) ? answer : null };
+    progress = isFinishProgress(answer) ? answer : null;
   } catch {
-    return { kind: 'confirmed', progress: null };
+    // Confirmed without a summary.
   }
+  // The finish is recorded; its history record goes next. If that cannot be sent now, the event
+  // stays, and both go again later: the server records each id once.
+  if (!(await sendRecord(event, fetchImpl))) return null;
+  return { kind: 'confirmed', progress };
 }
 
 async function flushOnce(store: OutboxStore, fetchImpl: typeof fetch): Promise<FlushResult> {

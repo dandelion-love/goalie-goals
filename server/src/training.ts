@@ -126,6 +126,15 @@ interface SessionSnapshot {
   cards: CardSnapshot[];
 }
 
+/** A card of a session version, as a session record (story 113) checks it. */
+export interface SessionCardShape {
+  cardId: string;
+  itemVersion: string;
+  name: string;
+  dose: ExerciseCard['dose'];
+  cues: string[];
+}
+
 export const cardItemId = (cardId: string) => `card-${cardId}`;
 export const sessionItemId = (templateId: string) => `session-${templateId}`;
 
@@ -366,6 +375,34 @@ export class TrainingService {
   /** Whether a started session used this item version (the session itself or one of its cards). */
   hasStarted(item: { itemId: string; itemVersion: string }): boolean {
     return this.snapshots.started.has(versionKey(item.itemId, item.itemVersion));
+  }
+
+  /**
+   * A session version's title and cards, as a session record (story 113) is checked and kept:
+   * each card's id, version, name, dose and cues. Null when the version is unknown.
+   */
+  sessionCards(itemId: string, version: string): { title: string; cards: SessionCardShape[] } | null {
+    const snap = this.snapshots.sessions.get(version);
+    if (!snap || snap.itemId !== itemId) return null;
+    return {
+      title: snap.template.title,
+      cards: snap.cards.map((c) => ({
+        cardId: c.source.card.id,
+        itemVersion: c.itemVersion,
+        name: c.source.card.name,
+        dose: { ...c.source.card.dose },
+        cues: [...c.source.card.cues],
+      })),
+    };
+  }
+
+  /**
+   * The cues of a card version, so a record's cue ids (positions in this list, story 113) read
+   * back as the cue text. Null when that version is not known to this server.
+   */
+  cardCues(version: string): string[] | null {
+    const snap = this.snapshots.cards.get(version);
+    return snap ? [...snap.source.card.cues] : null;
   }
 
   /** Dev-only demo reset (src/demo.ts): forget which sessions were started. */

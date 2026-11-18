@@ -27,6 +27,8 @@ import { registerPainRoutes } from './painRoutes.js';
 import { WeeklyPlan } from './weeklyPlan.js';
 import { FirestoreScheduleStore, MemoryScheduleStore, ScheduleService, type ScheduleStore } from './schedule.js';
 import { registerScheduleRoutes } from './scheduleRoutes.js';
+import { FirestoreHistoryStore, HistoryService, MemoryHistoryStore, type HistoryStore } from './history.js';
+import { registerHistoryRoutes } from './historyRoutes.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -53,6 +55,13 @@ export interface AppDeps {
   schedule?: ScheduleService;
   /** The store for the training days when no `schedule` is given (tests pass a fake). */
   scheduleStore?: ScheduleStore;
+  /**
+   * The session history (story 113). Its store follows `config.scheduleStore`, the household's
+   * data store: Firestore in production, in memory otherwise.
+   */
+  history?: HistoryService;
+  /** The store for the session history when no `history` is given (tests pass a fake). */
+  historyStore?: HistoryStore;
   logger?: boolean;
   /** Send log lines here (tests read them); implies the logger at every level. */
   logStream?: { write(line: string): void };
@@ -82,6 +91,14 @@ async function defaultScheduleStore(config: Config): Promise<ScheduleStore> {
   return new FirestoreScheduleStore(db);
 }
 
+/** The session history's store, chosen as the training days' store is (story 113). */
+async function defaultHistoryStore(config: Config): Promise<HistoryStore> {
+  if (config.scheduleStore !== 'firestore') return new MemoryHistoryStore();
+  const { Firestore } = await import('@google-cloud/firestore');
+  const db = new Firestore(config.firestoreDatabase ? { databaseId: config.firestoreDatabase } : {});
+  return new FirestoreHistoryStore(db);
+}
+
 export async function buildApp({
   config,
   verifier,
@@ -92,6 +109,8 @@ export async function buildApp({
   pain,
   schedule,
   scheduleStore,
+  history,
+  historyStore,
   logger = false,
   logStream,
 }: AppDeps): Promise<FastifyInstance> {
@@ -237,6 +256,10 @@ export async function buildApp({
     });
   registerProgressRoutes(app, { progress: progressService, roles: roleStore });
 
+  const historyService =
+    history ?? new HistoryService({ store: historyStore ?? (await defaultHistoryStore(config)), training: trainingService });
+  registerHistoryRoutes(app, { history: historyService, roles: roleStore });
+
   // The demo household (src/demo.ts): only on the app's own in-memory stores, with the mock on.
   const demo: DemoTarget | undefined =
     config.devMockIdentity &&
@@ -277,6 +300,8 @@ export async function buildApp({
       try {
         const today = localDate();
         await resetDemoHousehold(target, today);
+        // The household's session history goes with it (story 113).
+        await historyService.deleteHousehold();
         req.log.info('demo household reset');
         return { ok: true, date: today };
       } catch (e) {

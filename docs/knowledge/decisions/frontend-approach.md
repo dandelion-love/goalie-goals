@@ -62,14 +62,18 @@ What the device may keep, and nothing else:
 - **Queued session events**: the start and the finish of a session, kept in the outbox in the
   order they were made and sent in that order when the network is back. Each holds only the
   date, the session id and version, the outcome, and the form ratings (the approved cue tapped
-  for a rated set; their count is the rated-set count). No notes or free text. **Each event is
+  for a rated set; their count is the rated-set count). A finish also carries the session's
+  history record: for each card, its id and version, the sets done and the **cue ids** rated
+  good (a cue's position in that card version's cue list, never its text). The record goes to
+  the server's session history after the finish, under the finish's id, and the server keeps
+  it once. No notes or free text. **Each event is
   deleted as soon as the server confirms it**; an empty outbox leaves nothing on the device.
   A Stop is queued at the tap and held while Resume is offered, so it survives the app
   closing; Resume deletes it.
 - The figures of today's approved cards, in their own cache. The app keeps exactly today's
   set; the service worker reads it only when the network fails and never writes to it.
 
-History, the audit log, the inbox and progress always come from the network and are never
+History, recent sessions, the audit log, the inbox and progress always come from the network and are never
 stored on the device or in a service-worker cache.
 
 A start that reaches the server late, after the parent undid an approval it uses, still

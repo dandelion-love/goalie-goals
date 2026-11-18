@@ -115,3 +115,41 @@ describe('session player flow', () => {
     expect(praiseFor('Knees track over toes')).toBe('Knees track over toes: nice');
   });
 });
+
+describe('the card logs for the session history (story 113)', () => {
+  const warm = [next, next];
+
+  it('starts every card at zero sets, so a stop in the warm-up still names each card', () => {
+    expect(run([next, { type: 'stop', outcome: 'stopped' }, { type: 'stop-final' }]).cards).toEqual([
+      { cardId: 'plank', itemVersion: PLANK.itemVersion, setsDone: 0, cues: [] },
+      { cardId: 'glute-bridge', itemVersion: BRIDGE.itemVersion, setsDone: 0, cues: [] },
+    ]);
+  });
+
+  it("counts each card's own sets and keeps each rated cue as its position in that card", () => {
+    const s = run([
+      ...warm,
+      next, // plank set 1
+      next,
+      { type: 'praise', cue: PLANK.cues[2] },
+      next, // rest over: set 2
+      next,
+      { type: 'praise', cue: PLANK.cues[0] },
+      next, // bridge set 1
+      next,
+      { type: 'praise', cue: BRIDGE.cues[1] },
+      { type: 'stop', outcome: 'hurt' },
+    ]);
+    expect(s.outcome).toBe('hurt');
+    expect(s.cards).toEqual([
+      { cardId: 'plank', itemVersion: PLANK.itemVersion, setsDone: 2, cues: [2, 0] },
+      { cardId: 'glute-bridge', itemVersion: BRIDGE.itemVersion, setsDone: 1, cues: [1] },
+    ]);
+    // The cue text stays on the screen's own list; the log holds ids only.
+    expect(JSON.stringify(s.cards)).not.toContain(PLANK.cues[2]);
+  });
+
+  it('a skipped rating counts the set and no cue', () => {
+    expect(run([...warm, next, next, next]).cards[0]).toMatchObject({ setsDone: 1, cues: [] });
+  });
+});

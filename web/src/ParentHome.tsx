@@ -2,6 +2,7 @@ import { memo, startTransition, useCallback, useRef, useState } from 'react';
 import type { Layout } from './layout';
 import { History as HistoryPanel, ParentInbox as InboxPanel } from './ApprovalScreens';
 import { ProgressPanel as ProgressPanelBody } from './ProgressPanel';
+import { SessionHistory as SessionHistoryPanel } from './SessionHistory';
 import { TrainingDays as TrainingDaysPanel } from './TrainingDays';
 import { Reveal } from './Loading';
 import { useMoment } from './motion';
@@ -14,13 +15,15 @@ const ProgressPanel = memo(ProgressPanelBody);
 const TrainingDays = memo(TrainingDaysPanel);
 const ParentInbox = memo(InboxPanel);
 const History = memo(HistoryPanel);
+const SessionHistory = memo(SessionHistoryPanel);
 
 export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl?: typeof fetch; epoch?: number }) {
   // Answering a request, or undoing an approval, adds to the history and changes the inbox,
   // so both reload after each.
   const [answered, setAnswered] = useState(0);
-  const [settled, setSettled] = useState({ progress: false, days: false, inbox: false });
+  const [settled, setSettled] = useState({ progress: false, sessions: false, days: false, inbox: false });
   const onProgress = useCallback(() => setSettled((s) => ({ ...s, progress: true })), []);
+  const onSessions = useCallback(() => setSettled((s) => ({ ...s, sessions: true })), []);
   const onDays = useCallback(() => setSettled((s) => ({ ...s, days: true })), []);
   const onInbox = useCallback(() => setSettled((s) => ({ ...s, inbox: true })), []);
   // The reload after an answer is a transition (story 101 AC1): the panels it refreshes never
@@ -36,13 +39,18 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
   const inbox = useRef<HTMLDivElement>(null);
   useMoment(() => inbox.current?.firstElementChild ?? null, 'approval-left', inboxChanges);
   // Each panel shows once every panel above it has settled (story #80 AC1).
-  const daysOpen = settled.progress;
+  const sessionsOpen = settled.progress;
+  const daysOpen = sessionsOpen && settled.sessions;
   const inboxOpen = daysOpen && settled.days;
   const historyOpen = inboxOpen && settled.inbox;
   return (
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Parent home</h1>
       <ProgressPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onProgress} />
+      {/* Recent sessions (story 113): their own panel, apart from the approvals history. */}
+      <Reveal open={sessionsOpen}>
+        <SessionHistory fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onSessions} />
+      </Reveal>
       <Reveal open={daysOpen}>
         <TrainingDays fetchImpl={fetchImpl} onChange={changed} onSettled={onDays} />
       </Reveal>

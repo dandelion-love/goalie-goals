@@ -54,11 +54,12 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 /** A keeper's server with a network switch. POSTs are recorded only when they reach it. */
 function server() {
-  const state = { online: true, startAnswer: 200 };
+  const state = { online: true, startAnswer: 200, historyAnswer: 200, historyOnline: true };
   const posts: { url: string; body: Record<string, unknown> }[] = [];
   const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     if (!state.online) throw new TypeError('Failed to fetch');
     const url = String(input);
+    if (!state.historyOnline && url === '/api/history/sessions') throw new TypeError('Failed to fetch');
     if (init?.method === 'POST') posts.push({ url, body: JSON.parse(String(init.body)) as Record<string, unknown> });
     if (url === '/api/me') return json({ role: 'keeper' });
     if (url.startsWith('/api/training/today')) return json(todayWith({ today: SESSION }));
@@ -66,6 +67,8 @@ function server() {
     if (url === '/api/progress/sessions') {
       return json({ credit: { session: 10, stars: 1, form: 2, total: 12 }, summary: summary({ xp: { total: 12, today: 12 } }) });
     }
+    if (url === '/api/history/sessions' && init?.method === 'POST') return json(state.historyAnswer === 200 ? { ok: true } : { error: 'x' }, state.historyAnswer);
+    if (url === '/api/history/sessions') return json({ sessions: [] });
     if (url.startsWith('/api/progress/summary')) return json(summary());
     if (url === '/api/training/approved') return json({ items: [], waiting: 0 });
     if (url === '/api/audit') return json({ events: [] });
@@ -207,9 +210,18 @@ describe('a session done offline (AC1, AC3)', () => {
     expect(within(earned).getByText('+12 XP')).toBeTruthy();
     expect(screen.queryByText(QUEUED_TEXT)).toBeNull();
     // In order: the start (late, so a parent's undo in between cannot take it away), then the finish.
-    expect(s.posts.map((p) => p.url)).toEqual(['/api/training/started', '/api/progress/sessions']);
+    expect(s.posts.map((p) => p.url)).toEqual(['/api/training/started', '/api/progress/sessions', '/api/history/sessions']);
     expect(s.posts[0].body).toMatchObject({ late: true, date: '2026-01-05' });
     expect(s.posts[1].body).toMatchObject({ date: '2026-01-05', outcome: 'done', praised: ['Keep breathing'] });
+    // Story 113 AC3: the history record, queued offline, reaches the server through the outbox.
+    expect(s.posts[2].body).toEqual({
+      id: s.posts[1].body.id,
+      date: '2026-01-05',
+      itemId: SESSION.itemId,
+      itemVersion: SESSION.itemVersion,
+      outcome: 'done',
+      cards: [{ cardId: 'plank', itemVersion: PLANK.itemVersion, setsDone: 2, cues: [1] }],
+    });
     expect(localStorage.getItem(OUTBOX_KEY)).toBeNull();
   });
 
@@ -247,8 +259,9 @@ describe('Stop is kept on the device at the tap (AC1)', () => {
 
     // It opens again: the stop goes out.
     render(<App fetchImpl={s.fetchImpl} wakeLock={wake} now={NOW} pauseStore={new MemoryPauseStore()} />);
-    await waitFor(() => expect(s.posts.map((p) => p.url)).toEqual(['/api/training/started', '/api/progress/sessions']));
+    await waitFor(() => expect(s.posts.map((p) => p.url)).toEqual(['/api/training/started', '/api/progress/sessions', '/api/history/sessions']));
     expect(s.posts[1].body).toMatchObject({ outcome: 'stopped' });
+    expect(s.posts[2].body).toMatchObject({ outcome: 'stopped', cards: [{ cardId: 'plank', setsDone: 0, cues: [] }] });
     await waitFor(() => expect(localStorage.getItem(OUTBOX_KEY)).toBeNull());
   });
 });
@@ -289,5 +302,62 @@ describe('History shows a start that beat the undo (AC2)', () => {
     expect(
       await screen.findByText(/Session: Strong middle started before the undo reached the device; it still counts/),
     ).toBeTruthy();
+  });
+});
+
+describe('the session history record rides with the finish (story 113 AC3)', () => {
+  const CARDS = [{ cardId: 'plank', itemVersion: PLANK.itemVersion, setsDone: 2, cues: [1, 0] }];
+  const WITH_CARDS: SessionResult = { ...RESULT, cards: CARDS };
+
+  it('survives a reload: the device keeps the card logs, cue ids only, and drops anything else', () => {
+    const store = new LocalOutboxStore();
+    enqueue(store, finishEvent(WITH_CARDS, NOW()));
+    const [e] = stored();
+    expect((e as { cards?: unknown }).cards).toEqual(CARDS);
+    // A new store reads the same events back, as the app does after a reload.
+    expect((new LocalOutboxStore().read()[0] as { cards?: unknown }).cards).toEqual(CARDS);
+    // Text in place of cue ids, or a field the Decision does not allow, never survives a read.
+    localStorage.setItem(OUTBOX_KEY, JSON.stringify([{ ...e, cards: [{ ...CARDS[0], cues: ['Keep breathing'] }] }]));
+    expect(Object.keys(store.read()[0])).not.toContain('cards');
+    localStorage.setItem(OUTBOX_KEY, JSON.stringify([{ ...e, cards: [{ ...CARDS[0], note: 'free text' }] }]));
+    expect(JSON.stringify(store.read())).not.toContain('free text');
+    localStorage.removeItem(OUTBOX_KEY);
+  });
+
+  it('keeps the event when the record cannot be sent, then sends both again once', async () => {
+    const store = new MemoryOutboxStore();
+    const s = server();
+    const finish = finishEvent(WITH_CARDS, NOW());
+    enqueue(store, finish);
+    s.state.historyOnline = false;
+    const first = await flushOutbox(store, s.fetchImpl);
+    expect(first.waiting).toBe(1);
+    expect(first.answers[finish.id]).toBeUndefined();
+
+    s.state.historyOnline = true;
+    const second = await flushOutbox(store, s.fetchImpl);
+    expect(second.answers[finish.id]).toMatchObject({ kind: 'confirmed' });
+    expect(s.posts.map((p) => p.url)).toEqual(['/api/progress/sessions', '/api/progress/sessions', '/api/history/sessions']);
+    // The same id each time: the server records each once.
+    expect(new Set(s.posts.map((p) => p.body.id))).toEqual(new Set([finish.id]));
+    expect(store.read()).toEqual([]);
+  });
+
+  it('drops a record the server refuses, so nothing blocks', async () => {
+    const store = new MemoryOutboxStore();
+    const s = server();
+    s.state.historyAnswer = 409;
+    enqueue(store, finishEvent(WITH_CARDS, NOW()));
+    const r = await flushOutbox(store, s.fetchImpl);
+    expect(r.waiting).toBe(0);
+    expect(s.posts.map((p) => p.url)).toEqual(['/api/progress/sessions', '/api/history/sessions']);
+  });
+
+  it('an event queued before story 113 (no card logs) sends no record', async () => {
+    const store = new MemoryOutboxStore();
+    const s = server();
+    enqueue(store, finishEvent(RESULT, NOW()));
+    await flushOutbox(store, s.fetchImpl);
+    expect(s.posts.map((p) => p.url)).toEqual(['/api/progress/sessions']);
   });
 });

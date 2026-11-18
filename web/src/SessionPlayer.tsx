@@ -90,6 +90,7 @@ export function SessionPlayer({
     warmUpLogged: state.warmUpLogged,
     startedAt: startedAt.current,
     endedAt: new Date().toISOString(),
+    cards: state.cards.map((c) => ({ ...c, cues: [...c.cues] })),
   });
   const report = (outcome: Outcome) => {
     if (reported.current) return;

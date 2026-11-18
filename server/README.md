@@ -94,7 +94,7 @@ The API and the host for the built web app, in one container. Node 22, TypeScrip
 | `IAP_AUDIENCE` | Expected audience of the signed header. Required unless the dev mock is on; there is no default. |
 | `GOALIE_ROLES` | Role seed for the in-memory store: `account=keeper;account=parent`. |
 | `ROLE_STORE` | `memory` (the only store wired so far). |
-| `SCHEDULE_STORE` | Where the parent's training days live: `firestore` (the default, and the only choice, with `NODE_ENV=production`) or `memory` (the default otherwise). |
+| `SCHEDULE_STORE` | Where the parent's training days and the session history (story 113) live: `firestore` (the default, and the only choice, with `NODE_ENV=production`) or `memory` (the default otherwise). |
 | `FIRESTORE_DATABASE` | Firestore database id; unset means the project's default database. The project comes from the runtime's credentials or `GOOGLE_CLOUD_PROJECT`. |
 | `WEB_ROOT` | Folder of the built web app; unset means API only. |
 | `PORT` | Default 8080. |
