@@ -63,13 +63,26 @@ HOME_PROFILE = {"equipment": {"body only", "other:ball", "other:wall", "other:st
 # contacts: power 1-3 sets of 3-6; a card keeps to 30 contacts so a session of a few jump
 #   cards stays inside the 50-60 starting contacts.
 # efforts: sprint and change-of-direction limit, 16 efforts of 20 m or less, 90 s rest.
-# hold: the Decision sets no hold time; 1-2 sets of 10-30 s is this repo's cautious start.
+# hold: HOLD_LIMITS below; a card holds a starting dose, so its seconds use start_seconds.
+#
+# HOLD_LIMITS mirrors the Holds table of the training-rules Decision
+# (docs/knowledge/decisions/training-rules.md, "# Holds"). Change both together;
+# tests/test_content_check.py fails when they differ.
+HOLD_LIMITS = {
+    "sets": (1, 2),            # Hold sets: 1 to 2 (per side for a one-sided hold)
+    "seconds": (10, 30),       # Hold time: 10 to 30 s, never longer
+    "start_seconds": (10, 20),  # Starting hold: 10 to 20 s
+    "step_seconds": 5,         # Hold step: at most 5 s longer at a time
+    "rest_s_min": 30,          # Hold rest: at least 30 s between sets
+}
 LIMITS = {
     "reps": {"sets": (1, 2), "reps": (10, 15), "rest_s": (30, 180)},
     "contacts": {"sets": (1, 3), "reps": (3, 6), "rest_s": (60, 180), "total": 30},
     "efforts": {"sets": (1, 4), "reps": (1, 8), "rest_s": (90, 300), "distance_m": (1, 20),
                 "total": 16},
-    "hold": {"sets": (1, 2), "seconds": (10, 30), "rest_s": (30, 180)},
+    # The 180 s rest ceiling is a sanity bound, not a Decision limit.
+    "hold": {"sets": HOLD_LIMITS["sets"], "seconds": HOLD_LIMITS["start_seconds"],
+             "rest_s": (HOLD_LIMITS["rest_s_min"], 180)},
 }
 DOSE_KEYS = {"reps": ("reps",), "contacts": ("reps",), "efforts": ("reps", "distance_m"),
              "hold": ("seconds",)}

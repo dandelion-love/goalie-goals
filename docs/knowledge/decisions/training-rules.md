@@ -4,7 +4,7 @@ title: Training rules for an early-teens keeper
 description: What the app may and must never prescribe, its progression limits, the warning signs that stop a session, and when the family should see a professional.
 tags: [decision, training, safety, youth, goalkeeper]
 status: draft
-generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:02:19Z }
+generated: { by: claude-code/opus-5.5, at: 2026-11-18T05:44:53Z }
 sources:
   - { id: nsca-2009, resource: https://pubmed.ncbi.nlm.nih.gov/19620931/, title: "Faigenbaum et al. Youth resistance training: updated position statement paper from the NSCA (J Strength Cond Res, 2009)" }
   - { id: lloyd-2014, resource: https://doi.org/10.1136/bjsports-2013-092952, title: "Lloyd et al. Position statement on youth resistance training: the 2014 International Consensus (Br J Sports Med, 2014)" }
@@ -22,6 +22,11 @@ sources:
   - { id: reds-2023, resource: https://doi.org/10.1136/bjsports-2023-106994, title: "Mountjoy et al. 2023 IOC consensus statement on REDs (Br J Sports Med, 2023)" }
   - { id: sda-2014, resource: https://doi.org/10.1123/ijsnem.2014-0031, title: "Desbrow et al. Sports Dietitians Australia position statement: sports nutrition for the adolescent athlete (2014)" }
   - { id: aap-2011-drinks, resource: https://doi.org/10.1542/peds.2011-0965, title: "AAP. Sports drinks and energy drinks for children and adolescents (Pediatrics, 2011)" }
+  - { id: soligard-2008, resource: https://pubmed.ncbi.nlm.nih.gov/19066253/, title: "Soligard et al. Comprehensive warm-up programme to prevent injuries in young female footballers: cluster randomised controlled trial (BMJ, 2008)" }
+  - { id: fifa-core-2025, resource: https://www.fifatrainingcentre.com/en/practice/training-perspectives/athleticism-for-young-players/athleticism-for-young-players-core-strength.php, title: "FIFA Training Centre. Athleticism for young players: core strength (2025)" }
+  - { id: mcgill-2010, resource: https://www.ovid.com/00126548-201006000-00004, title: "McGill. Core training: evidence translating to better performance and injury prevention (Strength Cond J, 2010)" }
+  - { id: boyer-2013, resource: https://pubmed.ncbi.nlm.nih.gov/23877226/, title: "Boyer et al. Feasibility, validity and reliability of the plank isometric hold as a field-based assessment of torso muscular endurance for children 8-12 years of age (Pediatr Exerc Sci, 2013)" }
+  - { id: plank-norms-2026, resource: https://pubmed.ncbi.nlm.nih.gov/42978601/, title: "Age- and sex-specific normative references and performance zones for core muscular endurance in adolescents (Front Physiol, 2026)" }
 ---
 
 # Decision
@@ -88,6 +93,41 @@ app takes the more conservative option.
 | Rest | At least 1, preferably 2, full rest days a week, counting team training | [^brenner-2016] |
 | Growth spurt | When the owner reports fast growth or new knee or heel pain, hold all progressions and drop jump and sprint volume back to the starting dose | [^ioc-2015][^moran-2017-cmj] |
 | After a break | After a week or more off, restart one step below the last level | Cautious reading of [^nsca-2009] |
+| Holds (plank, side plank) | See Holds below | [^soligard-2008][^fifa-core-2025][^mcgill-2010] |
+
+# Holds
+
+An isometric hold (a plank, a side plank) is dosed in seconds, not repetitions. The youth
+resistance-training position statements give no hold times.[^nsca-2009][^lloyd-2014][^aap-2020]
+Two youth football sources do: the FIFA 11+ warm-up, tested in a randomised trial with
+teenage players, prescribes 3 sets of 20 to 30 s,[^soligard-2008] and FIFA's
+coaching guidance on core strength for young players gives 1 set of 10 to 15 s before
+training, or 2 sets of 15 to 30 s in a separate session.[^fifa-core-2025] For adults,
+McGill advises holds of under 10 s, with endurance built by adding repetitions rather than
+longer holds.[^mcgill-2010] The app takes the more conservative side of each:
+
+| Lever | Limit | Basis |
+|---|---|---|
+| Hold sets | 1 to 2 sets per exercise, per side for a one-sided hold | 2 sets, as in FIFA's development session,[^fifa-core-2025] not the 3 of FIFA 11+[^soligard-2008] |
+| Hold time | 10 to 30 s per hold, never longer | The top of both FIFA ranges;[^soligard-2008][^fifa-core-2025] McGill's short holds argue against going longer[^mcgill-2010] |
+| Starting hold | 10 to 20 s | Below the FIFA 11+ dose, within FIFA's activation and development ranges[^soligard-2008][^fifa-core-2025] |
+| Hold step | At most 5 s longer at a time, after two clean sessions and the owner's approval | Cautious reading; no source sets a step. Rule 2 applies as for any exercise |
+| Beyond 30 s | One variant step (such as lifting a foot), never a longer hold | FIFA 11+ progresses by level at the same time;[^soligard-2008] McGill builds endurance with repetitions, not duration[^mcgill-2010] |
+| Hold rest | At least 30 s between sets | Cautious reading; the sources give none |
+
+A hold ends when the position breaks (the hips sag, pike or drop, or breathing stops), not
+when the keeper can hold no longer. The plank tests used with children and adolescents are
+holds to the limit;[^boyer-2013][^plank-norms-2026] rule 3 rules out any such test or set.
+They also show the cap is well below capacity: in a 2026 study of 2,970 adolescents in their early
+to mid teens, median maximal planks ranged from 44 to 66 s by age and sex.[^plank-norms-2026]
+
+**Why this is conservative for an early-teens keeper.** The youth trial that gives hold
+times used 3 sets of 20 to 30 s with players of this age band under a coach;[^soligard-2008]
+the app allows two sets, starts lower, and never goes past 30 s, at home and with the
+parent as the only supervisor. McGill keeps adult holds under 10 s so the muscles do not
+cramp from lack of oxygen, and builds endurance with more repetitions.[^mcgill-2010] The
+app keeps a 10 s floor so the parent can see and check the position, starts low, ends any
+hold as soon as the position breaks, and lets the owner keep every hold at the floor.
 
 # Warning signs that stop a session
 
@@ -123,6 +163,7 @@ records why, when the keeper or the owner reports any of these:
 |---|---|---|
 | Maximal strength testing | Allowed under qualified supervision (NSCA, 2014 Consensus) vs more cautious (AAP 2008) | Never |
 | Load increments | 5 to 10% (NSCA) | 5% or one variant step |
+| Hold time | 3 sets of 20 to 30 s (FIFA 11+) vs 1 set of 10 to 15 s or 2 sets of 15 to 30 s (FIFA youth core guidance) vs under 10 s, built with repetitions (McGill, adults) | 1 to 2 sets of 10 to 30 s, starting at 10 to 20 s; past 30 s by variant only |
 | Jump volume | 50 to 60 contacts to start (Johnson) vs about 100 a session (Asadi) | Start at 50 to 60, cap at about 100 |
 | Sleep | 8.5 to 9.5 h (IOC), 8 to 10 h (AASM), 9 to 11 or 8 to 10 h by age band (Canadian guideline) | Plan for at least about 9 h |
 | Caffeine | 2.5 mg/kg (Health Canada), about 3 mg/kg (EFSA), none (AAP) | None |
@@ -156,3 +197,8 @@ records why, when the keeper or the owner reports any of these:
 [^reds-2023]: IOC consensus statement on REDs, 2023
 [^sda-2014]: Sports Dietitians Australia position statement on the adolescent athlete, 2014
 [^aap-2011-drinks]: AAP clinical report on sports and energy drinks, 2011
+[^soligard-2008]: Soligard et al., FIFA 11+ randomised trial in youth football, 2008
+[^fifa-core-2025]: FIFA Training Centre, core strength for young players, 2025
+[^mcgill-2010]: McGill, core training review, 2010
+[^boyer-2013]: Boyer et al., the plank hold as a fitness test for children, 2013
+[^plank-norms-2026]: Plank test reference values for adolescents, 2026
