@@ -5,7 +5,7 @@ description: Push works on iPadOS 16.4+ only for an installed web app, after a t
 tags: [platform, ipados, web-push, notifications]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: webkit-push, resource: https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/, title: "Web Push for Web Apps on iOS and iPadOS" }
   - { id: webkit-164, resource: https://webkit.org/blog/13966/webkit-features-in-safari-16-4/, title: "WebKit Features in Safari 16.4" }

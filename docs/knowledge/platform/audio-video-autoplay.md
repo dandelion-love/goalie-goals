@@ -5,7 +5,7 @@ description: Muted inline video may autoplay; sound needs a tap; the app starts 
 tags: [platform, ipados, media, autoplay, audio]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: webkit-video, resource: https://webkit.org/blog/6784/new-video-policies-for-ios/, title: "WebKit: New video policies for iOS" }
   - { id: mdn-autoplay, resource: https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay, title: "MDN: Autoplay guide for media and Web Audio APIs" }

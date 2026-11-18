@@ -7,6 +7,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 ## Research
 
+* [How training apps explain exercises](/exercise-apps/index.md) - open-source and commercial training apps, how they explain exercises, and their licences
+
 * [Equipment at home](/equipment/index.md) - bodyweight minimum, home and outdoor equipment, substitutions and an open equipment vocabulary
 
 * [Safe training for U15 athletes](/training/index.md) - youth resistance training, plyometrics, speed, goalkeeper power, recovery, sleep and nutrition

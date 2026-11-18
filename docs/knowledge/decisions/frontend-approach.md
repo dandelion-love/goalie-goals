@@ -5,7 +5,7 @@ description: React and Vite as an installable web app with an offline session ca
 tags: [decision, platform, frontend, pwa, ipados, sign-in]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: react, resource: https://github.com/facebook/react, title: "React (MIT)" }
   - { id: vite, resource: https://github.com/vitejs/vite, title: "Vite (MIT)" }

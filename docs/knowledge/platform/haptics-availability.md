@@ -5,7 +5,7 @@ description: Safari on iPadOS has no Vibration API, so the app gives feedback wi
 tags: [platform, ipados, haptics, vibration]
 status: draft
 generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
-stale_after: 2027-05-17T07:00:00Z
+stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: caniuse-vibration, resource: https://caniuse.com/vibration, title: "Can I use: Vibration API" }
   - { id: mdn-vibrate, resource: https://developer.mozilla.org/en-US/docs/Web/API/Navigator/vibrate, title: "MDN: Navigator.vibrate()" }
