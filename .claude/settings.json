@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/privacy_guard.py\" --session-start"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/privacy_guard.py\" --claude-hook"
+          }
+        ]
+      }
+    ]
+  }
+}

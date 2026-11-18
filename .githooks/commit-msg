@@ -1,0 +1,3 @@
+#!/bin/sh
+# Commit messages and author lines are public too.
+exec python3 "$(git rev-parse --show-toplevel)/tools/privacy_guard.py" --message "$1"

@@ -1,0 +1,28 @@
+# Secrets and local config: never committed (see the public-repo-privacy skill)
+.env
+.env.*
+!.env.example
+*.local.*
+.private/
+private/
+
+# Data and media from real use
+data/
+exports/
+*.sqlite
+*.sqlite3
+*.db
+
+# Tooling
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+coverage/
+.DS_Store
+Thumbs.db
+.claude/settings.local.json
+.playwright-mcp/
+.tmp*/

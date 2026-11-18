@@ -1,0 +1,3 @@
+#!/bin/sh
+# Scan every commit a push would publish: files, file names, messages and author lines.
+exec python3 "$(git rev-parse --show-toplevel)/tools/privacy_guard.py" --pre-push
