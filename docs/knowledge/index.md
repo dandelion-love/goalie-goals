@@ -9,6 +9,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 
 * [Exercise media](/exercise-media/index.md) - open exercise media, illustration sets, animation, drawn figures and the stored format
 
+* [CC0 media for rewards and the path](/cc0-media/index.md) - public-domain interface and game art for streaks, stars, badges, trophies, path nodes, backgrounds and an original coach, with a shortlist and a recommended style
+
 * [How training apps explain exercises](/exercise-apps/index.md) - open-source and commercial training apps, how they explain exercises, and their licences
 
 * [Equipment at home](/equipment/index.md) - bodyweight minimum, home and outdoor equipment, substitutions and an open equipment vocabulary
