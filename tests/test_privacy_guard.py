@@ -128,6 +128,19 @@ class Files(unittest.TestCase):
                      "voice/note.m4a", "db/app.sqlite"):
             self.assertTrue(self.blob(path), path)
 
+    def test_terraform_private_files(self) -> None:
+        for path in ("infra/terraform.tfstate", "infra/terraform.tfstate.backup",
+                     "infra/.terraform.tfstate.lock.info", "infra/.terraform/terraform.tfstate",
+                     "infra/.terraform/providers/x/terraform-provider-google",
+                     "infra/prod.auto.tfvars", "infra/vars.tfvars.json", "infra/plan.tfplan",
+                     "infra/crash.log"):
+            self.assertTrue(self.blob(path), path)
+
+    def test_terraform_code_allowed(self) -> None:
+        for path in ("infra/main.tf", "infra/variables.tf", "infra/.terraform.lock.hcl",
+                     "infra/terraform.tfvars.example", "infra/backend.tf"):
+            self.assertEqual(self.blob(path), [], path)
+
     def test_allowed_names(self) -> None:
         for path in (".env.example", "public/icons/glove.svg", "public/sfx/ding.ogg",
                      "src/app.ts"):

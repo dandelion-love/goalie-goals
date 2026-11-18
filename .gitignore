@@ -7,6 +7,21 @@
 .private/
 private/
 
+# Terraform: state, plans and variable values name the deployment (and state can hold
+# secrets). Commit *.tf, .terraform.lock.hcl and *.tfvars.example only.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
 # Data and media from real use
 data/
 exports/
