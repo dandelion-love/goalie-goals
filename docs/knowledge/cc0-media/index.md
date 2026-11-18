@@ -1,6 +1,16 @@
 # CC0 media
 
-Public-domain (CC0) media for the app: reward and path art, sounds for training cues and celebrations, and rigged 3D characters as offline pose references. Each licence is read from the source's own page, per file where the source licenses per file.
+Public-domain (CC0) media for the app: exercise figures and pose references, reward and path art, sounds for training cues and celebrations, and rigged 3D characters as offline pose references. Each licence is read from the source's own page, per file where the source licenses per file.
+
+# Exercise figures and pose references
+
+* [Openclipart for exercise figures](/cc0-media/openclipart-figures.md) - Releases every upload under CC0; a few usable goalkeeper and exercise drawings, each still checked for provenance and AI.
+* [Wikimedia Commons, CC0 and public-domain files](/cc0-media/wikimedia-commons.md) - A licence per file; donated line art, sport pictograms and mirrored CC0 icons pass, one government exercise set has conflicting rights statements.
+* [Public Domain Vectors and FreeSVG](/cc0-media/public-domain-vectors.md) - CC0 labels with no author, origin or AI note per file; fail as a source of record.
+* [Openverse and the sites it surfaces](/cc0-media/openverse-and-rawpixel.md) - A search tool that does not verify licences; rawpixel could not be verified.
+* [CC0 icon and character sets](/cc0-media/cc0-icon-and-character-sets.md) - Open Peeps, Open Doodles, Health Icons and Pinhead pass; the Noun Project licenses per icon.
+* [Open 3D animation and motion data as pose references](/cc0-media/pose-data.md) - A CC0 rig to pose by hand; the best-known motion-capture database is not CC0.
+* [CC0 figure coverage per exercise](/cc0-media/coverage.md) - The best CC0 candidate, or none, for every card and goalkeeper move; the owner rejected the Openclipart candidates for quality, so government and health-organisation sources (#69) fill the gaps.
 
 # Art for rewards and the path
 

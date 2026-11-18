@@ -9,6 +9,8 @@ Where the app's exercise pictures, animations, icons and short texts can come fr
 * [Video and animation sources](/exercise-media/video-and-animation.md) - Creative Commons and stock video, Lottie, and why the app animates its own figures instead.
 * [Drawn and generated figures](/exercise-media/drawn-and-generated-figures.md) - Building a simple vector figure with key poses, set-up diagrams, low-poly tracing and AI images, and which of them the app uses.
 
+* [CC0 media](/cc0-media/index.md) - Public-domain (CC0) sources for figures and pose references, and the best CC0 figure per exercise.
+
 # Reference
 
 * [Media storage format and metadata](/exercise-media/storage-format.md) - SVG and WebP rules, metadata stripping, and the credits manifest that drives attribution.
