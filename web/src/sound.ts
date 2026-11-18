@@ -4,13 +4,14 @@
 // Sound is never the only signal: every cue fires on a change the screen also shows, and if
 // the iPad blocks audio the session runs exactly the same without it.
 //
-// No cue is synthesised as it plays (story #97). `warm()` (at app start, and again in the
-// unlocking tap) computes every cue's samples once, in short slices that yield to the page.
+// No cue is synthesised as it plays (story #97). `warm()` (once the keeper's home or the player
+// is up and the page is idle, story #98; and again in the unlocking tap) computes every cue's
+// samples once, in short slices that yield to the page. The parent's phone never warms them.
 // Once a context exists, each cue becomes an AudioBuffer as soon as its samples are ready, and
 // playing a cue only starts a buffer source on it. A cue whose buffer is not ready yet, or whose
 // render failed, is skipped: the screen still shows the moment, and the next cue plays as normal.
 
-import { createContext, useCallback, useContext, useLayoutEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CUE_NAMES, CUE_RATE, bufferOf, prepareCues, schedule, yieldToPage, type CueName } from './cues';
 import type { PlayerState } from './player';
 
@@ -38,7 +39,12 @@ const RESUME_GRACE_MS = 1000;
 export interface SoundEngine {
   /** Start computing the cues, in slices (safe to call any time, and more than once). */
   warm(): void;
-  /** Call from a tap handler only: creates or resumes the context, which unlocks sound on the iPad. */
+  /**
+   * Make the context ahead of the Start tap (story #98 AC5), suspended and silent: making one
+   * is a long task, so the tap that unlocks it only resumes it. Safe to call more than once.
+   */
+  prime(): void;
+  /** Call from a tap handler only: resumes the context (making it first if `prime` has not), which unlocks sound on the iPad. */
   unlock(): void;
   /** Play a cue now. False when sound is not unlocked, is blocked, the cue is not ready, or failed: the screen carries on alone. */
   play(name: CueName): boolean;
@@ -127,6 +133,13 @@ export function createSoundEngine(
       // Blocked: cues stay silent.
     }
   };
+  // The context, made once (again only if it was closed), with its buffers loading.
+  const open = () => {
+    if (ctx && ctx.state !== 'closed') return;
+    ctx = make();
+    // Assigned first: `load` checks its buffers belong to the current context.
+    if (ctx) load(ctx);
+  };
   return {
     get unlocked() {
       return unlockedAt !== null;
@@ -137,12 +150,13 @@ export function createSoundEngine(
     warm() {
       prepared();
     },
+    prime() {
+      open();
+    },
     unlock() {
-      if (!ctx || ctx.state === 'closed') {
-        ctx = make();
-        // Assigned first: `load` checks its buffers belong to the current context.
-        if (ctx) load(ctx);
-      }
+      // Already unlocked and playing: a tap has nothing to do (the player calls this on every tap).
+      if (unlockedAt !== null && ctx?.state === 'running') return;
+      open();
       if (!ctx) return;
       unlockedAt = now();
       if (ctx.state !== 'running') resume(ctx);
@@ -180,12 +194,50 @@ export function createSoundEngine(
 /** The app's one engine. */
 export const sound = createSoundEngine();
 
+/**
+ * Warm the cues once the page is idle (story #98 AC4): only where they will play, the keeper's
+ * home and the session player. The parent's phone never computes them. `warm()` returns the
+ * same work when called again, so a remount costs nothing. Returns a cancel for an unmount.
+ *
+ * The audio context is made here too (`prime`, story #98 AC5), suspended, so the Start tap
+ * only resumes it: making one is a long task that would otherwise delay the tap's response.
+ */
+/**
+ * Where there is no idle callback (Safari on the iPad), wait this long after mount so the
+ * first paint and any early tap come before the long, unsplittable context creation.
+ */
+export const WARM_FALLBACK_MS = 1000;
+
+export function warmWhenIdle(engine: SoundEngine = sound): () => void {
+  const w = globalThis as typeof globalThis & {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+    cancelIdleCallback?: (id: number) => void;
+  };
+  const run = () => {
+    engine.warm();
+    engine.prime();
+  };
+  const { requestIdleCallback: whenIdle, cancelIdleCallback: cancel } = w;
+  if (whenIdle && cancel) {
+    const id = whenIdle(run, { timeout: 2000 });
+    return () => cancel(id);
+  }
+  const id = setTimeout(run, WARM_FALLBACK_MS);
+  return () => clearTimeout(id);
+}
+
+/** Warm the cues when the keeper's home or the player mounts (see `warmWhenIdle`). */
+export function useWarmCues(engine: SoundEngine = sound): void {
+  useEffect(() => warmWhenIdle(engine), [engine]);
+}
+
 /** The cue player for the components inside the session player (the countdown's ticks and pause). */
 export const CueContext = createContext<(name: CueName) => void>(() => {});
 export const useCue = () => useContext(CueContext);
 
 /** The player's sound: the mute switch (remembered on the device) and a cue function that honours it. */
 export function usePlayerSound(engine: SoundEngine = sound) {
+  useWarmCues(engine);
   const [muted, setMutedState] = useState(readMuted);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;

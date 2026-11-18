@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, type MutableRefObject, type ReactNode, type RefObject } from 'react';
+import { startTransition, useEffect, useLayoutEffect, useMemo, useReducer, useRef, type MutableRefObject, type ReactNode, type RefObject } from 'react';
 import { Countdown } from './Countdown';
 import type { Layout } from './layout';
 import {
@@ -127,7 +127,10 @@ export function SessionPlayer({
   const step = steps[state.step];
   const needsTaps = wake === 'fallback';
   const frozen = state.stopping;
-  const next = () => dispatch({ type: 'next' });
+  // Moving on (the next move, a set's start or end, a rest skipped, the finish) is a transition
+  // (story #98 AC5): the tap paints its response at once, and the new step, with its cue and
+  // motion, follows in the next frames. Stop and "Something hurts" stay urgent.
+  const next = () => startTransition(() => dispatch({ type: 'next' }));
 
   const player = (
     <>
@@ -529,8 +532,13 @@ function FinishScreen({
   }, []);
   useEffect(() => {
     if (enter !== 'celebrate' || fired.current) return;
-    fired.current = true;
-    void celebrate();
+    // In a task of its own after the finish screen's (story #98), so the burst never adds to
+    // the long task that renders the card; skipped if the shapes are not ready by then.
+    const id = setTimeout(() => {
+      fired.current = true;
+      celebrate();
+    }, 0);
+    return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (

@@ -10,7 +10,7 @@ import { cascaded, parseRules, px, resolveTokens, rootTokens, specificity } from
 import { App } from './App';
 import { SessionPlayer } from './SessionPlayer';
 import { loadRewards, MOMENTS } from './motion';
-import { CONFETTI_COLOURS, PILL_PATH } from './celebrate';
+import { CONFETTI_COLOURS, PILL_MATRIX, PILL_PATH, preloadCelebration } from './celebrate';
 import { sound } from './sound';
 import { PLANK, demoSession } from './session.fixture';
 import type { WakeLockController } from './wakeLock';
@@ -20,7 +20,7 @@ const confetti = vi.hoisted(() => {
   const fire = Object.assign(vi.fn(async () => undefined), { reset: vi.fn() });
   const lib = Object.assign(vi.fn(), {
     create: vi.fn(() => fire),
-    shapeFromPath: vi.fn(({ path }: { path: string }) => ({ type: 'path', path })),
+    shapeFromPath: vi.fn(({ path, matrix }: { path: string; matrix?: number[] }) => ({ type: 'path', path, matrix })),
   });
   return { fire, lib };
 });
@@ -330,6 +330,8 @@ describe('AC2: motion at the key moments, in the same commit as the cue', () => 
   });
 
   it('finishes with the summary card entering and one confetti burst in the app\'s shapes and colours', async () => {
+    // The shapes are built ahead (story #98): by the finish they are ready.
+    await preloadCelebration();
     renderSession();
     click('Next');
     click('Start set 1');
@@ -345,7 +347,7 @@ describe('AC2: motion at the key moments, in the same commit as the cue', () => 
     const options = confetti.fire.mock.calls[0][0 as never] as Record<string, unknown>;
     expect(options).toMatchObject({ disableForReducedMotion: true, ticks: 108 });
     expect(options.colors).toEqual(CONFETTI_COLOURS.map((name) => TOKENS.get(name)));
-    expect(options.shapes).toEqual(['circle', { type: 'path', path: PILL_PATH }]);
+    expect(options.shapes).toEqual(['circle', { type: 'path', path: PILL_PATH, matrix: PILL_MATRIX }]);
     expect(confetti.lib.create.mock.calls[0][1 as never]).toMatchObject({ disableForReducedMotion: true, useWorker: true });
 
     // The canvas never takes a tap: "Done for today" works while it runs.

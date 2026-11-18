@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchMe, reconnect, type MeResult, type Role } from './api';
 import { useLayout, type Layout } from './layout';
 import { ApprovedTraining, History, ParentInbox } from './ApprovalScreens';
 import { TodayPanel } from './LessonPath';
 import { SessionPlayer } from './SessionPlayer';
-import { sound } from './sound';
+import { sound, useWarmCues } from './sound';
 import { ProgressPanel } from './ProgressPanel';
 import { PainReportForm, PausedPanel } from './PainScreens';
 import { TrainingDays } from './TrainingDays';
@@ -320,6 +320,9 @@ function KeeperHome({
   epoch?: number;
   now?: () => Date;
 }) {
+  // The cues are computed only on the keeper's device, once its home is up and idle (story #98),
+  // so the first cue is ready by the Start tap.
+  useWarmCues();
   const [playing, setPlaying] = useState<Session | null>(null);
   const [finishedHere, setDoneToday] = useState(false);
   const [recordedToday, setRecordedToday] = useState(false);
@@ -432,8 +435,12 @@ function KeeperHome({
         progress={progress}
         hurtForm={<PainReportForm onSend={send} />}
         onExit={() => {
-          setPlaying(null);
-          setProgress(null);
+          // A transition (story #98 AC5): the tap paints its response at once, and the home,
+          // a large render, follows without holding the tap's frame.
+          startTransition(() => {
+            setPlaying(null);
+            setProgress(null);
+          });
           finishShown.current = null;
           startSent.current = null;
           flush();
@@ -445,10 +452,13 @@ function KeeperHome({
 
   // Paused: show the pause, and offer nothing to train.
   const tryStart = (session: Session) => {
-    if (pauseStore.read()) return;
+    // Paused, or already started (a second tap while the player is still rendering).
+    if (pauseStore.read() || startSent.current) return;
     // The Start tap unlocks sound for the session (iPadOS plays audio only after a tap).
     sound.unlock();
-    setPlaying(session);
+    // A transition (story #98 AC5): the tap paints its response at once, and the player, a
+    // large render, follows without holding the tap's frame. Its start cue plays as it shows.
+    startTransition(() => setPlaying(session));
     // Tell the server, so the parent can no longer undo this approval. If the parent undid it
     // a moment ago, the server refuses: the session closes before the first set and today
     // loads again. Offline, the session runs as approved when it was loaded, and the start

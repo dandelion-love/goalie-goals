@@ -98,6 +98,29 @@ describe('the sound engine', () => {
     expect(audio.started).toHaveLength(3);
   });
 
+  it('makes the context ahead of the tap when primed, silent until the tap resumes it (story #98 AC5)', async () => {
+    const audio = fakeAudio('suspended');
+    const make = vi.fn(() => audio as unknown as AudioContext);
+    const engine = createSoundEngine(make, () => 0, readyCues());
+    engine.prime();
+    engine.prime();
+    expect(make).toHaveBeenCalledTimes(1);
+    await settle();
+    // Made and loaded, but nothing plays and nothing is resumed before the tap.
+    expect(engine.ready('start')).toBe(true);
+    expect(engine.unlocked).toBe(false);
+    expect(engine.play('start')).toBe(false);
+    expect(audio.resumes).toBe(0);
+    expect(audio.started).toHaveLength(0);
+
+    // The tap only resumes the context it already has, and plays the silent unlock buffer.
+    engine.unlock();
+    expect(make).toHaveBeenCalledTimes(1);
+    expect(audio.resumes).toBe(1);
+    expect(audio.started).toHaveLength(1);
+    expect(engine.play('start')).toBe(true);
+  });
+
   it('skips a cue when audio stays blocked, rather than playing it late', async () => {
     const audio = fakeAudio('suspended');
     let now = 0;
@@ -132,9 +155,13 @@ describe('the sound engine', () => {
       expect(played[2 * i]).toBe(played[2 * i + 1]);
       expect(played[2 * i].length).toBe(100 + i);
     }
-    // Another tap reuses the context and its buffers: nothing is prepared or made again.
+    // Another tap reuses the context and its buffers: nothing is prepared or made again, and
+    // with the context running no silent buffer either (story #98: a tap does no audio work).
     engine.unlock();
     await settle();
+    expect(audio.buffers).toBe(1 + CUE_NAMES.length);
+    audio.state = 'suspended';
+    engine.unlock();
     expect(audio.buffers).toBe(1 + CUE_NAMES.length + 1);
     expect(prepare).toHaveBeenCalledTimes(2); // warm() and the first unlock; prepare returns the same work
   });
@@ -383,5 +410,101 @@ describe('the player’s sound', () => {
     expect(unlock).toHaveBeenCalledTimes(1);
     expect(unlock.mock.invocationCallOrder[0]).toBeLessThan(plays.mock.invocationCallOrder[0]);
     expect(plays.mock.calls.map((c) => c[0])).toEqual(['start']);
+  });
+});
+
+describe('warming the cues (story #98 AC4)', () => {
+  /** A recording requestIdleCallback: the idle callbacks run only when `idle()` is called. */
+  function idleQueue() {
+    const queue = new Map<number, () => void>();
+    let next = 1;
+    vi.stubGlobal('requestIdleCallback', (cb: () => void) => {
+      queue.set(next, cb);
+      return next++;
+    });
+    vi.stubGlobal('cancelIdleCallback', (id: number) => queue.delete(id));
+    return () => {
+      const due = [...queue.values()];
+      queue.clear();
+      for (const cb of due) cb();
+    };
+  }
+
+  /** The parent's home, with demo content only. */
+  function parentServer() {
+    const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+    const fetchImpl = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/me') return json({ role: 'parent' });
+      if (url === '/api/approvals/pending') return json({ requests: [] });
+      if (url === '/api/notifications/badge') return json({ unread: 0 });
+      if (url === '/api/audit') return json({ events: [] });
+      return json({ error: 'not found' }, 404);
+    };
+    return fetchImpl as unknown as typeof fetch;
+  }
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it('never warms them on the parent’s phone', async () => {
+    const idle = idleQueue();
+    const warm = vi.spyOn(sound, 'warm').mockImplementation(() => {});
+    const prime = vi.spyOn(sound, 'prime').mockImplementation(() => {});
+    render(<App fetchImpl={parentServer()} wakeLock={wake} />);
+    await screen.findByRole('heading', { name: /approval|inbox|waiting/i });
+    idle();
+    await new Promise((r) => setTimeout(r, 0));
+    idle();
+    expect(warm).not.toHaveBeenCalled();
+    expect(prime).not.toHaveBeenCalled();
+  });
+
+  it('warms them, and makes the audio context, once the keeper’s home is up and the page is idle', async () => {
+    const idle = idleQueue();
+    const warm = vi.spyOn(sound, 'warm').mockImplementation(() => {});
+    const prime = vi.spyOn(sound, 'prime').mockImplementation(() => {});
+    render(<App fetchImpl={keeperServer(todayWith()).fetchImpl} wakeLock={wake} />);
+    await screen.findByRole('button', { name: 'Start session' });
+    expect(warm).not.toHaveBeenCalled();
+    expect(prime).not.toHaveBeenCalled();
+    idle();
+    expect(warm).toHaveBeenCalled();
+    expect(prime).toHaveBeenCalled();
+  });
+
+  it('warms them when the session player mounts', () => {
+    const idle = idleQueue();
+    const warm = vi.spyOn(sound, 'warm').mockImplementation(() => {});
+    render(<SessionPlayer session={demoSession({ warmUp: [], coolDown: [] })} layout="medium" wakeLock={wake} onExit={() => {}} />);
+    idle();
+    expect(warm).toHaveBeenCalled();
+  });
+});
+
+describe('warming without an idle callback (the iPad)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('waits at least WARM_FALLBACK_MS, so the first paint and an early tap come first', async () => {
+    const { warmWhenIdle, WARM_FALLBACK_MS } = await import('./sound');
+    expect(WARM_FALLBACK_MS).toBeGreaterThanOrEqual(1000);
+    vi.useFakeTimers();
+    vi.stubGlobal('requestIdleCallback', undefined);
+    vi.stubGlobal('cancelIdleCallback', undefined);
+    const calls: string[] = [];
+    const engine = { warm: () => calls.push('warm'), prime: () => calls.push('prime') } as unknown as Parameters<
+      typeof warmWhenIdle
+    >[0];
+    const cancel = warmWhenIdle(engine);
+    vi.advanceTimersByTime(WARM_FALLBACK_MS - 1);
+    expect(calls).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(calls).toEqual(['warm', 'prime']);
+    cancel();
   });
 });

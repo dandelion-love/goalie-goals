@@ -4,7 +4,6 @@ import { App } from './App';
 import './tokens.css';
 import './styles.css';
 import { installCueHook } from './cues';
-import { sound } from './sound';
 
 // The rubric's audit hook for the synthesised cues; development, test and demo builds only.
 // Written out in full (as cueHookEnabled) so a production build drops the call altogether.
@@ -16,7 +15,5 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// Compute the sound cues once the page is idle, in short slices, so the first cue (the Start
-// tap's) is ready by the time the keeper taps Start (story #97). The Start tap warms them too.
-if ('requestIdleCallback' in window) window.requestIdleCallback(() => sound.warm(), { timeout: 2000 });
-else setTimeout(() => sound.warm(), 500);
+// The sound cues are warmed by the keeper's home and the session player once the page is idle
+// (src/sound.ts `useWarmCues`, story #98), never on the parent's phone.

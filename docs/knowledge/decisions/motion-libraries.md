@@ -97,6 +97,16 @@ motion down for either person even when the device does not ask.
   lazy chunk of about 4 kB, loaded at session start. First render grows about 3 kB: the Web
   Animations API moments, the tokens and the pressed states. A reward element that mounts
   before the chunk arrives shows still, never hidden.
+- A custom path shape is passed to canvas-confetti with its matrix precomputed (story #98).
+  Without one, `shapeFromPath` tests a 500 by 500 grid of points to measure the path: one call
+  was a 210 to 350 ms main-thread task at 4x CPU. With the matrix it takes under a
+  millisecond, runs once when the chunk loads, and is reused. A finish that comes before
+  the shapes are ready skips the burst rather than waiting. The burst starts in a task of
+  its own, after the finish screen's.
+- The large screen changes (Start session, each step moving on, Done for today) are React
+  transitions (story #98), so a tap paints its response before the new screen renders.
+  Stop and "Something hurts" stay urgent. The audio context is made while the keeper's
+  home is idle, so the Start tap only resumes it.
 - Two parts of the table above are not built yet and are left for a later story: the XP
   bar filling (the app has no XP bar yet) and the larger streak bump with a "milestone"
   label (the app has no milestone rule yet).
