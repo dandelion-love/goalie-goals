@@ -80,6 +80,19 @@ class Rules(unittest.TestCase):
         self.assertClean("bind to 127.0.0.1 or 0.0.0.0")
         self.assertClean("save 12 of 15 shots, 3x10 reps, version 1.2.3")
 
+    def test_doi_is_not_an_id(self) -> None:
+        self.assertClean(j("see https://doi.org/10.3102/", "0034", "654302", "98487"))
+        self.assertClean(j("doi: 10.1136/bjsports-", "2013-092952"))
+        self.assertFlags(j("id 10.3102 then ", "0034", "654302", "98487"), "long numeric id")
+
+    def test_public_citation_ids(self) -> None:
+        self.assertClean(j("https://apps.apple.com/us/app/some-app/id", "57", "00", "60128"))
+        self.assertClean(j("https://who.int/publications/i/item/", "978924", "00", "15128"))
+        self.assertClean(j("ISBN ", "978", "03064", "06157"))
+        self.assertFlags(j("project ", "123", "4567", "89012"), "long numeric id")
+        self.assertFlags(j("https://example.com/item/", "123", "45678", "90123"),
+                         "long numeric id")
+
     def test_emails(self) -> None:
         self.assertFlags(j("kid", AT, "gmail", ".com"), "email address")
         self.assertClean(j("player", AT, "example", ".com"))
@@ -154,6 +167,18 @@ class Hook(unittest.TestCase):
         out = json.loads(r.stdout)["hookSpecificOutput"]
         self.assertEqual(out["hookEventName"], "PreToolUse")
         return out["permissionDecision"]
+
+    def test_worktree_root(self) -> None:
+        before = pg.ROOT
+        try:
+            pg.use_worktree_of(ROOT / "tools")
+            self.assertEqual(pg.ROOT, ROOT.resolve())
+            with tempfile.TemporaryDirectory() as other:
+                subprocess.run(["git", "init", "-q", other], check=True)
+                pg.use_worktree_of(Path(other))
+                self.assertEqual(pg.ROOT, ROOT.resolve())
+        finally:
+            pg.ROOT = before
 
     def test_gtd_write_blocked(self) -> None:
         r = self.run_hook({"tool_name": "mcp__abc123__capture",

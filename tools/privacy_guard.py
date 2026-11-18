@@ -58,6 +58,11 @@ PLACEHOLDER = re.compile(
     r"^(<.*>|\$\{.*\}|\{\{.*\}\}|\$[A-Z_]+|.*(example|placeholder|dummy|fake|changeme"
     r"|redacted|xxxx|your[_-]|not[_-]a[_-]real).*)$", re.I)
 NO_EDGE = r"(?<![A-Za-z0-9+/=_-])"
+# Public citation ids are not ids of ours: a DOI suffix (10.<registrant>/...), an App
+# Store app id (apps.apple.com/.../id<n>) and an ISBN-13 (978 or 979, 13 digits).
+PUBLIC_ID_BEFORE = re.compile(
+    r"(?:\b10\.\d{4,9}/\S*|apps\.apple\.com/\S*/id|\bISBN(?:-13)?[:\s]*)$", re.I)
+ISBN13 = re.compile(r"97[89]\d{10}")
 
 # (name, pattern, applies to messages and issue text too). Generic shapes only: nothing
 # private is named here.
@@ -212,6 +217,10 @@ def scan(text: str, where: str, *, message: bool = False,
                 if name == "email address" and ALLOWED_EMAIL.search(m.group(0)):
                     continue
                 if name == "credential in code" and PLACEHOLDER.match(m.group(1)):
+                    continue
+                if name == "long numeric id" and (
+                        PUBLIC_ID_BEFORE.search(line[:m.start()])
+                        or ISBN13.fullmatch(m.group(0))):
                     continue
                 hits.add(name)
                 spans.append(m.span())
@@ -425,6 +434,22 @@ def check_mcp(tool: str, data: dict) -> list[str]:
     return findings
 
 
+def use_worktree_of(cwd: Path) -> None:
+    """Scan the checkout the command runs in. The hook is started from the project
+    directory, but a session may work in another worktree of this repo; its staged
+    files and outgoing commits are the ones that matter, not the main checkout's."""
+    global ROOT
+    try:
+        top = Path(git("rev-parse", "--show-toplevel", root=cwd).strip())
+        theirs = git("rev-parse", "--path-format=absolute", "--git-common-dir",
+                     root=cwd).strip()
+        mine = git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()
+    except (subprocess.CalledProcessError, OSError):
+        return
+    if top.parts and Path(theirs).resolve() == Path(mine).resolve():
+        ROOT = top.resolve()
+
+
 def claude_hook(raw: str) -> int:
     try:
         event = json.loads(raw)
@@ -433,6 +458,7 @@ def claude_hook(raw: str) -> int:
     tool = event.get("tool_name", "")
     data = event.get("tool_input") or {}
     cwd = Path(event.get("cwd") or ROOT)
+    use_worktree_of(cwd)
     if tool in ("Bash", "PowerShell"):
         findings = check_command(data.get("command", ""), cwd)
     elif tool.startswith("mcp__"):
