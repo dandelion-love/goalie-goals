@@ -44,10 +44,10 @@ data at runtime, never in this repo.
 
 - git hooks `pre-commit`, `commit-msg` and `pre-push` (`core.hooksPath=.githooks`, set by
   the SessionStart hook; in a new clone run `git config core.hooksPath .githooks`);
-- Claude Code hooks before a git commit or push, a `gh` write, and every write tool of the
-  gtd and GitHub MCP servers (issues, comments, captures, PRs, board drafts).
+- Claude Code and Codex hooks before a git commit or push, a `gh` write, and every write
+  tool of the gtd and GitHub MCP servers (issues, comments, captures, PRs, board drafts).
 
-The Claude hook sees only what is already staged, so the git hooks are the final word.
+The agent hooks see only what is already staged, so the git hooks are the final word.
 
 By hand: `python3 tools/privacy_guard.py --text < draft.md` checks a draft,
 `--all` the tree, `--status` which private-term sources are loaded.

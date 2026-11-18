@@ -142,51 +142,62 @@ class Files(unittest.TestCase):
 
 
 class Hook(unittest.TestCase):
-    def run_hook(self, event: dict) -> subprocess.CompletedProcess:
+    def run_hook(self, event: dict, mode: str = "--claude-hook") -> str:
+        """The hook's decision: "deny" or "allow". It always exits 0."""
         env = {**os.environ, "GOALIE_PRIVATE_TERMS_TEXT": "Zebulon",
                "GOALIE_PRIVATE_TERMS": os.devnull, "GTD_PUBLIC_DENYLIST": os.devnull}
-        return subprocess.run([sys.executable, str(GUARD), "--claude-hook"],
-                              input=json.dumps(event), capture_output=True, text=True,
-                              env=env, timeout=60)
+        r = subprocess.run([sys.executable, str(GUARD), mode], input=json.dumps(event),
+                           capture_output=True, text=True, env=env, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        if not r.stdout.strip():
+            return "allow"
+        out = json.loads(r.stdout)["hookSpecificOutput"]
+        self.assertEqual(out["hookEventName"], "PreToolUse")
+        return out["permissionDecision"]
 
     def test_gtd_write_blocked(self) -> None:
         r = self.run_hook({"tool_name": "mcp__abc123__capture",
                            "tool_input": {"title": "Zebulon needs a stronger leap"}})
-        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertEqual(r, "deny")
 
     def test_gtd_write_clean(self) -> None:
         r = self.run_hook({"tool_name": "mcp__abc123__capture",
                            "tool_input": {"title": "The keeper needs a stronger leap"}})
-        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r, "allow")
 
     def test_gtd_read_ignored(self) -> None:
         r = self.run_hook({"tool_name": "mcp__abc123__issue_get",
                            "tool_input": {"query": "Zebulon"}})
-        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r, "allow")
 
     def test_other_mcp_ignored(self) -> None:
         r = self.run_hook({"tool_name": "mcp__gmail__search_threads",
                            "tool_input": {"query": j("from:coach", AT, "gmail.com")}})
-        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r, "allow")
 
     def test_gh_issue_blocked(self) -> None:
         r = self.run_hook({"tool_name": "Bash", "cwd": str(ROOT), "tool_input": {
             "command": "gh issue create --title 'Plan for Zebulon' --body x"}})
-        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertEqual(r, "deny")
 
     def test_gh_secret_exempt(self) -> None:
         r = self.run_hook({"tool_name": "Bash", "cwd": str(ROOT), "tool_input": {
             "command": j("gh secret set X --body ", "gh", "p_", "a1" * 18)}})
-        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r, "allow")
 
     def test_no_verify_blocked(self) -> None:
         r = self.run_hook({"tool_name": "Bash", "cwd": str(ROOT), "tool_input": {
             "command": "git commit --no-verify -m 'x'"}})
-        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertEqual(r, "deny")
+
+    def test_codex_mode(self) -> None:
+        r = self.run_hook({"tool_name": "mcp__gtd__capture",
+                           "tool_input": {"body": "Zebulon"}}, mode="--codex-hook")
+        self.assertEqual(r, "deny")
 
     def test_unrelated_tools_ignored(self) -> None:
         r = self.run_hook({"tool_name": "Write", "tool_input": {"content": "Zebulon"}})
-        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r, "allow")
 
 
 if __name__ == "__main__":

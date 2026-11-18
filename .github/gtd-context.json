@@ -1,0 +1,15 @@
+{
+  "profile": "software",
+  "project": {
+    "owner": "dandelion-love",
+    "number": 11
+  },
+  "mcp_url": "local",
+  "notify": {
+    "mentions": {
+      "james": "hobpond"
+    },
+    "push": "web-push",
+    "new_issues": "view"
+  }
+}

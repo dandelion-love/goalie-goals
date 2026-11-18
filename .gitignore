@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 *.local.*
+!/.gtd/BOARD.local.md
 .private/
 private/
 

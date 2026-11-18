@@ -1,0 +1,3 @@
+[submodule ".gtd/kit"]
+	path = .gtd/kit
+	url = https://github.com/dandelion-love/gtd-board-kit

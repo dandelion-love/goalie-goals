@@ -19,7 +19,8 @@ Modes:
   --range A..B      every commit in a range that no remote has yet
   --all             every tracked file
   --text            text on stdin, read as a message (check an issue body before posting)
-  --claude-hook     a Claude Code PreToolUse event on stdin; exit 2 blocks the call
+  --claude-hook     a Claude Code PreToolUse event on stdin; prints a deny decision
+  --codex-hook      the same for Codex (same event and deny shape)
   --session-start   a Claude Code SessionStart hook: wire the git hooks, report status
   --status          which private-term sources are loaded (never the terms themselves)
 
@@ -32,7 +33,7 @@ read when present:
   $GTD_PUBLIC_DENYLIST, else ~/.config/gtd/public-denylist.txt   (shared with gtd-board-kit)
 plus the gtd server's host when the board kit resolves it from outside the repo.
 
-Exit status: 0 clean, 1 private data found, 2 blocked (hook mode) or bad usage.
+Exit status: 0 clean (or a hook decision printed), 1 private data found, 2 bad usage.
 Standard library only.
 """
 from __future__ import annotations
@@ -439,11 +440,15 @@ def claude_hook(raw: str) -> int:
     else:
         return 0
     if findings:
-        print("privacy_guard: goalie-goals is a PUBLIC repository and this call would "
-              "publish private data. Blocked:\n" + "\n".join(findings[:20])
-              + "\nRewrite it in neutral terms (see .claude/skills/public-repo-privacy/"
-                "SKILL.md). Never bypass the guard.", file=sys.stderr)
-        return 2
+        reason = ("privacy_guard: goalie-goals is a PUBLIC repository and this call would "
+                  "publish private data. Blocked:\n" + "\n".join(findings[:20])
+                  + "\nRewrite it in neutral terms (see .claude/skills/public-repo-privacy/"
+                    "SKILL.md). Never bypass the guard.")
+        # The deny form both Claude Code and Codex read (as the board kit's agent_guard).
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse", "permissionDecision": "deny",
+            "permissionDecisionReason": reason}}))
+        print(reason, file=sys.stderr)
     return 0
 
 
@@ -484,7 +489,7 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 0
     mode = argv[0]
-    if mode == "--claude-hook":
+    if mode in ("--claude-hook", "--codex-hook"):
         return claude_hook(sys.stdin.read())
     if mode == "--session-start":
         return session_start()

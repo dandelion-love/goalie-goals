@@ -5,3 +5,5 @@ messages and author lines. Read `.claude/skills/public-repo-privacy/SKILL.md` be
 any of them, and follow it. The privacy guard (`tools/privacy_guard.py`) runs in the git
 hooks (`git config core.hooksPath .githooks`); never bypass it, and run
 `python3 tools/privacy_guard.py --text < draft.md` on issue or PR text before posting.
+
+Board work (gtd-board-kit): read .gtd/kit/BOARD.md, then .gtd/BOARD.local.md, before touching the board.

@@ -11,3 +11,5 @@ messages and author lines. Before writing anything that leaves this machine, fol
 - Guard tests: `python3 tests/test_privacy_guard.py`
 - Secrets and deployment addresses live outside the repo (Secret Manager, a gitignored
   `.env.local`, git config). Commit only `.env.example`, with placeholders.
+
+Board work (gtd-board-kit): @.gtd/kit/BOARD.md then @.gtd/BOARD.local.md
