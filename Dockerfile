@@ -30,6 +30,8 @@ COPY --from=deps /app/node_modules node_modules
 COPY server/package.json server/
 COPY --from=build /app/server/dist server/dist
 COPY --from=build /app/web/dist web
+# Exercise cards, figures and credits; the API serves approved versions only.
+COPY content content
 USER node
 EXPOSE 8080
 CMD ["node", "server/dist/index.js"]

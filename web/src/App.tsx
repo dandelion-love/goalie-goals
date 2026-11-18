@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchMe, reconnect, type MeResult } from './api';
 import { useLayout, type Layout } from './layout';
 import { ApprovedTraining, History, ParentInbox } from './ApprovalScreens';
+import { TodayPanel } from './LessonPath';
+import { SessionPlayer } from './SessionPlayer';
+import type { Session, SessionResult } from './training';
+import { createWakeLock, type WakeLockController } from './wakeLock';
 
 type View = { kind: 'loading' } | MeResult;
 
@@ -9,10 +13,15 @@ export interface AppProps {
   /** Injected in tests; the browser's fetch otherwise. */
   fetchImpl?: typeof fetch;
   onReconnect?: () => void;
+  /** Injected in tests; the browser's Screen Wake Lock otherwise. */
+  wakeLock?: WakeLockController;
+  /** Hook for a finished session. XP and streaks (a later story) are recorded from here. */
+  onSessionFinish?: (result: SessionResult) => void;
 }
 
-export function App({ fetchImpl, onReconnect = () => reconnect() }: AppProps) {
+export function App({ fetchImpl, onReconnect = () => reconnect(), wakeLock, onSessionFinish }: AppProps) {
   const layout = useLayout();
+  const wake = useMemo(() => wakeLock ?? createWakeLock(), [wakeLock]);
   const [view, setView] = useState<View>({ kind: 'loading' });
 
   const load = useCallback(async () => {
@@ -30,7 +39,15 @@ export function App({ fetchImpl, onReconnect = () => reconnect() }: AppProps) {
         <span className="brand">Goalie Goals</span>
       </header>
       <main className="app-main">
-        <Screen view={view} layout={layout} fetchImpl={fetchImpl} onReconnect={onReconnect} onRetry={load} />
+        <Screen
+          view={view}
+          layout={layout}
+          fetchImpl={fetchImpl}
+          onReconnect={onReconnect}
+          onRetry={load}
+          wakeLock={wake}
+          onSessionFinish={onSessionFinish}
+        />
       </main>
     </div>
   );
@@ -42,16 +59,20 @@ function Screen({
   fetchImpl,
   onReconnect,
   onRetry,
+  wakeLock,
+  onSessionFinish,
 }: {
   view: View;
   layout: Layout;
   fetchImpl?: typeof fetch;
   onReconnect: () => void;
   onRetry: () => void;
+  wakeLock: WakeLockController;
+  onSessionFinish?: (result: SessionResult) => void;
 }) {
   switch (view.kind) {
     case 'loading':
-      return <p className="status" role="status">Loading…</p>;
+      return <p className="status" role="status">Loadingâ€¦</p>;
     case 'expired':
       return (
         <section className="notice" aria-labelledby="expired-title">
@@ -73,7 +94,9 @@ function Screen({
         </section>
       );
     case 'signed-in':
-      if (view.role === 'keeper') return <KeeperHome layout={layout} fetchImpl={fetchImpl} />;
+      if (view.role === 'keeper') return (
+          <KeeperHome layout={layout} fetchImpl={fetchImpl} wakeLock={wakeLock} onSessionFinish={onSessionFinish} />
+        );
       if (view.role === 'parent') return <ParentHome layout={layout} fetchImpl={fetchImpl} />;
       return <NotSetUp />;
   }
@@ -88,10 +111,39 @@ function NotSetUp() {
   );
 }
 
-function KeeperHome({ layout, fetchImpl }: { layout: Layout; fetchImpl?: typeof fetch }) {
+function KeeperHome({
+  layout,
+  fetchImpl,
+  wakeLock,
+  onSessionFinish,
+}: {
+  layout: Layout;
+  fetchImpl?: typeof fetch;
+  wakeLock: WakeLockController;
+  onSessionFinish?: (result: SessionResult) => void;
+}) {
+  const [playing, setPlaying] = useState<Session | null>(null);
+  const [doneToday, setDoneToday] = useState(false);
+
+  if (playing) {
+    return (
+      <SessionPlayer
+        session={playing}
+        layout={layout}
+        wakeLock={wakeLock}
+        onFinish={(result) => {
+          setDoneToday(true);
+          onSessionFinish?.(result);
+        }}
+        onExit={() => setPlaying(null)}
+      />
+    );
+  }
+
   return (
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Keeper home</h1>
+      <TodayPanel fetchImpl={fetchImpl} onStart={setPlaying} doneToday={doneToday} />
       <div className={layout === 'expanded' ? 'panes' : 'stack'}>
         <ApprovedTraining fetchImpl={fetchImpl} />
         <History fetchImpl={fetchImpl} />
