@@ -81,6 +81,15 @@ export function praiseFor(cue: string): string {
   return `${cue}: nice`;
 }
 
+/**
+ * The one cue shown large during a set (story 112): the card's cues in turn, one a set, so the
+ * keeper hears a different one each set and the steps can stay below the timer.
+ */
+export function cueForSet(card: Card, set: number): string | null {
+  if (!card.cues.length) return null;
+  return card.cues[(Math.max(1, set) - 1) % card.cues.length];
+}
+
 /** How many reps make a set's target for counted work; holds are timed instead. */
 export function repTarget(card: Card): number {
   return card.dose.kind === 'hold' ? 0 : card.dose.reps ?? 0;

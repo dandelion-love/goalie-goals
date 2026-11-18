@@ -239,6 +239,10 @@ describe("today's session", () => {
     expect(plank.steps.length).toBeGreaterThanOrEqual(3);
     expect(plank.cues).toContain('Stay board-straight');
     expect(plank.mistakes[0]).toHaveProperty('fix');
+    // Story 112: the card's setup, why and parent checks reach the player.
+    expect(plank.why).toMatch(/\S/);
+    expect(plank.setup).toMatchObject({ space: expect.any(String), equipment: expect.any(String), parent: expect.any(String) });
+    expect(plank.parentCheck).toContain('Hips do not sag or pike');
     expect(plank.credit).toMatch(/^Figure: /);
     expect(plank.figureUrl).toMatch(/^\/api\/training\/cards\/plank\/figure\.svg\?v=sha256/);
   });

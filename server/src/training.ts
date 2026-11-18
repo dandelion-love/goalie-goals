@@ -77,6 +77,8 @@ export interface ClientCard {
   steps: string[];
   cues: string[];
   mistakes: { mistake: string; fix: string }[];
+  /** What the parent watches for in a set (story 112): shown before set 1 and when rating form. */
+  parentCheck: string[];
   stopIf: string[];
   easier: { variant: string; useWhen: string };
   dose: ExerciseCard['dose'];
@@ -413,6 +415,7 @@ export class TrainingService {
       steps: [...card.steps],
       cues: [...card.cues],
       mistakes: card.mistakes.map((m) => ({ ...m })),
+      parentCheck: [...card.parent_check],
       stopIf: [...card.stop_if],
       easier: { variant: card.easier.variant, useWhen: card.easier.use_when },
       dose: { ...card.dose },

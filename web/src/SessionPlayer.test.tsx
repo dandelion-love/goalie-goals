@@ -8,7 +8,7 @@ import { cascaded, parseRules, px } from './cssCascade';
 import { KEEP_AWAKE_TAP_MS } from './Countdown';
 import { fetchToday, type SessionResult } from './training';
 import type { WakeLockController, WakeStatus } from './wakeLock';
-import { PLANK, demoSession, keeperServer, todayWith } from './session.fixture';
+import { BRIDGE, PLANK, demoSession, keeperServer, todayWith } from './session.fixture';
 
 /** A wake lock that answers `result`, counting acquires and releases. */
 function fakeWake(result: WakeStatus) {
@@ -300,6 +300,74 @@ describe('touch targets in the stylesheet', () => {
     expect(cascaded(rules, hurts.parentElement!, 'display')).toBe('flex');
     expect(px(cascaded(rules, hurts.parentElement!, 'gap'))).toBeGreaterThanOrEqual(24);
     expect(px(cascaded(rules, stop, 'margin-left'))).toBe(0);
+  });
+});
+
+// Story 112: the card's setup, why and parent checks, and one cue a set, for a hold card and a
+// reps card, in portrait and landscape.
+describe.each([
+  { kind: 'hold', card: PLANK, endSet: 'End set' },
+  { kind: 'reps', card: BRIDGE, endSet: 'Set done' },
+])('the card in the player for a $kind card (story 112)', ({ card, endSet }) => {
+  const one = demoSession({ warmUp: [], coolDown: [], cards: [card] });
+
+  it.each(SIZES)('shows the setup, why and parent checks before set 1, under Start, on $name (AC1)', ({ width, height, layout }) => {
+    setViewport(width, height);
+    render(<SessionPlayer session={one} layout={layout} wakeLock={fakeWake('active')} onExit={() => {}} />);
+    const controls = document.querySelector<HTMLElement>('.player-controls')!;
+    const start = within(controls).getByRole('button', { name: 'Start set 1' });
+    // Start keeps its place: the first thing in the controls, ahead of the intro.
+    expect(controls.firstElementChild).toBe(start);
+    const intro = within(controls).getByRole('region', { name: 'For the parent' });
+    expect(start.compareDocumentPosition(intro) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const line of [card.setup.space, card.setup.equipment, card.setup.parent, card.why]) {
+      expect(within(intro).getByText(line)).toBeTruthy();
+    }
+    expect(within(intro).getByText('Space')).toBeTruthy();
+    expect(within(intro).getByText('Position')).toBeTruthy();
+    expect(within(intro).getByText('Why')).toBeTruthy();
+    const checks = within(intro).getByRole('heading', { name: 'Watch for' }).nextElementSibling as HTMLElement;
+    expect(within(checks).getAllByRole('listitem').map((li) => li.textContent)).toEqual(card.parentCheck);
+    // Nothing in the intro is a control: Start stays the one action.
+    expect(within(intro).queryAllByRole('button')).toEqual([]);
+  });
+
+  it('shows one cue large by the timer or counter, a different one each set, with the steps still there (AC2)', () => {
+    render(<SessionPlayer session={one} layout="expanded" wakeLock={fakeWake('active')} onExit={() => {}} />);
+    const controls = () => document.querySelector<HTMLElement>('.player-controls')!;
+    const cueNow = () => controls().querySelector('.set-cue')?.textContent;
+    expect(cueNow()).toBeUndefined();
+    click('Start set 1');
+    expect(cueNow()).toBe(`Cue: ${card.cues[0]}`);
+    // The cue leads the controls, right above the timer or counter.
+    expect(controls().firstElementChild?.classList.contains('set-cue')).toBe(true);
+    expect(screen.queryByRole('region', { name: 'For the parent' })).toBeNull();
+    const side = document.querySelector<HTMLElement>('.player-side')!;
+    for (const step of card.steps) expect(within(side).getByText(step)).toBeTruthy();
+    click(endSet);
+    expect(cueNow()).toBeUndefined();
+    click('Skip');
+    click('Skip rest');
+    expect(cueNow()).toBe(`Cue: ${card.cues[1]}`);
+  });
+
+  it('lists the parent checks beside the cue buttons when rating, and rates by cue (AC3)', () => {
+    const results: SessionResult[] = [];
+    render(<SessionPlayer session={one} layout="medium" wakeLock={fakeWake('active')} onFinish={(r) => results.push(r)} onExit={() => {}} />);
+    click('Start set 1');
+    click(endSet);
+    const ask = document.querySelector<HTMLElement>('.feedback-ask')!;
+    const checks = within(ask).getByRole('heading', { name: 'Watch for' }).nextElementSibling as HTMLElement;
+    expect(within(checks).getAllByRole('listitem').map((li) => li.textContent)).toEqual(card.parentCheck);
+    // The checks are read, not tapped: the buttons are still the card's cues and Skip.
+    expect(within(ask).getAllByRole('button').map((b) => b.textContent)).toEqual([...card.cues, 'Skip']);
+    click(card.cues[0]);
+    expect(screen.getByRole('status').textContent).toBe(`${card.cues[0]}: nice`);
+    click('Skip rest');
+    click(endSet);
+    click('Skip');
+    // A rating is still the cue itself, as the server and a later story read it.
+    expect(results[0].praised).toEqual([card.cues[0]]);
   });
 });
 

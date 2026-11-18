@@ -633,6 +633,55 @@ button:active:not(:disabled) {
   stroke-dasharray: 1;
 }
 
+/* Story 112: the set's one cue, large beside its timer or counter, read from a few metres. */
+.set-cue {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-3xl);
+  line-height: var(--leading-cue);
+  font-weight: var(--weight-bold);
+  text-align: center;
+  color: var(--text);
+}
+
+/* Before set 1: the setup, why and parent checks, compact under Start (story 112). */
+.card-intro {
+  margin-top: var(--space-4);
+}
+
+.card-intro h2 {
+  margin: 0 0 var(--space-2);
+}
+
+.card-setup {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+
+/* Each label and its line sit in the list's two columns, so labels line up. */
+.card-setup > div {
+  display: contents;
+}
+
+.card-setup dt {
+  font-weight: var(--weight-bold);
+}
+
+.card-setup dd {
+  margin: 0;
+}
+
+.parent-checks h3 {
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+.parent-checks ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-3);
+}
+
 .cue-buttons {
   display: grid;
   gap: var(--space-3);

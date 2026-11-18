@@ -27,6 +27,8 @@ export interface Card {
   steps: string[];
   cues: string[];
   mistakes: { mistake: string; fix: string }[];
+  /** What the parent watches for in a set (story 112). */
+  parentCheck: string[];
   stopIf: string[];
   easier: { variant: string; useWhen: string };
   dose: Dose;

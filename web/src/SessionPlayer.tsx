@@ -2,6 +2,7 @@ import { startTransition, useEffect, useLayoutEffect, useMemo, useReducer, useRe
 import { Countdown } from './Countdown';
 import type { Layout } from './layout';
 import {
+  cueForSet,
   initialState,
   reduce,
   repTarget,
@@ -320,17 +321,30 @@ function CardStep({
   const p = state.phase;
   const { dose } = card;
   const sideText = dose.per_side && p.kind === 'work' ? `, side ${p.side} of 2` : '';
+  // Story 112 AC2: the set's one cue, large, right above its timer or counter.
+  const cue = p.kind === 'work' ? cueForSet(card, p.set) : null;
+  const setCue = cue && (
+    <p className="set-cue" aria-live="polite">
+      <span className="sr-only">Cue: </span>
+      {cue}
+    </p>
+  );
 
   let controls: ReactNode = null;
   if (p.kind === 'ready') {
+    // Start stays first, where it always was, so the intro below it never pushes it out of view.
     controls = (
-      <button type="button" className="primary session-control wide" onClick={onNext}>
-        Start set 1
-      </button>
+      <>
+        <button type="button" className="primary session-control wide" onClick={onNext}>
+          Start set 1
+        </button>
+        <CardIntro card={card} />
+      </>
     );
   } else if (p.kind === 'work' && dose.kind === 'hold') {
     controls = (
       <>
+        {setCue}
         <Countdown
           key={`${state.step}-${p.set}-${p.side}`}
           seconds={dose.seconds ?? 0}
@@ -350,6 +364,7 @@ function CardStep({
     const unit = dose.kind === 'efforts' ? 'efforts' : dose.kind === 'contacts' ? 'contacts' : 'reps';
     controls = (
       <>
+        {setCue}
         <p className="counter" aria-live="polite">
           <span className="counter-label">
             Set {p.set} of {dose.sets}
@@ -379,6 +394,7 @@ function CardStep({
           How did set {p.set} look?
         </h2>
         <p className="meta">Parent: tap a cue that looked good.</p>
+        <ParentChecks card={card} />
         <div className="cue-buttons">
           {card.cues.map((cue) => (
             <button key={cue} type="button" className="primary session-control" onClick={() => onPraise(cue)}>
@@ -455,6 +471,59 @@ function CardStep({
         </p>
         <p className="meta">Sets done this session: {state.setsDone}</p>
       </div>
+    </div>
+  );
+}
+
+/** The setup lines a card may hold, in the order the parent sets up, with short labels. */
+const SETUP_LINES: { key: string; label: string }[] = [
+  { key: 'space', label: 'Space' },
+  { key: 'equipment', label: 'Gear' },
+  { key: 'surface_note', label: 'Surface' },
+  { key: 'parent', label: 'Position' },
+];
+
+/**
+ * Before set 1 (story 112 AC1): how to set up, why the move helps and what the parent watches
+ * for, all from the card. Compact, below Start, so Start keeps its place on the iPad.
+ */
+function CardIntro({ card }: { card: Card }) {
+  const lines = SETUP_LINES.filter(({ key }) => card.setup[key]?.trim());
+  return (
+    <section className="card-intro" aria-labelledby="card-intro-title">
+      <h2 id="card-intro-title">For the parent</h2>
+      <dl className="card-setup">
+        {lines.map(({ key, label }) => (
+          <div key={key}>
+            <dt>{label}</dt>
+            <dd>{card.setup[key]}</dd>
+          </div>
+        ))}
+        <div>
+          <dt>Why</dt>
+          <dd>{card.why}</dd>
+        </div>
+      </dl>
+      <ParentChecks card={card} />
+    </section>
+  );
+}
+
+/**
+ * The card's parent checks (story 112): what to watch in a set, shown before set 1 and beside the
+ * cue buttons when rating form. A list to read, not buttons: the parent still rates by cue, so a
+ * rating stays one of the card's cues.
+ */
+function ParentChecks({ card }: { card: Card }) {
+  if (!card.parentCheck.length) return null;
+  return (
+    <div className="parent-checks">
+      <h3>Watch for</h3>
+      <ul>
+        {card.parentCheck.map((c) => (
+          <li key={c}>{c}</li>
+        ))}
+      </ul>
     </div>
   );
 }
