@@ -29,7 +29,18 @@ export interface AuditEntry {
   /** The request the event is about (sent by the server; absent in older fixtures). */
   requestId?: string;
   at: string;
-  action: 'requested' | 'approved' | 'declined' | 'expired' | 'refused' | 'paused' | 'cleared' | 'changed' | 'undone';
+  action:
+    | 'requested'
+    | 'approved'
+    | 'declined'
+    | 'expired'
+    | 'refused'
+    | 'paused'
+    | 'cleared'
+    | 'changed'
+    | 'undone'
+    /** A start queued on the keeper's device that reached the server after an undo (story #94). */
+    | 'started';
   actorRole: 'keeper' | 'parent' | 'system';
   /**
    * `pause`: a pain report or its clear; the title names the body area only.

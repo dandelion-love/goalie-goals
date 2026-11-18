@@ -1,8 +1,10 @@
 // What the app keeps on the device so it still opens offline (front-end Decision, PWA scope).
 //
 // Only what that Decision allows: today's approved session and the signed-in role, which picks
-// the home to show. The pause and its outbox live in pain.ts. History, the audit log, the inbox
-// and progress always come from the network and are never stored here.
+// the home to show. The pause and its outbox live in pain.ts; queued session starts and finishes
+// in outbox.ts, each deleted once the server confirms it; the figures of today's approved cards
+// in figures.ts. History, the audit log, the inbox and progress always come from the network and
+// are never stored here.
 
 import { useEffect, useState } from 'react';
 import type { Role } from './api';

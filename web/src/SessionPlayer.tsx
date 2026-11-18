@@ -16,7 +16,7 @@ import type { Card, Session, SessionResult } from './training';
 import { useWakeLock, type WakeLockController } from './wakeLock';
 import { FinishProgressView } from './ProgressPanel';
 import { SEE_SOMEONE } from './PainScreens';
-import type { FinishProgress } from './progress';
+import type { FinishProgressState } from './progress';
 import { CueContext, usePlayerSound, useStateCues } from './sound';
 
 export interface SessionPlayerProps {
@@ -25,8 +25,16 @@ export interface SessionPlayerProps {
   wakeLock: WakeLockController;
   /** Called once when the session ends, however it ends. XP and streaks are recorded from here. */
   onFinish?: (result: SessionResult) => void;
+  /**
+   * Stop was tapped: the session as it would end now, so the app can keep it on the device
+   * while Resume is offered (it survives the app closing). `onFinish` still follows when the
+   * Resume window closes.
+   */
+  onStop?: (result: SessionResult) => void;
+  /** Resume was tapped: the stop kept by `onStop` no longer applies. */
+  onResume?: () => void;
   /** What the finished session earned, once recorded; shown on the finish screen. */
-  progress?: FinishProgress | 'saving' | 'unsaved' | null;
+  progress?: FinishProgressState;
   /** Shown on the finish screen after "Something hurts": the pain report form. */
   hurtForm?: ReactNode;
   /** Leave the finish screen. */
@@ -36,7 +44,17 @@ export interface SessionPlayerProps {
 export const WAKE_FALLBACK_TEXT = 'Screen may dim: tap the timer to keep it awake.';
 
 /** The ~10 minute session: warm-up, each approved card, cool-down, then a finish screen. */
-export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, hurtForm, onExit }: SessionPlayerProps) {
+export function SessionPlayer({
+  session,
+  layout,
+  wakeLock,
+  onFinish,
+  onStop,
+  onResume,
+  progress,
+  hurtForm,
+  onExit,
+}: SessionPlayerProps) {
   const steps = useMemo(() => stepsOf(session), [session]);
   const [state, dispatch] = useReducer(
     (s: PlayerState, a: Parameters<typeof reduce>[2]) => reduce(steps, s, a),
@@ -51,19 +69,20 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
   useStateCues(state, cue);
   const soundToggle = <SoundToggle muted={muted} onChange={setMuted} />;
 
+  const resultOf = (outcome: Outcome): SessionResult => ({
+    itemId: session.itemId,
+    itemVersion: session.itemVersion,
+    outcome,
+    praised: state.praised,
+    setsDone: state.setsDone,
+    warmUpLogged: state.warmUpLogged,
+    startedAt: startedAt.current,
+    endedAt: new Date().toISOString(),
+  });
   const report = (outcome: Outcome) => {
     if (reported.current) return;
     reported.current = true;
-    onFinish?.({
-      itemId: session.itemId,
-      itemVersion: session.itemVersion,
-      outcome,
-      praised: state.praised,
-      setsDone: state.setsDone,
-      warmUpLogged: state.warmUpLogged,
-      startedAt: startedAt.current,
-      endedAt: new Date().toISOString(),
-    });
+    onFinish?.(resultOf(outcome));
   };
   const reportRef = useRef(report);
   reportRef.current = report;
@@ -107,6 +126,7 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
           onResume={() => {
             lastTap.current = Date.now();
             dispatch({ type: 'resume' });
+            onResume?.();
           }}
           onExit={() => {
             // Leaving during the Resume window: the session is over now.
@@ -139,7 +159,14 @@ export function SessionPlayer({ session, layout, wakeLock, onFinish, progress, h
             <button type="button" className="danger session-control" onClick={() => dispatch({ type: 'stop', outcome: 'hurt' })}>
               Something hurts
             </button>
-            <button type="button" className="secondary session-control" onClick={() => dispatch({ type: 'stop', outcome: 'stopped' })}>
+            <button
+              type="button"
+              className="secondary session-control"
+              onClick={() => {
+                dispatch({ type: 'stop', outcome: 'stopped' });
+                onStop?.(resultOf('stopped'));
+              }}
+            >
               Stop
             </button>
           </div>
@@ -431,7 +458,7 @@ function FinishScreen({
 }: {
   outcome: Outcome;
   praised: string[];
-  progress?: FinishProgress | 'saving' | 'unsaved' | null;
+  progress?: FinishProgressState;
   hurtForm?: ReactNode;
   soundToggle?: ReactNode;
   onResume?: () => void;

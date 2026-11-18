@@ -71,6 +71,8 @@ export interface PauseSource {
 export const NO_PAUSES: PauseSource = { spans: async () => [] };
 
 export interface RecordInput {
+  /** The device's id for this finish, when it came from the outbox: a resend is recorded once. */
+  id?: string;
   date: string;
   itemId: string;
   itemVersion: string;
@@ -129,6 +131,9 @@ export class ProgressService {
   /** Record a finished session (however it ended) and return what it earned. */
   async record(input: RecordInput, recordedBy: Role): Promise<SessionRecord> {
     const records = await this.store.list();
+    // The outbox resends a finish whose answer was lost: give back the record it made.
+    const same = input.id ? records.find((r) => r.id === input.id) : undefined;
+    if (same) return same;
     const planned = this.plan.sessionFor(input.date) !== null;
     const first = !records.some((r) => r.date === input.date);
     // Unknown versions get no stars: the cap is the server's own plan, never the client's.
@@ -139,7 +144,7 @@ export class ProgressService {
         ? sessionCredit({ outcome: input.outcome, warmUpLogged: input.warmUpLogged, praisedSets: input.praisedSets, plannedSets })
         : { ...NO_CREDIT };
     const record: SessionRecord = {
-      id: randomUUID(),
+      id: input.id ?? randomUUID(),
       date: input.date,
       itemId: input.itemId,
       itemVersion: input.itemVersion,

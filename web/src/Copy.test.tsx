@@ -227,6 +227,30 @@ describe('the words on both homes (AC1)', () => {
     checkCopy('stopped', ELSEWHERE);
   });
 
+  it('offline: the progress panel and a finish saved on the device (story #94)', async () => {
+    const base = keeperServer(todayWith({ today: demoSession({ warmUp: [], coolDown: [], cards: [PLANK] }) })).fetchImpl;
+    const net = { online: true };
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!net.online) throw new TypeError('Failed to fetch');
+      return base(input, init);
+    }) as unknown as typeof fetch;
+    render(<App fetchImpl={fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
+    const startButton = await screen.findByRole('button', { name: 'Start session' });
+    net.online = false;
+    fireEvent.click(startButton);
+    click('Start set 1');
+    click('End set');
+    click('Skip');
+    click('Skip rest');
+    click('End set');
+    click('Skip');
+    await screen.findByText('Saved on this device; it will sync.');
+    checkCopy('finish saved on the device', ELSEWHERE);
+    click('Done for today');
+    await screen.findByText(/Progress will update here when you're back online/);
+    checkCopy('progress offline', ELSEWHERE);
+  });
+
   it('covered every screen it names', () => {
     expect(screensSeen.length).toBeGreaterThanOrEqual(12);
   });

@@ -10,7 +10,8 @@
 // offered. The "approved maintenance session" rung is not built yet; the keeper is offered
 // rest instead.
 
-import type { ApprovalService, ItemContent } from './approvals.js';
+import type { ApprovalRequest, ApprovalService, ItemContent } from './approvals.js';
+import type { Role } from './roles.js';
 import { itemVersion } from './approvals.js';
 import { cardSeconds, doseText, type CardSource, type ContentLibrary, type ExerciseCard } from './content.js';
 
@@ -308,7 +309,9 @@ export class TrainingService {
    */
   async plannedSets(version: string): Promise<number | null> {
     const snap = this.snapshots.sessions.get(version);
-    if (!snap || !(await this.playable(snap))) return null;
+    // A started session keeps its cap even if an approval it used was undone after the start
+    // was queued on the device (story #94 AC2): the keeper's XP stands.
+    if (!snap || !(this.hasStarted(snap) || (await this.playable(snap)))) return null;
     return snap.cards.reduce((s, c) => s + c.source.card.dose.sets, 0);
   }
 
@@ -322,6 +325,39 @@ export class TrainingService {
     if (!snap || snap.itemId !== itemId || !(await this.playable(snap))) return false;
     this.snapshots.started.add(versionKey(snap.itemId, snap.itemVersion));
     for (const c of snap.cards) this.snapshots.started.add(versionKey(c.itemId, c.itemVersion));
+    return true;
+  }
+
+  /**
+   * A start that was queued on the keeper's device and arrives late (story #94 AC2). When the
+   * parent undid an approval this session uses before the start reached the server, the
+   * keeper began in good faith: the start is still recorded, each undone item gets its own
+   * audit event (`LATE_START_REASON`), and the session's results and XP stand. The undone
+   * versions stay out of today's offer until they are approved again. A version that was
+   * never approved, or was declined without an undo, is still refused (false). So is a start
+   * whose `date` (the device's local date of the session) is not the day of the undo: a stale
+   * or crafted start days later never marks an unapproved session as started.
+   */
+  async markStartedLate(
+    itemId: string,
+    version: string,
+    actor: { account: string; role: Role },
+    date: string,
+  ): Promise<boolean> {
+    const snap = this.snapshots.sessions.get(version);
+    if (!snap || snap.itemId !== itemId || !DATE_RE.test(date)) return false;
+    const undone: ApprovalRequest[] = [];
+    for (const item of [snap, ...snap.cards]) {
+      if (await this.approvals.isApproved(item.itemId, item.itemVersion)) continue;
+      const request = await this.approvals.undoneRequest(item.itemId, item.itemVersion, date);
+      if (!request) return false;
+      undone.push(request);
+    }
+    // A resend of the same start is recorded once.
+    const already = this.hasStarted(snap);
+    this.snapshots.started.add(versionKey(snap.itemId, snap.itemVersion));
+    for (const c of snap.cards) this.snapshots.started.add(versionKey(c.itemId, c.itemVersion));
+    if (!already) for (const r of undone) await this.approvals.logLateStart(r, actor);
     return true;
   }
 

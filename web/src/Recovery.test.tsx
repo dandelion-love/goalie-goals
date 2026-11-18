@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { App } from './App';
 import { MemoryOfflineStore, LocalOfflineStore, ROLE_KEY, TODAY_KEY } from './offline';
 import { MemoryPauseStore } from './pain';
-import { OFFLINE_SHELL, workboxOptions } from './pwaConfig';
+import { figureRoute, navigationRoute, OFFLINE_SHELL, workboxOptions } from './pwaConfig';
 import type { AuditEntry, PendingRequest } from './approvals';
 import type { WakeLockController } from './wakeLock';
 import { todayWith } from './session.fixture';
@@ -117,8 +117,9 @@ describe('offline (AC2)', () => {
     expect(workboxOptions.navigateFallback).toBeNull();
     expect(workboxOptions.globPatterns).toContain(OFFLINE_SHELL);
     expect(workboxOptions.globPatterns.some((g) => g.includes('html') && g !== OFFLINE_SHELL)).toBe(false);
-    expect(workboxOptions.runtimeCaching).toHaveLength(1);
-    const [nav] = workboxOptions.runtimeCaching;
+    // Navigations first; the only other route is today's figures (story #94, outbox.test.ts).
+    expect(workboxOptions.runtimeCaching).toEqual([navigationRoute, figureRoute]);
+    const nav = navigationRoute;
     expect(nav.handler).toBe('NetworkOnly');
     expect(nav.options.precacheFallback.fallbackURL).toBe(OFFLINE_SHELL);
     expect(nav.urlPattern({ request: { mode: 'navigate' } as Request })).toBe(true);

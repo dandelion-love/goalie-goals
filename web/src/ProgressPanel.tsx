@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSettled } from './Loading';
-import { fetchProgress, type FinishProgress, type ProgressSummary, type Run } from './progress';
+import { useOnline } from './offline';
+import { fetchProgress, OfflineError, type FinishProgressState, type ProgressSummary, type Run } from './progress';
 
 // Gain framing only (progression Decision): what the pair has built, never what they could
 // lose. A run that ended is shown as a completed run; there is no repair offer.
@@ -9,6 +10,11 @@ function formatDay(date: string): string {
   const d = new Date(`${date}T00:00:00`);
   return Number.isNaN(d.getTime()) ? date : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
+
+/** The panel's text when the summary can't be fetched because the device is offline (story #94 AC4). */
+export const PROGRESS_OFFLINE_TEXT = "You're offline. Progress will update here when you're back online.";
+/** Saved on the device, waiting for the network: the finish screen's line (story #94 AC3). */
+export const QUEUED_TEXT = 'Saved on this device; it will sync.';
 
 const days = (n: number) => `${n} training ${n === 1 ? 'day' : 'days'}`;
 
@@ -71,20 +77,25 @@ export function ProgressPanel({
   refresh?: number;
   onSettled?: () => void;
 }) {
-  const [state, setState] = useState<{ kind: 'loading' } | { kind: 'ready'; data: ProgressSummary } | { kind: 'error' }>({
+  const [state, setState] = useState<
+    { kind: 'loading' } | { kind: 'ready'; data: ProgressSummary } | { kind: 'error' } | { kind: 'offline' }
+  >({
     kind: 'loading',
   });
+  const online = useOnline();
   useSettled(state.kind !== 'loading', onSettled);
 
+  // Back online: load again, so sessions synced from the device show.
   useEffect(() => {
     let live = true;
     fetchProgress(fetchImpl)
       .then((data) => live && setState({ kind: 'ready', data }))
-      .catch(() => live && setState({ kind: 'error' }));
+      .catch((e: unknown) => live && setState({ kind: e instanceof OfflineError || !online ? 'offline' : 'error' }));
     return () => {
       live = false;
     };
-  }, [fetchImpl, refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchImpl, refresh, online]);
 
   return (
     <article className="card progress" aria-labelledby="progress-title" aria-busy={state.kind === 'loading'}>
@@ -96,6 +107,7 @@ export function ProgressPanel({
         </>
       )}
       {state.kind === 'error' && <p>Progress will show here after your next session.</p>}
+      {state.kind === 'offline' && <p>{PROGRESS_OFFLINE_TEXT}</p>}
       {state.kind === 'ready' && (
         <>
           <Streaks summary={state.data} />
@@ -120,9 +132,16 @@ export function ProgressPanel({
 }
 
 /** This session's XP and the streaks after it, on the finish screen. */
-export function FinishProgressView({ progress }: { progress: FinishProgress | 'saving' | 'unsaved' | null | undefined }) {
+export function FinishProgressView({ progress }: { progress: FinishProgressState | undefined }) {
   if (!progress) return null;
   if (progress === 'saving') return <p className="meta" role="status">Adding up today's XP…</p>;
+  if (progress === 'queued') {
+    return (
+      <p className="meta queued" role="status">
+        {QUEUED_TEXT}
+      </p>
+    );
+  }
   if (progress === 'unsaved') return <p className="meta">Couldn't reach the app to add up today's XP.</p>;
   const { credit, summary } = progress;
   if (credit.total === 0) {

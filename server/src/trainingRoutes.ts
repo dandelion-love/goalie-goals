@@ -35,18 +35,31 @@ export function registerTrainingRoutes(
 
   // The keeper starts a session. Recorded so an approval it uses can no longer be undone; a
   // version that is no longer approved (the parent just undid it) is refused with 409.
-  app.post<{ Body: { itemId?: unknown; itemVersion?: unknown } | undefined }>(
+  // `late: true`: the device queued this start and could not send it at the Start tap (story
+  // #94). If the parent's undo landed first, the session still counts: it is recorded and
+  // audited as started before the undo reached the device.
+  // Only on the day of the undo: an old undo never reopens a session.
+  app.post<{ Body: { itemId?: unknown; itemVersion?: unknown; late?: unknown; date?: unknown } | undefined }>(
     '/api/training/started',
     async (req, reply) => {
       reply.header('cache-control', 'no-store');
-      if (!(await allowed(req.identity!.account))) return reply.code(403).send({ error: 'forbidden' });
-      const { itemId, itemVersion } = req.body ?? {};
+      const account = req.identity!.account;
+      const role = await roles.roleFor(account);
+      if (role !== 'keeper' && role !== 'parent') return reply.code(403).send({ error: 'forbidden' });
+      const { itemId, itemVersion, late, date } = req.body ?? {};
       if (typeof itemId !== 'string' || typeof itemVersion !== 'string') {
         return reply.code(400).send({ error: 'invalid' });
       }
       if (await isPaused()) return reply.code(409).send({ error: 'paused' });
-      if (!(await training.markStarted(itemId, itemVersion))) return reply.code(409).send({ error: 'not_approved' });
-      return { ok: true };
+      if (await training.markStarted(itemId, itemVersion)) return { ok: true };
+      if (
+        late === true &&
+        typeof date === 'string' &&
+        (await training.markStartedLate(itemId, itemVersion, { account, role }, date))
+      ) {
+        return { ok: true, late: true };
+      }
+      return reply.code(409).send({ error: 'not_approved' });
     },
   );
 

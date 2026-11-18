@@ -265,6 +265,7 @@ const ACTION_TEXT: Record<AuditEntry['action'], string> = {
   cleared: 'cleared',
   changed: 'set',
   undone: 'undid the approval of',
+  started: 'started',
 };
 
 const REFUSED_VERB: Record<AuditEntry['kind'], string> = {
@@ -368,7 +369,9 @@ export function History({
                   ? `${ACTOR_TEXT[e.actorRole]} tried to ${REFUSED_VERB[e.kind] ?? 'answer'} ${e.title}; refused`
                   : e.action === 'paused'
                     ? `${ACTOR_TEXT[e.actorRole]} reported ${e.title}; training paused`
-                    : `${ACTOR_TEXT[e.actorRole]} ${ACTION_TEXT[e.action]} ${e.title}`}
+                    : e.action === 'started'
+                      ? `${e.title} started before the undo reached the device; it still counts`
+                      : `${ACTOR_TEXT[e.actorRole]} ${ACTION_TEXT[e.action]} ${e.title}`}
               {e.reason && e.action === 'declined' ? `: ${e.reason}` : ''}
               {undoUntil(e) > Date.now() && (
                 <button

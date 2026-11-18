@@ -4,7 +4,7 @@ title: Front-end approach for the iPad web app
 description: React and Vite as an installable web app with an offline session cache, iPad-first breakpoints, iPadOS 18.4 as the minimum, and sign-in run inside the installed app behind the proxy.
 tags: [decision, platform, frontend, pwa, ipados, sign-in]
 status: draft
-generated: { by: claude-code/opus-5.5, at: 2026-11-18T03:15:00Z }
+generated: { by: claude-code/opus-5.5, at: 2026-11-18T09:50:00Z }
 stale_after: 2027-05-17T00:00:00Z
 sources:
   - { id: react, resource: https://github.com/facebook/react, title: "React (MIT)" }
@@ -54,6 +54,27 @@ In scope:
 - Web push for approval requests and approvals ([push](/platform/web-push-on-ipados.md)).
 - Wake lock during a session ([wake lock](/platform/screen-wake-lock.md)); audio cues
   unlocked by the Start tap ([autoplay](/platform/audio-video-autoplay.md)).
+
+What the device may keep, and nothing else:
+
+- The signed-in role, which picks the home to show, and today's **approved** session.
+- The training pause, with an unsent pain report until the server takes it.
+- **Queued session events**: the start and the finish of a session, kept in the outbox in the
+  order they were made and sent in that order when the network is back. Each holds only the
+  date, the session id and version, the outcome, and the form ratings (the approved cue tapped
+  for a rated set; their count is the rated-set count). No notes or free text. **Each event is
+  deleted as soon as the server confirms it**; an empty outbox leaves nothing on the device.
+  A Stop is queued at the tap and held while Resume is offered, so it survives the app
+  closing; Resume deletes it.
+- The figures of today's approved cards, in their own cache. The app keeps exactly today's
+  set; the service worker reads it only when the network fails and never writes to it.
+
+History, the audit log, the inbox and progress always come from the network and are never
+stored on the device or in a service-worker cache.
+
+A start that reaches the server late, after the parent undid an approval it uses, still
+counts: the server records it, audits it as started before the undo reached the device, and
+keeps the keeper's XP. An undo after a start has landed is refused.
 
 Out of scope: background sync, periodic sync, haptics on the iPad
 ([haptics](/platform/haptics-availability.md)), orientation locking, any offline approval

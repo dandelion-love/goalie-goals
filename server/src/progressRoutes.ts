@@ -9,7 +9,11 @@ import type { Outcome } from './progression.js';
 
 const OUTCOMES: readonly Outcome[] = ['done', 'stopped', 'hurt'];
 
+/** The device's id for a queued finish (story #94), so a resend is recorded once. */
+const EVENT_ID_RE = /^[A-Za-z0-9-]{8,64}$/;
+
 interface RecordBody {
+  id?: unknown;
   date?: unknown;
   itemId?: unknown;
   itemVersion?: unknown;
@@ -36,6 +40,7 @@ export function registerProgressRoutes(
     const date = dateOf(b.date);
     const record = await progress.record(
       {
+        id: typeof b.id === 'string' && EVENT_ID_RE.test(b.id) ? b.id : undefined,
         date,
         itemId: b.itemId.slice(0, 200),
         itemVersion: b.itemVersion.slice(0, 200),

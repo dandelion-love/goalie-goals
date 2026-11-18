@@ -23,6 +23,26 @@ export const REQUEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  */
 export const UNDO_WINDOW_MS = 30 * 1000;
 
+/**
+ * How the audit names a start that was queued offline and landed after the parent's undo: the
+ * keeper began in good faith, so the session and its XP stand.
+ */
+export const LATE_START_REASON = 'Started before the undo reached the device';
+
+/** Earliest and latest civil time zones, in hours from UTC. */
+const ZONE_BEHIND_H = 12;
+const ZONE_AHEAD_H = 14;
+
+/**
+ * Whether the instant `at` falls on the calendar day `date` (YYYY-MM-DD) in some civil time
+ * zone: the device sends its own local date, and the server does not know its zone.
+ */
+export function onLocalDate(at: Date, date: string): boolean {
+  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const t = at.getTime();
+  return day(t - ZONE_BEHIND_H * 3_600_000) <= date && date <= day(t + ZONE_AHEAD_H * 3_600_000);
+}
+
 /** Injected so tests can move time; the system clock otherwise. */
 export type Clock = () => Date;
 export const systemClock: Clock = () => new Date();
@@ -89,7 +109,12 @@ export type AuditAction =
   | 'cleared'
   | 'changed'
   /** The parent undid an approval within `UNDO_WINDOW_MS`: its own event, never an edit. */
-  | 'undone';
+  | 'undone'
+  /**
+   * A session start queued on the keeper's device reached the server after the parent undid
+   * an approval it uses: recorded with `LATE_START_REASON` (story #94).
+   */
+  | 'started';
 
 export interface AuditEvent {
   id: string;
@@ -407,6 +432,29 @@ export class ApprovalService {
     // It waits in the inbox again, so the badge counts it again.
     await this.notifier.notify({ to: 'parent', ref: reopened.id, title: reopened.content.title });
     return reopened;
+  }
+
+  /**
+   * The request for this exact item version when its approval was undone on `date` (an
+   * `undone` event in the audit log), or null. Used only to accept a start that was queued
+   * before the undo reached the keeper's device, so it is bounded to the day of the undo: an
+   * old undo never reopens a session. `date` is the device's local date; the undo counts as on
+   * that date when the date is the undo's calendar day in some time zone (UTC-12 to UTC+14).
+   */
+  async undoneRequest(itemId: string, version: string, date: string): Promise<ApprovalRequest | null> {
+    const undone = (await this.audit.list()).filter(
+      (e) => e.action === 'undone' && e.itemId === itemId && e.itemVersion === version && onLocalDate(e.at, date),
+    );
+    for (const e of undone.reverse()) {
+      const request = await this.store.get(e.requestId);
+      if (request) return request;
+    }
+    return null;
+  }
+
+  /** Audit a start that landed after an undo of this request (story #94 AC2). */
+  async logLateStart(request: ApprovalRequest, actor: { account: string; role: Role }): Promise<void> {
+    await this.log(request, 'started', actor.role, actor.account, LATE_START_REASON);
   }
 
   /** True only when this exact version of the item was approved. */

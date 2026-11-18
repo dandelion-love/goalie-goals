@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchToday, localDate, type Session, type Today } from './training';
 import { LoadError, Skeleton, useSettled } from './Loading';
 import type { OfflineStore } from './offline';
+import { precacheFigures } from './figures';
 
 type Load = { kind: 'loading' } | { kind: 'ready'; data: Today; saved?: boolean } | { kind: 'error' };
 
@@ -81,6 +82,8 @@ export function TodayPanel({
     fetchToday(fetchImpl, now())
       .then((data) => {
         cache?.writeToday(data);
+        // Today's approved figures, for an offline session (story #94 AC5).
+        void precacheFigures(data, fetchImpl ? { fetchImpl } : {});
         if (live) setState({ kind: 'ready', data });
       })
       .catch(() => {

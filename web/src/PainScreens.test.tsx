@@ -216,7 +216,8 @@ describe('the pause holds offline (AC2)', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Ankle or foot' }));
     fireEvent.change(screen.getByRole('textbox'), { target: { value: NOTE } });
     click('Tell my parent');
-    expect(await screen.findByText(/Saved on this device/)).toBeTruthy();
+    // The finish waits on the device too (story #94), so match the pain report line itself.
+    expect(await screen.findByText(/Saved on this device. Training is paused/)).toBeTruthy();
     const saved = JSON.parse(localStorage.getItem(PAUSE_KEY)!) as LocalPause;
     expect(saved).toMatchObject({ sent: false, report: { bodyArea: 'ankle_foot', note: NOTE } });
 

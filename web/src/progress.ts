@@ -1,7 +1,8 @@
 // Client for XP and streaks. The server applies the progression rules (server/src/progression.ts);
-// this module only sends a finished session and reads the shared summary.
+// this module only reads the shared summary. A finished session goes through the outbox
+// (outbox.ts), so it reaches the server even when it ends offline.
 
-import { localDate, type SessionResult } from './training';
+import { localDate } from './training';
 
 export interface Credit {
   session: number;
@@ -37,36 +38,24 @@ export interface FinishProgress {
   summary: ProgressSummary;
 }
 
+/**
+ * The finish screen's progress line: `saving` while it is sent, `queued` when it waits on the
+ * device for the network (story #94), `unsaved` when the server would not take it.
+ */
+export type FinishProgressState = FinishProgress | 'saving' | 'queued' | 'unsaved' | null;
+
+/** The server could not be reached at all (offline), as opposed to an error answer. */
+export class OfflineError extends Error {
+  constructor() {
+    super('offline');
+  }
+}
+
 const HEADERS = { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' };
 
 function isSummary(value: unknown): value is ProgressSummary {
   const s = value as ProgressSummary | null;
   return !!s && typeof s.xp?.total === 'number' && typeof s.team?.current === 'number' && Array.isArray(s.runs);
-}
-
-export async function recordSession(
-  result: SessionResult,
-  fetchImpl: typeof fetch = fetch,
-  now: Date = new Date(),
-): Promise<FinishProgress> {
-  const res = await fetchImpl('/api/progress/sessions', {
-    method: 'POST',
-    credentials: 'same-origin',
-    cache: 'no-store',
-    headers: { ...HEADERS, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      date: localDate(now),
-      itemId: result.itemId,
-      itemVersion: result.itemVersion,
-      outcome: result.outcome,
-      warmUpLogged: result.warmUpLogged,
-      praised: result.praised,
-    }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const body = (await res.json()) as { credit?: Credit; summary?: unknown };
-  if (!body.credit || !isSummary(body.summary)) throw new Error('Unexpected response');
-  return { credit: body.credit, summary: body.summary };
 }
 
 /** Day kinds that mean today's session is over: trained (together or solo) or stopped for safety. */
@@ -78,11 +67,16 @@ export function isDoneForToday(summary: Pick<ProgressSummary, 'today'>): boolean
 }
 
 export async function fetchProgress(fetchImpl: typeof fetch = fetch, now: Date = new Date()): Promise<ProgressSummary> {
-  const res = await fetchImpl(`/api/progress/summary?date=${localDate(now)}`, {
-    credentials: 'same-origin',
-    cache: 'no-store',
-    headers: HEADERS,
-  });
+  let res: Response;
+  try {
+    res = await fetchImpl(`/api/progress/summary?date=${localDate(now)}`, {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: HEADERS,
+    });
+  } catch {
+    throw new OfflineError();
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const body = (await res.json()) as unknown;
   if (!isSummary(body)) throw new Error('Unexpected response');

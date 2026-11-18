@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchMe, reconnect, type MeResult, type Role } from './api';
 import { useLayout, type Layout } from './layout';
 import { ApprovedTraining, History, ParentInbox } from './ApprovalScreens';
@@ -8,9 +8,21 @@ import { sound } from './sound';
 import { ProgressPanel } from './ProgressPanel';
 import { PainReportForm, PausedPanel } from './PainScreens';
 import { TrainingDays } from './TrainingDays';
-import { fetchProgress, isDoneForToday, recordSession, type FinishProgress } from './progress';
+import { fetchProgress, isDoneForToday, type FinishProgressState } from './progress';
+import {
+  cancel,
+  enqueue,
+  finishEvent,
+  flushOutbox,
+  LocalOutboxStore,
+  prepareOnLaunch,
+  release,
+  startEvent,
+  type FlushResult,
+  type OutboxStore,
+} from './outbox';
 import { flushPause, LocalPauseStore, startPause, syncPause, type BodyArea, type LocalPause, type PauseStore } from './pain';
-import { markStarted, type Session, type SessionResult } from './training';
+import type { Session, SessionResult } from './training';
 import { createWakeLock, type WakeLockController } from './wakeLock';
 import { LocalOfflineStore, useOnline, type OfflineStore } from './offline';
 import { Reveal } from './Loading';
@@ -32,6 +44,8 @@ export interface AppProps {
   now?: () => Date;
   /** What the device keeps for an offline start (role, today's approved session); localStorage otherwise. */
   offlineStore?: OfflineStore;
+  /** The outbox of session starts and finishes (story #94); localStorage otherwise. */
+  outboxStore?: OutboxStore;
 }
 
 export function App({
@@ -42,11 +56,13 @@ export function App({
   pauseStore,
   now,
   offlineStore,
+  outboxStore,
 }: AppProps) {
   const layout = useLayout();
   const wake = useMemo(() => wakeLock ?? createWakeLock(), [wakeLock]);
   const store = useMemo(() => pauseStore ?? new LocalPauseStore(), [pauseStore]);
   const cache = useMemo(() => offlineStore ?? new LocalOfflineStore(), [offlineStore]);
+  const outbox = useMemo(() => outboxStore ?? new LocalOutboxStore(), [outboxStore]);
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [epoch, setEpoch] = useState(0);
   const online = useOnline();
@@ -94,6 +110,7 @@ export function App({
           onSessionFinish={onSessionFinish}
           pauseStore={store}
           offlineStore={cache}
+          outboxStore={outbox}
           epoch={epoch}
           now={now}
         />
@@ -128,6 +145,7 @@ function Screen({
   onSessionFinish,
   pauseStore,
   offlineStore,
+  outboxStore,
   epoch,
   now,
 }: {
@@ -140,6 +158,7 @@ function Screen({
   onSessionFinish?: (result: SessionResult) => void;
   pauseStore: PauseStore;
   offlineStore: OfflineStore;
+  outboxStore: OutboxStore;
   epoch: number;
   now?: () => Date;
 }) {
@@ -181,6 +200,7 @@ function Screen({
             onSessionFinish={onSessionFinish}
             pauseStore={pauseStore}
             offlineStore={offlineStore}
+            outboxStore={outboxStore}
             epoch={epoch}
             now={now}
           />
@@ -243,6 +263,38 @@ function usePause(store: PauseStore, fetchImpl?: typeof fetch) {
   return { pause, start, send, flush, sent };
 }
 
+/**
+ * The outbox of session starts and finishes on this device (story #94): sent at once when it
+ * can be, and again whenever the app opens, reconnects or comes back online. `onAnswers` hears
+ * every event the server answered.
+ */
+function useOutbox(
+  store: OutboxStore,
+  fetchImpl: typeof fetch | undefined,
+  epoch: number,
+  onAnswers: (r: FlushResult) => void,
+) {
+  const handler = useRef(onAnswers);
+  handler.current = onAnswers;
+  // Once per launch of the keeper's home: anything left from an earlier run goes out now.
+  useState(() => prepareOnLaunch(store));
+  const flush = useCallback(
+    () =>
+      flushOutbox(store, fetchImpl).then((r) => {
+        handler.current(r);
+        return r;
+      }),
+    [store, fetchImpl],
+  );
+  useEffect(() => {
+    void flush();
+    const online = () => void flush();
+    window.addEventListener('online', online);
+    return () => window.removeEventListener('online', online);
+  }, [flush, epoch]);
+  return flush;
+}
+
 function KeeperHome({
   layout,
   fetchImpl,
@@ -250,6 +302,7 @@ function KeeperHome({
   onSessionFinish,
   pauseStore,
   offlineStore,
+  outboxStore,
   epoch = 0,
   now = () => new Date(),
 }: {
@@ -259,6 +312,7 @@ function KeeperHome({
   onSessionFinish?: (result: SessionResult) => void;
   pauseStore: PauseStore;
   offlineStore?: OfflineStore;
+  outboxStore: OutboxStore;
   /** Changes when the app reconnects: every panel loads again. */
   epoch?: number;
   now?: () => Date;
@@ -266,12 +320,37 @@ function KeeperHome({
   const [playing, setPlaying] = useState<Session | null>(null);
   const [finishedHere, setDoneToday] = useState(false);
   const [recordedToday, setRecordedToday] = useState(false);
-  const [progress, setProgress] = useState<FinishProgress | 'saving' | 'unsaved' | null>(null);
+  const [progress, setProgress] = useState<FinishProgressState>(null);
   const [recorded, setRecorded] = useState(0);
   const [reporting, setReporting] = useState(false);
   const [changed, setChanged] = useState(0);
   const [settled, setSettled] = useState({ today: false, progress: false, training: false });
   const { pause, start, send, flush, sent } = usePause(pauseStore, fetchImpl);
+  // The playing session's start event, the stop kept while Resume is offered, and the finish
+  // whose XP the finish screen shows.
+  const startSent = useRef<{ id: string; session: Session } | null>(null);
+  const stopHeld = useRef<string | null>(null);
+  const finishShown = useRef<string | null>(null);
+  const flushOut = useOutbox(outboxStore, fetchImpl, epoch, ({ answers }) => {
+    let finished = false;
+    for (const [id, answer] of Object.entries(answers)) {
+      const playingStart = startSent.current;
+      if (playingStart && id === playingStart.id) {
+        startSent.current = null;
+        // The parent undid the approval a moment ago: the session closes before the first
+        // set and today loads again.
+        if (answer.kind === 'refused') {
+          setPlaying((p) => (p === playingStart.session ? null : p));
+          setChanged((n) => n + 1);
+        }
+      }
+      if (answer.kind !== 'refused' && id === finishShown.current) {
+        setProgress(answer.kind === 'confirmed' && answer.progress ? answer.progress : 'unsaved');
+      }
+      if (answer.kind === 'confirmed' && answer.progress) finished = true;
+    }
+    if (finished) setRecorded((n) => n + 1);
+  });
   const doneToday = finishedHere || recordedToday;
   const settle = useCallback((panel: keyof typeof settled) => () => setSettled((s) => ({ ...s, [panel]: true })), []);
   const onToday = useMemo(() => settle('today'), [settle]);
@@ -296,15 +375,47 @@ function KeeperHome({
       // Pause first, on the device, before anything goes over the network.
       if (result.outcome === 'hurt') start();
       setDoneToday(true);
+      // A stop queued at the Stop tap goes out now. Any other ending is queued here, and a held
+      // stop it replaces (Something hurts after Stop) is dropped.
+      const held = stopHeld.current;
+      stopHeld.current = null;
+      let id: string;
+      if (held && result.outcome === 'stopped' && release(outboxStore, held)) {
+        id = held;
+      } else {
+        if (held) cancel(outboxStore, held);
+        const event = finishEvent(result, now());
+        enqueue(outboxStore, event);
+        id = event.id;
+      }
+      finishShown.current = id;
       setProgress('saving');
-      recordSession(result, fetchImpl)
-        .then((p) => setProgress(p))
-        .catch(() => setProgress('unsaved'))
-        .finally(() => setRecorded((n) => n + 1));
+      void flushOut().then(() => {
+        // Still on the device: offline, so it syncs later and its XP shows then.
+        if (finishShown.current === id && outboxStore.read().some((e) => e.id === id)) setProgress('queued');
+      });
       onSessionFinish?.(result);
     },
-    [fetchImpl, onSessionFinish, start],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [flushOut, outboxStore, onSessionFinish, start],
   );
+
+  // Stop keeps the session's end on the device at once, so it is recorded even if the app
+  // closes inside the Resume window. It is sent when the window closes; Resume deletes it.
+  const stopTapped = useCallback(
+    (result: SessionResult) => {
+      if (stopHeld.current) cancel(outboxStore, stopHeld.current);
+      const event = finishEvent(result, now(), true);
+      enqueue(outboxStore, event);
+      stopHeld.current = event.id;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [outboxStore],
+  );
+  const resumed = useCallback(() => {
+    if (stopHeld.current) cancel(outboxStore, stopHeld.current);
+    stopHeld.current = null;
+  }, [outboxStore]);
 
   if (playing) {
     return (
@@ -313,12 +424,17 @@ function KeeperHome({
         layout={layout}
         wakeLock={wakeLock}
         onFinish={finish}
+        onStop={stopTapped}
+        onResume={resumed}
         progress={progress}
         hurtForm={<PainReportForm onSend={send} />}
         onExit={() => {
           setPlaying(null);
           setProgress(null);
+          finishShown.current = null;
+          startSent.current = null;
           flush();
+          void flushOut();
         }}
       />
     );
@@ -332,12 +448,12 @@ function KeeperHome({
     setPlaying(session);
     // Tell the server, so the parent can no longer undo this approval. If the parent undid it
     // a moment ago, the server refuses: the session closes before the first set and today
-    // loads again. Offline, the session runs as approved when it was loaded.
-    void markStarted(session, fetchImpl).then((answer) => {
-      if (answer !== 'refused') return;
-      setPlaying((p) => (p === session ? null : p));
-      setChanged((n) => n + 1);
-    });
+    // loads again. Offline, the session runs as approved when it was loaded, and the start
+    // waits in the outbox; it goes first when the network is back (story #94).
+    const event = startEvent(session, now());
+    enqueue(outboxStore, event);
+    startSent.current = { id: event.id, session };
+    void flushOut();
   };
 
   // Each panel shows once every panel above it has settled, so nothing on screen moves as
