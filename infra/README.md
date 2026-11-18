@@ -11,7 +11,7 @@ privacy guard refuses them).
 | Root | What | State |
 | --- | --- | --- |
 | `bootstrap/` | The app's own project, billing link, monthly budget with alerts, state bucket | Local file in `~/.config/goalie-goals/` |
-| `app/` (later) | Database, registry, runtime identity, secrets, runtime with sign-in | The state bucket |
+| `app/` | Database, registry, runtime identity, secrets, runtime behind Google sign-in | The state bucket |
 
 ## Run the bootstrap from a fresh clone
 
@@ -46,6 +46,28 @@ Two things that stop a first apply:
   `export GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token)`.
 - **The quota project needs the Cloud Resource Manager API** (`cloudresourcemanager.googleapis.com`)
   as well as the budgets API, or creating the project fails with a 403.
+
+## Run the app root
+
+1. Create `~/.config/goalie-goals/app.backend.hcl` with the state bucket
+   (`bucket = "<state bucket>"`, `prefix = "app"`) and `~/.config/goalie-goals/app.tfvars`:
+
+   ```hcl
+   project_id      = "<the app's project id>"
+   allowed_members = ["user:<an allowed account>"]
+   ```
+
+2. From `infra/app`:
+
+   ```bash
+   terraform init -backend-config="$HOME/.config/goalie-goals/app.backend.hcl"
+   terraform plan -input=false -var-file="$HOME/.config/goalie-goals/app.tfvars" -out="$HOME/.config/goalie-goals/app.tfplan"
+   terraform apply "$HOME/.config/goalie-goals/app.tfplan"
+   ```
+
+An empty `allowed_members` fails the plan and names the variable, never its values. The
+runtime starts on a public placeholder image until the app's own image exists; only the
+sign-in proxy may invoke it, and only the allowed accounts get through the proxy.
 
 ## Cost
 
