@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Added**: a survey of open content on GitHub: 58 public repositories for exercise data, figures, anatomy, drills, UI kits, timers, icons, sounds, programme data and pose data, each graded with code and content licences read apart, and the top finds mapped to the open gaps.
 * **Changed**: quality-rubric method, after the baseline audit: wrapped native inputs measured by their label (Scripts D and F), no gap in the LT3 anchors, CT2 searches only user-facing text (Script J), SO2 measures synthesised cues from an OfflineAudioContext render (Script K), and the rig records headed or headless plus the fixed Script C markers, Script H selector and K4 and K5; baseline scores unchanged.
 * **Added**: government and health-body research for exercise figures: licences side by side (US federal works, UK, Canadian, Australian and New Zealand open licences, WHO), the publications checked per country, health organisations and physio sheets, and a coverage table for every card and goalkeeper move; the media Decision and the credits check gain public-domain US federal works and OGL v3.0.
 

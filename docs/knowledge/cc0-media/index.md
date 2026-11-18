@@ -55,6 +55,10 @@ Public-domain (CC0) media for the app: exercise figures and pose references, rew
 * [Open muscle diagrams and CC0 sets](/cc0-media/muscle-map-diagrams.md) - wger's overlays and Commons' muscular-system SVGs are realistic CC BY-SA anatomy; no CC0 front and back map exists.
 * [Muscle map for exercise dossiers](/cc0-media/muscle-map-recommendation.md) - body-muscles' path data in the app's own component and tokens, a 15-group vocabulary and a proposed mapping for the current cards; the map never shows data about the keeper.
 
+# Open content on GitHub
+
+* [Open content on GitHub](/cc0-media/github-sources.md) - Fifty-eight public repositories across nine topics, code and content licences read apart, last commit, stated origin and a grade each; new CC0 and CC BY sound sets and MIT emoji pass, most new exercise-art repositories are AI-made, proprietary or non-commercial, and the top finds are mapped to the open gaps.
+
 # Related
 
 * [Sound and haptics](/ux/sound-and-haptics.md) - Why cues are functional first and must carry across a room.
