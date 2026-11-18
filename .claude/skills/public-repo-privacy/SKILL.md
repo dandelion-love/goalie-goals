@@ -23,15 +23,20 @@ data at runtime, never in this repo.
 | Contact and accounts | email addresses, phone numbers, account ids, social handles | the sign-in allowlist in the cloud console; Secret Manager |
 | Secrets | API keys, OAuth client id and secret, tokens, service-account keys, `.env` files | Secret Manager, a gitignored `.env.local`, GitHub Actions secrets |
 | Infrastructure | cloud project number, service URLs, the deployment's domain, service accounts, buckets, the gtd server's address | config outside the repo: `.env.local`, `git config`, `~/.config/` |
+| Terraform values | state and its backups, plan files, `.tfvars`, project ids or bucket names as variable defaults | remote state; `-var-file` and `-backend-config` files outside the repo; commit `*.tf`, the lock file and a `.tfvars.example` with placeholders |
 | Private links | claude.ai sessions and artifacts, private repos, Drive and Docs links | the conversation, or a private channel |
 
 ## How to write about people in public text
 
 - Say **the keeper** for the young athlete and **the parent** for the training partner.
   Both are users of the app.
-- Use an age band ("U15", "early teens"), never an age or birthday.
+- Use an age band ("U15", "early teens"), never an age or birthday. A narrow range of
+  years is an age too; research cites age groups as bands as well.
 - State needs as training goals: "vertical jump and lateral speed lag the older age group",
   not a personal story.
+- Research that compares places (laws, regulators, currencies, regions) gives each the
+  same depth and cites shared points to several of them. Leaning on one country's
+  sources tells readers where the family lives, even if no sentence says so.
 - Fixtures, seed data, screenshots and examples use the invented cast: keeper **Kai**,
   parent **Sam**, emails at `example.com`. Screenshots come from seeded demo data only.
 - Images are drawn or generated assets (PNG, SVG, WebP) with no camera metadata. Camera
@@ -87,3 +92,7 @@ repeating it: the ask is public too. Then, with the owner:
 - [ ] No emails, phone numbers, account ids, keys or deployment addresses.
 - [ ] Images are drawn assets or demo-data screenshots, without camera metadata.
 - [ ] Long text went through `--text` first.
+- [ ] Timestamps written in docs and records are UTC (`Z`), not a local offset, and dates
+      sit at `T00:00:00Z`, not at local midnight.
+- [ ] Nothing private sits in an earlier commit of the branch: a fix goes into the failing
+      commit before the first push, never on top of it.

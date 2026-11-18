@@ -80,6 +80,29 @@ class Rules(unittest.TestCase):
         self.assertClean("bind to 127.0.0.1 or 0.0.0.0")
         self.assertClean("save 12 of 15 shots, 3x10 reps, version 1.2.3")
 
+    def test_ages(self) -> None:
+        self.assertFlags(j("a 1", "4-ye", "ar-old keeper"), "age or birthday", message=True)
+        self.assertFlags(j("for 1", "4 to 15 ye", "ar olds"), "age or birthday")
+        self.assertFlags(j("athletes ag", "ed 13", "\u2013", "15"), "age or birthday")
+        self.assertFlags(j("he is 1", "4 ye", "ars old"), "age or birthday")
+        self.assertFlags(j("he tur", "ns 1", "5 in May"), "age or birthday")
+        self.assertFlags(j("her 1", "4th bir", "thday"), "age or birthday")
+        self.assertClean("guidance for U15 and early-teens athletes, U13 to U17 bands")
+        self.assertClean("a 3-year roadmap; rest 90 s; 12 of 15 shots; cache aged 30 days")
+
+    def test_doi_is_not_an_id(self) -> None:
+        self.assertClean(j("see https://doi.org/10.3102/", "0034", "654302", "98487"))
+        self.assertClean(j("doi: 10.1136/bjsports-", "2013-092952"))
+        self.assertFlags(j("id 10.3102 then ", "0034", "654302", "98487"), "long numeric id")
+
+    def test_public_citation_ids(self) -> None:
+        self.assertClean(j("https://apps.apple.com/us/app/some-app/id", "57", "00", "60128"))
+        self.assertClean(j("https://who.int/publications/i/item/", "978924", "00", "15128"))
+        self.assertClean(j("ISBN ", "978", "03064", "06157"))
+        self.assertFlags(j("project ", "123", "4567", "89012"), "long numeric id")
+        self.assertFlags(j("https://example.com/item/", "123", "45678", "90123"),
+                         "long numeric id")
+
     def test_emails(self) -> None:
         self.assertFlags(j("kid", AT, "gmail", ".com"), "email address")
         self.assertClean(j("player", AT, "example", ".com"))
@@ -128,6 +151,19 @@ class Files(unittest.TestCase):
                      "voice/note.m4a", "db/app.sqlite"):
             self.assertTrue(self.blob(path), path)
 
+    def test_terraform_private_files(self) -> None:
+        for path in ("infra/terraform.tfstate", "infra/terraform.tfstate.backup",
+                     "infra/.terraform.tfstate.lock.info", "infra/.terraform/terraform.tfstate",
+                     "infra/.terraform/providers/x/terraform-provider-google",
+                     "infra/prod.auto.tfvars", "infra/vars.tfvars.json", "infra/plan.tfplan",
+                     "infra/crash.log"):
+            self.assertTrue(self.blob(path), path)
+
+    def test_terraform_code_allowed(self) -> None:
+        for path in ("infra/main.tf", "infra/variables.tf", "infra/.terraform.lock.hcl",
+                     "infra/terraform.tfvars.example", "infra/backend.tf"):
+            self.assertEqual(self.blob(path), [], path)
+
     def test_allowed_names(self) -> None:
         for path in (".env.example", "public/icons/glove.svg", "public/sfx/ding.ogg",
                      "src/app.ts"):
@@ -154,6 +190,18 @@ class Hook(unittest.TestCase):
         out = json.loads(r.stdout)["hookSpecificOutput"]
         self.assertEqual(out["hookEventName"], "PreToolUse")
         return out["permissionDecision"]
+
+    def test_worktree_root(self) -> None:
+        before = pg.ROOT
+        try:
+            pg.use_worktree_of(ROOT / "tools")
+            self.assertEqual(pg.ROOT, ROOT.resolve())
+            with tempfile.TemporaryDirectory() as other:
+                subprocess.run(["git", "init", "-q", other], check=True)
+                pg.use_worktree_of(Path(other))
+                self.assertEqual(pg.ROOT, ROOT.resolve())
+        finally:
+            pg.ROOT = before
 
     def test_gtd_write_blocked(self) -> None:
         r = self.run_hook({"tool_name": "mcp__abc123__capture",
