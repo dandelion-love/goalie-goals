@@ -2,6 +2,7 @@
 
 ## 2026-11-18
 
+* **Added**: CC0 media research: CC0 rigged characters and animation sets with a per-pack licence table, open tools to pose and render them, and a feasibility note with one rendered sample pose and a comparison with the parametric vector figure.
 * **Added**: visual-identity research: open rounded fonts, legibility at a distance, self-hosting, token tooling, the palette method with WCAG 2.2 contrast tables, and a licence check, with the fonts and tokens Decision.
 * **Added**: CC0 sound research: Kenney, Freesound, OpenGameArt, and the rejected Sonniss and Pixabay licences, with a shortlist per app moment and the stored format for cues.
 * **Added**: CC0 media research for rewards and the path: Kenney, Open Peeps and related sets, Openclipart, OpenGameArt and the Glitch release, the non-CC0 near misses, a shortlist and a recommended style.
