@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import {
   answerRequest,
   fetchApproved,
@@ -16,12 +16,13 @@ import { fetchPauseStatus, type PauseStatus } from './pain';
 import { PauseInboxItem } from './PainScreens';
 import { LoadSpace, useSettled } from './Loading';
 import { SAVING, SavingAnnouncer, savingProps, useOneAtATime } from './Saving';
+import { shortDate } from './dates';
 
 type Load<T> = { kind: 'loading' } | { kind: 'ready'; data: T } | { kind: 'error' };
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return Number.isNaN(d.getTime()) ? '' : shortDate(d);
 }
 
 /**
@@ -107,14 +108,17 @@ export function ParentInbox({
         fetchBadge(fetchImpl),
         fetchPauseStatus(fetchImpl).catch(() => null),
       ]);
-      setState((s) => ({
-        kind: 'ready',
-        data: { rows: mergeRows(s.kind === 'ready' ? s.data.rows : [], requests), badge, pause },
-      }));
-      // Undone elsewhere (the History): the request is back, so its Undo toast goes.
-      setToast((t) => {
-        const shown = t?.toast;
-        return shown?.kind === 'undo' && requests.some((r) => r.id === shown.id) ? null : t;
+      // A transition (story 101): the list renders in slices, never as one long task.
+      startTransition(() => {
+        setState((s) => ({
+          kind: 'ready',
+          data: { rows: mergeRows(s.kind === 'ready' ? s.data.rows : [], requests), badge, pause },
+        }));
+        // Undone elsewhere (the History): the request is back, so its Undo toast goes.
+        setToast((t) => {
+          const shown = t?.toast;
+          return shown?.kind === 'undo' && requests.some((r) => r.id === shown.id) ? null : t;
+        });
       });
     } catch {
       setState({ kind: 'error' });
@@ -134,17 +138,21 @@ export function ParentInbox({
   const answer = (r: PendingRequest, verb: 'approve' | 'decline') =>
     once(async () => {
       const tapped = Date.now();
+      // The tap's own frame shows only its immediate feedback: the pressed control reads
+      // "Saving…" (story 101 AC1). The rest follows as transitions, which never hold that frame.
+      setBusy({ id: r.id, verb });
       // Items answered earlier go now, as part of this tap, so the list closes up at a moment
       // the parent caused (story #95 AC3).
-      editRows((rows) => rows.filter((x) => !x.answered));
-      setBusy({ id: r.id, verb });
+      startTransition(() => editRows((rows) => rows.filter((x) => !x.answered)));
       try {
         const { undoForMs } = await answerRequest(r.id, verb, fetchImpl);
-        if (verb === 'approve' && undoForMs > 0) setToast({ toast: { kind: 'undo', id: r.id, title: r.title }, ms: undoForMs });
         const soon = Date.now() - tapped <= CLOSE_UP_MS;
-        editRows((rows) =>
-          soon ? rows.filter((x) => x.request.id !== r.id) : rows.map((x) => (x.request.id === r.id ? { ...x, answered: verb } : x)),
-        );
+        startTransition(() => {
+          if (verb === 'approve' && undoForMs > 0) setToast({ toast: { kind: 'undo', id: r.id, title: r.title }, ms: undoForMs });
+          editRows((rows) =>
+            soon ? rows.filter((x) => x.request.id !== r.id) : rows.map((x) => (x.request.id === r.id ? { ...x, answered: verb } : x)),
+          );
+        });
       } catch {
         // In the toast's place, which is always kept, so the message moves nothing.
         setToast({ toast: { kind: 'error', text: "That answer didn't go through. It is still waiting." }, ms: NOTE_MS });

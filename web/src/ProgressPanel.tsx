@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Reward } from './motion';
 import { useSettled } from './Loading';
+import { shortDate } from './dates';
 import { useOnline } from './offline';
 import { fetchProgress, OfflineError, type FinishProgressState, type ProgressSummary, type Run } from './progress';
 
@@ -9,7 +10,7 @@ import { fetchProgress, OfflineError, type FinishProgressState, type ProgressSum
 
 function formatDay(date: string): string {
   const d = new Date(`${date}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? date : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return Number.isNaN(d.getTime()) ? date : shortDate(d);
 }
 
 /** The panel's text when the summary can't be fetched because the device is offline (story #94 AC4). */

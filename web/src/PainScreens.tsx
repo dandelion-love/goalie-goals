@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { BODY_AREAS, bodyAreaLabel, clearPause, fetchPauseStatus, type BodyArea, type PauseStatus } from './pain';
 import { SAVING, SavingAnnouncer, savingProps, useOneAtATime } from './Saving';
+import { shortDate } from './dates';
 
 /**
  * Where it hurts as large toggles (each at least 56 px) with radio-group semantics: one tap
@@ -130,7 +131,7 @@ export function PausedPanel() {
 
 function formatDay(date: string): string {
   const d = new Date(`${date}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? date : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return Number.isNaN(d.getTime()) ? date : shortDate(d);
 }
 
 /**

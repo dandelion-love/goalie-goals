@@ -68,6 +68,47 @@ export function offlineShell(): Plugin {
   };
 }
 
+/** V8's explicit compile hint: compile every function in the file as it loads. */
+export const COMPILE_HINT = '//# allFunctionsCalledOnLoad';
+
+/**
+ * Whether a built chunk carries the compile hint: the app's own screens do, since every function
+ * in them runs as they draw. The chunks fetched in the background, used in part or later (the
+ * reward moments' Motion, confetti, the cues), compile lazily as before.
+ */
+export function compileEagerly(chunkName: string): boolean {
+  return !/rewards|confetti|cues/.test(chunkName);
+}
+
+/** The Latin font file, the one every screen uses: preloaded by the shell. */
+export const LATIN_FONT = /nunito-latin-wght-normal-[\w-]+\.woff2$/;
+
+/**
+ * Preloads the Latin font from the shell (story 101 AC2), so it arrives with the stylesheet and
+ * the first layout already uses it. Found late, it swapped in after the home was drawn and laid
+ * every line out again: a long task while the first taps come.
+ */
+export function fontPreload(): Plugin {
+  return {
+    name: 'goalie-goals-font-preload',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, ctx) {
+        const font = Object.keys(ctx.bundle ?? {}).find((f) => LATIN_FONT.test(f));
+        if (!font) return [];
+        return [
+          {
+            tag: 'link',
+            attrs: { rel: 'preload', href: `/${font}`, as: 'font', type: 'font/woff2', crossorigin: true },
+            injectTo: 'head',
+          },
+        ];
+      },
+    },
+  };
+}
+
 /** Where the font's licence ships, next to the font files (OFL 1.1, condition 2). */
 export const FONT_LICENCE = 'fonts/Nunito-OFL.txt';
 

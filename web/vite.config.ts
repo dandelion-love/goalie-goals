@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
-import { fontLicence, offlineShell, workboxOptions } from './src/pwaConfig';
+import { COMPILE_HINT, compileEagerly, fontLicence, fontPreload, offlineShell, workboxOptions } from './src/pwaConfig';
 
 export default defineConfig({
   plugins: [
@@ -33,7 +33,18 @@ export default defineConfig({
     }),
     offlineShell(),
     fontLicence(),
+    fontPreload(),
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        // Story 101 AC2: V8 compiles the app's own chunks in full as they load (an explicit
+        // compile hint), not function by function at first use, so the first render and the
+        // first tap don't stop to compile. Not for the chunks fetched in the background.
+        postBanner: (chunk) => (compileEagerly(chunk.name) ? COMPILE_HINT : ''),
+      },
+    },
+  },
   server: {
     proxy: {
       '/api': 'http://localhost:8080',

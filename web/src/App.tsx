@@ -1,32 +1,34 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchMe, reconnect, type MeResult, type Role } from './api';
 import { useLayout, type Layout } from './layout';
-import { ApprovedTraining, History, ParentInbox } from './ApprovalScreens';
-import { TodayPanel } from './LessonPath';
-import { SessionPlayer } from './SessionPlayer';
-import { sound, useWarmCues } from './sound';
-import { ProgressPanel } from './ProgressPanel';
-import { PainReportForm, PausedPanel } from './PainScreens';
-import { TrainingDays } from './TrainingDays';
-import { fetchProgress, isDoneForToday, type FinishProgressState } from './progress';
-import {
-  cancel,
-  enqueue,
-  finishEvent,
-  flushOutbox,
-  LocalOutboxStore,
-  prepareOnLaunch,
-  release,
-  startEvent,
-  type FlushResult,
-  type OutboxStore,
-} from './outbox';
-import { flushPause, LocalPauseStore, startPause, syncPause, type BodyArea, type LocalPause, type PauseStore } from './pain';
-import type { Session, SessionResult } from './training';
+import { PausedPanel } from './PainScreens';
+import { LocalOutboxStore, type OutboxStore } from './outbox';
+import { LocalPauseStore, type PauseStore } from './pain';
+import type { SessionResult } from './training';
 import { createWakeLock, type WakeLockController } from './wakeLock';
 import { LocalOfflineStore, useOnline, type OfflineStore } from './offline';
-import { Reveal } from './Loading';
-import { MotionRoot, useMoment } from './motion';
+import { MotionRoot } from './motion';
+import { chunk, ChunkBoundary } from './chunks';
+
+// Each role's home is its own chunk (story 101 AC2): the first script holds only this shell,
+// and a device loads the home of the role it is signed in as, never the other one.
+export const keeperHome = chunk(() => import('./KeeperHome').then((m) => m.KeeperHome));
+export const parentHome = chunk(() => import('./ParentHome').then((m) => m.ParentHome));
+const KeeperHome = keeperHome.Screen;
+const ParentHome = parentHome.Screen;
+
+/** Start fetching a role's home. */
+function preloadHome(role: Role | null) {
+  const home = role === 'keeper' ? keeperHome : role === 'parent' ? parentHome : null;
+  void home?.preload().catch(() => {});
+}
+
+/** What the screen shows while it loads (and while a home's code arrives). */
+const LOADING = (
+  <p className="status" role="status">
+    Loading…
+  </p>
+);
 
 /** `offline`: the server could not be reached, so the home shows what this device has saved. */
 type View = { kind: 'loading' } | MeResult | { kind: 'offline'; role: Role };
@@ -71,19 +73,27 @@ export function App({
   const load = useCallback(async () => {
     setView((v) => (v.kind === 'offline' ? v : { kind: 'loading' }));
     const me = await fetchMe(fetchImpl);
-    if (me.kind === 'signed-in') {
-      cache.writeRole(me.role);
-      // Panels already on screen (an offline start) load again; a session in progress stays.
-      setEpoch((n) => n + 1);
-    }
+    if (me.kind === 'signed-in') preloadHome(me.role);
     // Unreachable, but this device has been signed in before: open its home from what it saved.
     const role = me.kind === 'error' ? cache.readRole() : null;
-    setView(role ? { kind: 'offline', role } : me);
+    // A transition (story 101 AC2): the home's first render is done in slices, never as one
+    // long task, and "Loading…" stays until the home's code is here.
+    startTransition(() => {
+      if (me.kind === 'signed-in') {
+        cache.writeRole(me.role);
+        // Panels already on screen (an offline start) load again; a session in progress stays.
+        setEpoch((n) => n + 1);
+      }
+      setView(role ? { kind: 'offline', role } : me);
+    });
   }, [fetchImpl, cache]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The home this device last opened starts to load with the sign-in check, not after it.
+  useEffect(() => preloadHome(cache.readRole()), [cache]);
 
   // Back online after an offline start: check the sign-in and load the home afresh.
   useEffect(() => {
@@ -102,20 +112,24 @@ export function App({
         </header>
         <main className="app-main">
           {offline && <OfflineNotice role={role} onRetry={load} />}
-          <Screen
-            view={view.kind === 'offline' ? { kind: 'signed-in', role: view.role } : view}
-            layout={layout}
-            fetchImpl={fetchImpl}
-            onReconnect={onReconnect}
-            onRetry={load}
-            wakeLock={wake}
-            onSessionFinish={onSessionFinish}
-            pauseStore={store}
-            offlineStore={cache}
-            outboxStore={outbox}
-            epoch={epoch}
-            now={now}
-          />
+          <ChunkBoundary>
+            <Suspense fallback={LOADING}>
+              <Screen
+                view={view.kind === 'offline' ? { kind: 'signed-in', role: view.role } : view}
+                layout={layout}
+                fetchImpl={fetchImpl}
+                onReconnect={onReconnect}
+                onRetry={load}
+                wakeLock={wake}
+                onSessionFinish={onSessionFinish}
+                pauseStore={store}
+                offlineStore={cache}
+                outboxStore={outbox}
+                epoch={epoch}
+                now={now}
+              />
+            </Suspense>
+          </ChunkBoundary>
         </main>
       </div>
     </MotionRoot>
@@ -169,7 +183,7 @@ function Screen({
     case 'offline':
       return null;
     case 'loading':
-      return <p className="status" role="status">Loading…</p>;
+      return LOADING;
     case 'expired':
       return (
         <section className="notice" aria-labelledby="expired-title">
@@ -218,359 +232,6 @@ function NotSetUp() {
     <section className="notice" aria-labelledby="not-set-up-title">
       <h1 id="not-set-up-title">Not set up yet</h1>
       <p>This account is signed in but has no place in the app yet. Ask the parent who runs it to add you.</p>
-    </section>
-  );
-}
-
-/** The training pause on this device: set at once, kept offline, synced when online. */
-function usePause(store: PauseStore, fetchImpl?: typeof fetch) {
-  const [pause, setPause] = useState<LocalPause | null>(() => store.read());
-  /** Counts sends that reached the server, so the history can show the report at once. */
-  const [sent, setSent] = useState(0);
-
-  useEffect(() => {
-    let live = true;
-    const sync = () => void syncPause(store, fetchImpl).then((p) => live && setPause(p));
-    sync();
-    window.addEventListener('online', sync);
-    return () => {
-      live = false;
-      window.removeEventListener('online', sync);
-    };
-  }, [store, fetchImpl]);
-
-  const start = useCallback(() => setPause(startPause(store)), [store]);
-
-  /** Put the report in the outbox and send it; false when it waits for the network. */
-  const send = useCallback(
-    async (bodyArea: BodyArea, note: string) => {
-      const current = store.read() ?? startPause(store);
-      store.write({ ...current, report: { bodyArea, note } });
-      setPause(store.read());
-      const ok = await flushPause(store, fetchImpl);
-      setPause(store.read());
-      if (ok) setSent((n) => n + 1);
-      return ok;
-    },
-    [store, fetchImpl],
-  );
-
-  /** Send whatever is waiting (a report left without details goes as "not said"). */
-  const flush = useCallback(() => {
-    void flushPause(store, fetchImpl).then((ok) => {
-      setPause(store.read());
-      if (ok) setSent((n) => n + 1);
-    });
-  }, [store, fetchImpl]);
-
-  return { pause, start, send, flush, sent };
-}
-
-/**
- * The outbox of session starts and finishes on this device (story #94): sent at once when it
- * can be, and again whenever the app opens, reconnects or comes back online. `onAnswers` hears
- * every event the server answered.
- */
-function useOutbox(
-  store: OutboxStore,
-  fetchImpl: typeof fetch | undefined,
-  epoch: number,
-  onAnswers: (r: FlushResult) => void,
-) {
-  const handler = useRef(onAnswers);
-  handler.current = onAnswers;
-  // Once per launch of the keeper's home: anything left from an earlier run goes out now.
-  useState(() => prepareOnLaunch(store));
-  const flush = useCallback(
-    () =>
-      flushOutbox(store, fetchImpl).then((r) => {
-        handler.current(r);
-        return r;
-      }),
-    [store, fetchImpl],
-  );
-  useEffect(() => {
-    void flush();
-    const online = () => void flush();
-    window.addEventListener('online', online);
-    return () => window.removeEventListener('online', online);
-  }, [flush, epoch]);
-  return flush;
-}
-
-function KeeperHome({
-  layout,
-  fetchImpl,
-  wakeLock,
-  onSessionFinish,
-  pauseStore,
-  offlineStore,
-  outboxStore,
-  epoch = 0,
-  now = () => new Date(),
-}: {
-  layout: Layout;
-  fetchImpl?: typeof fetch;
-  wakeLock: WakeLockController;
-  onSessionFinish?: (result: SessionResult) => void;
-  pauseStore: PauseStore;
-  offlineStore?: OfflineStore;
-  outboxStore: OutboxStore;
-  /** Changes when the app reconnects: every panel loads again. */
-  epoch?: number;
-  now?: () => Date;
-}) {
-  // The cues are computed only on the keeper's device, once its home is up and idle (story #98),
-  // so the first cue is ready by the Start tap.
-  useWarmCues();
-  const [playing, setPlaying] = useState<Session | null>(null);
-  const [finishedHere, setDoneToday] = useState(false);
-  const [recordedToday, setRecordedToday] = useState(false);
-  const [progress, setProgress] = useState<FinishProgressState>(null);
-  const [recorded, setRecorded] = useState(0);
-  const [reporting, setReporting] = useState(false);
-  const [changed, setChanged] = useState(0);
-  const [settled, setSettled] = useState({ today: false, progress: false, training: false });
-  const { pause, start, send, flush, sent } = usePause(pauseStore, fetchImpl);
-  // The playing session's start event, the stop kept while Resume is offered, and the finish
-  // whose XP the finish screen shows.
-  const startSent = useRef<{ id: string; session: Session } | null>(null);
-  const stopHeld = useRef<string | null>(null);
-  const finishShown = useRef<string | null>(null);
-  const flushOut = useOutbox(outboxStore, fetchImpl, epoch, ({ answers }) => {
-    let finished = false;
-    for (const [id, answer] of Object.entries(answers)) {
-      const playingStart = startSent.current;
-      if (playingStart && id === playingStart.id) {
-        startSent.current = null;
-        // The parent undid the approval a moment ago: the session closes before the first
-        // set and today loads again.
-        if (answer.kind === 'refused') {
-          setPlaying((p) => (p === playingStart.session ? null : p));
-          setChanged((n) => n + 1);
-        }
-      }
-      if (answer.kind !== 'refused' && id === finishShown.current) {
-        setProgress(answer.kind === 'confirmed' && answer.progress ? answer.progress : 'unsaved');
-      }
-      if (answer.kind === 'confirmed' && answer.progress) finished = true;
-    }
-    if (finished) setRecorded((n) => n + 1);
-  });
-  const doneToday = finishedHere || recordedToday;
-  const settle = useCallback((panel: keyof typeof settled) => () => setSettled((s) => ({ ...s, [panel]: true })), []);
-  const onToday = useMemo(() => settle('today'), [settle]);
-  const onProgress = useMemo(() => settle('progress'), [settle]);
-  const onTraining = useMemo(() => settle('training'), [settle]);
-
-  // A session already recorded today (on this device or another, before a reload) means
-  // today is done: the home offers nothing more to train until tomorrow.
-  useEffect(() => {
-    let live = true;
-    fetchProgress(fetchImpl, now())
-      .then((s) => live && setRecordedToday(isDoneForToday(s)))
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchImpl, recorded, epoch]);
-
-  const finish = useCallback(
-    (result: SessionResult) => {
-      // Pause first, on the device, before anything goes over the network.
-      if (result.outcome === 'hurt') start();
-      setDoneToday(true);
-      // A stop queued at the Stop tap goes out now. Any other ending is queued here, and a held
-      // stop it replaces (Something hurts after Stop) is dropped.
-      const held = stopHeld.current;
-      stopHeld.current = null;
-      let id: string;
-      if (held && result.outcome === 'stopped' && release(outboxStore, held)) {
-        id = held;
-      } else {
-        if (held) cancel(outboxStore, held);
-        const event = finishEvent(result, now());
-        enqueue(outboxStore, event);
-        id = event.id;
-      }
-      finishShown.current = id;
-      setProgress('saving');
-      void flushOut().then(() => {
-        // Still on the device: offline, so it syncs later and its XP shows then.
-        if (finishShown.current === id && outboxStore.read().some((e) => e.id === id)) setProgress('queued');
-      });
-      onSessionFinish?.(result);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [flushOut, outboxStore, onSessionFinish, start],
-  );
-
-  // Stop keeps the session's end on the device at once, so it is recorded even if the app
-  // closes inside the Resume window. It is sent when the window closes; Resume deletes it.
-  const stopTapped = useCallback(
-    (result: SessionResult) => {
-      if (stopHeld.current) cancel(outboxStore, stopHeld.current);
-      const event = finishEvent(result, now(), true);
-      enqueue(outboxStore, event);
-      stopHeld.current = event.id;
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [outboxStore],
-  );
-  const resumed = useCallback(() => {
-    if (stopHeld.current) cancel(outboxStore, stopHeld.current);
-    stopHeld.current = null;
-  }, [outboxStore]);
-
-  if (playing) {
-    return (
-      <SessionPlayer
-        session={playing}
-        layout={layout}
-        wakeLock={wakeLock}
-        onFinish={finish}
-        onStop={stopTapped}
-        onResume={resumed}
-        progress={progress}
-        hurtForm={<PainReportForm onSend={send} />}
-        onExit={() => {
-          // A transition (story #98 AC5): the tap paints its response at once, and the home,
-          // a large render, follows without holding the tap's frame.
-          startTransition(() => {
-            setPlaying(null);
-            setProgress(null);
-          });
-          finishShown.current = null;
-          startSent.current = null;
-          flush();
-          void flushOut();
-        }}
-      />
-    );
-  }
-
-  // Paused: show the pause, and offer nothing to train.
-  const tryStart = (session: Session) => {
-    // Paused, or already started (a second tap while the player is still rendering).
-    if (pauseStore.read() || startSent.current) return;
-    // The Start tap unlocks sound for the session (iPadOS plays audio only after a tap).
-    sound.unlock();
-    // A transition (story #98 AC5): the tap paints its response at once, and the player, a
-    // large render, follows without holding the tap's frame. Its start cue plays as it shows.
-    startTransition(() => setPlaying(session));
-    // Tell the server, so the parent can no longer undo this approval. If the parent undid it
-    // a moment ago, the server refuses: the session closes before the first set and today
-    // loads again. Offline, the session runs as approved when it was loaded, and the start
-    // waits in the outbox; it goes first when the network is back (story #94).
-    const event = startEvent(session, now());
-    enqueue(outboxStore, event);
-    startSent.current = { id: event.id, session };
-    void flushOut();
-  };
-
-  // Each panel shows once every panel above it has settled, so nothing on screen moves as
-  // the home fills in (story #80 AC1).
-  const todaySettled = !!pause || settled.today;
-  const progressSettled = todaySettled && settled.progress;
-  const trainingSettled = progressSettled && (!!pause || settled.training);
-
-  return (
-    <section className="home" aria-labelledby="home-title">
-      <div className="home-bar">
-        <h1 id="home-title">Keeper home</h1>
-        {!pause && (
-          <button
-            type="button"
-            className="danger session-control safety-control"
-            onClick={() => {
-              start();
-              setReporting(true);
-            }}
-          >
-            Something hurts
-          </button>
-        )}
-      </div>
-      {reporting && (
-        <article className="card" aria-labelledby="report-title">
-          <h2 id="report-title">Something hurts</h2>
-          <p>Stop and rest. Tell an adult now. If someone collapses, call the local emergency number.</p>
-          <PainReportForm onSend={send} />
-        </article>
-      )}
-      {changed > 0 && !pause && (
-        <p className="meta" role="status">
-          Today's session changed. Check it again.
-        </p>
-      )}
-      {pause ? (
-        <PausedPanel />
-      ) : (
-        <TodayPanel
-          fetchImpl={fetchImpl}
-          onStart={tryStart}
-          doneToday={doneToday}
-          cache={offlineStore}
-          refresh={changed + epoch}
-          onSettled={onToday}
-          now={now}
-        />
-      )}
-      <Reveal open={todaySettled}>
-        <ProgressPanel fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onProgress} />
-      </Reveal>
-      <Reveal open={progressSettled}>
-        <div className={layout === 'expanded' ? 'panes' : 'stack'}>
-          {!pause && <ApprovedTraining fetchImpl={fetchImpl} refresh={changed + epoch} onSettled={onTraining} />}
-          <Reveal open={trainingSettled}>
-            <History fetchImpl={fetchImpl} refresh={recorded + sent + epoch} />
-          </Reveal>
-        </div>
-      </Reveal>
-    </section>
-  );
-}
-
-function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl?: typeof fetch; epoch?: number }) {
-  // Answering a request, or undoing an approval, adds to the history and changes the inbox,
-  // so both reload after each.
-  const [answered, setAnswered] = useState(0);
-  const [settled, setSettled] = useState({ progress: false, days: false, inbox: false });
-  const onProgress = useCallback(() => setSettled((s) => ({ ...s, progress: true })), []);
-  const onDays = useCallback(() => setSettled((s) => ({ ...s, days: true })), []);
-  const onInbox = useCallback(() => setSettled((s) => ({ ...s, inbox: true })), []);
-  const changed = useCallback(() => setAnswered((n) => n + 1), []);
-  // An approval leaving the inbox (approved, declined, or undone back into it): what is left
-  // settles, in the same commit as the inbox's new list (story #78).
-  const [inboxChanges, setInboxChanges] = useState(0);
-  const inboxChanged = useCallback(() => {
-    setInboxChanges((n) => n + 1);
-    changed();
-  }, [changed]);
-  const inbox = useRef<HTMLDivElement>(null);
-  useMoment(() => inbox.current?.firstElementChild ?? null, 'approval-left', inboxChanges);
-  // Each panel shows once every panel above it has settled (story #80 AC1).
-  const daysOpen = settled.progress;
-  const inboxOpen = daysOpen && settled.days;
-  const historyOpen = inboxOpen && settled.inbox;
-  return (
-    <section className="home" aria-labelledby="home-title">
-      <h1 id="home-title">Parent home</h1>
-      <ProgressPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onProgress} />
-      <Reveal open={daysOpen}>
-        <TrainingDays fetchImpl={fetchImpl} onChange={changed} onSettled={onDays} />
-      </Reveal>
-      <Reveal open={inboxOpen}>
-        <div className={layout === 'expanded' ? 'panes' : 'stack'}>
-          <div ref={inbox} className="inbox-pane">
-            <ParentInbox fetchImpl={fetchImpl} onChange={inboxChanged} refresh={answered + epoch} onSettled={onInbox} />
-          </div>
-          <Reveal open={historyOpen}>
-            <History fetchImpl={fetchImpl} refresh={answered + epoch} onChange={changed} />
-          </Reveal>
-        </div>
-      </Reveal>
     </section>
   );
 }

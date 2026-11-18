@@ -208,9 +208,12 @@ export const sound = createSoundEngine();
  */
 export const WARM_FALLBACK_MS = 1000;
 
+/** An idle period this long (of the browser's 50 ms at most) means nothing else is due. */
+const FULL_IDLE_MS = 40;
+
 export function warmWhenIdle(engine: SoundEngine = sound): () => void {
   const w = globalThis as typeof globalThis & {
-    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+    requestIdleCallback?: (cb: (deadline?: IdleDeadline) => void, opts?: { timeout: number }) => number;
     cancelIdleCallback?: (id: number) => void;
   };
   const run = () => {
@@ -219,7 +222,17 @@ export function warmWhenIdle(engine: SoundEngine = sound): () => void {
   };
   const { requestIdleCallback: whenIdle, cancelIdleCallback: cancel } = w;
   if (whenIdle && cancel) {
-    const id = whenIdle(run, { timeout: 2000 });
+    // Making the context is one task that can't be split (story 101): it waits for a whole idle
+    // period, with nothing else due, so an early tap is not held behind it. Never forced by a
+    // timeout: if the page is never idle, the Start tap makes it.
+    let id = 0;
+    const ask = () => {
+      id = whenIdle((deadline) => {
+        if (deadline && deadline.timeRemaining() < FULL_IDLE_MS) ask();
+        else run();
+      });
+    };
+    ask();
     return () => cancel(id);
   }
   const id = setTimeout(run, WARM_FALLBACK_MS);

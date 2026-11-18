@@ -174,7 +174,16 @@ export function SessionPlayer({
           </div>
           <div className="player-bar-actions">
             {soundToggle}
-            <button type="button" className="danger session-control safety-control" onClick={() => dispatch({ type: 'stop', outcome: 'hurt' })}>
+            {/* The safety controls are never a transition or deferred (story 101 AC4): the
+                session ends, and the pause is written on the device, in the tap's own task. */}
+            <button
+              type="button"
+              className="danger session-control safety-control"
+              onClick={() => {
+                dispatch({ type: 'stop', outcome: 'hurt' });
+                report('hurt');
+              }}
+            >
               Something hurts
             </button>
             <button
