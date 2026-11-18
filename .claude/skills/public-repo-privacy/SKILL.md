@@ -87,3 +87,6 @@ repeating it: the ask is public too. Then, with the owner:
 - [ ] No emails, phone numbers, account ids, keys or deployment addresses.
 - [ ] Images are drawn assets or demo-data screenshots, without camera metadata.
 - [ ] Long text went through `--text` first.
+- [ ] Timestamps written in docs and records are UTC (`Z`), not a local offset.
+- [ ] Nothing private sits in an earlier commit of the branch: a fix goes into the failing
+      commit before the first push, never on top of it.
