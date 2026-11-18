@@ -81,6 +81,8 @@ export function PainReportForm({
   const [note, setNote] = useState('');
   const [state, setState] = useState<'editing' | 'sending' | 'sent' | 'saved' | 'mistake'>('editing');
   const once = useOneAtATime();
+  // Unique per form, so the hidden warm-up copy (story 106) never shares the hint's id.
+  const hintId = useId();
 
   if (state === 'mistake') {
     return (
@@ -123,12 +125,12 @@ export function PainReportForm({
         className="primary session-control wide"
         disabled={!area}
         {...savingProps(state === 'sending')}
-        aria-describedby={area ? undefined : 'pain-hint'}
+        aria-describedby={area ? undefined : hintId}
       >
         {state === 'sending' ? SAVING : 'Tell my parent'}
       </button>
       {!area && (
-        <p id="pain-hint" className="meta">
+        <p id={hintId} className="meta">
           Choose where it hurts first.
         </p>
       )}
@@ -148,6 +150,9 @@ export function PainReportForm({
     </form>
   );
 }
+
+/** What the keeper's home says above the report after "Something hurts". */
+export const STOP_AND_REST = 'Stop and rest. Tell an adult now. If someone collapses, call the local emergency number.';
 
 /** The red flags, in two short sentences (quality rubric CT1: at most 20 words each). */
 export const SEE_SOMEONE =

@@ -4,7 +4,7 @@ import { ApprovedTraining as ApprovedTrainingPanel, History as HistoryPanel } fr
 import { TodayPanel as TodayPanelBody } from './LessonPath';
 import { sound, useWarmCues } from './sound';
 import { ProgressPanel as ProgressPanelBody } from './ProgressPanel';
-import { PainReportForm, PausedPanel } from './PainScreens';
+import { PainReportForm, PausedPanel, STOP_AND_REST } from './PainScreens';
 import { fetchProgress, isDoneForToday, type FinishProgressState } from './progress';
 import {
   cancel,
@@ -42,6 +42,11 @@ const SessionPlayer = player.Screen;
 
 /** How long after the home is up the player's code starts to load, so the panels load first. */
 const LOAD_PLAYER_AFTER_MS = 500;
+/**
+ * How long after today's panel settles (Start on screen) the pain report's warm-up may start
+ * (story 106): never in the first second after Start appears, where a quick Start lands.
+ */
+export const WARM_PAIN_AFTER_MS = 1200;
 
 // A tap on the home (Something hurts, Start) re-renders only the panels whose props it changes
 // (story 101 AC1): the history and progress don't draw again for a tap that leaves them as
@@ -69,8 +74,7 @@ function usePause(store: PauseStore, fetchImpl?: typeof fetch) {
     };
   }, [store, fetchImpl]);
 
-  const start = useCallback(() => setPause(startPause(store)), [store]);
-  /** Show the pause the device holds: after a tap that wrote it and painted first (story 105). */
+  /** Show the pause the device holds: after a tap that wrote it and painted first (stories 105, 106). */
   const refresh = useCallback(() => setPause(store.read()), [store]);
 
   /** Put the report in the outbox and send it; false when it waits for the network. */
@@ -114,7 +118,7 @@ function usePause(store: PauseStore, fetchImpl?: typeof fetch) {
     [store, fetchImpl],
   );
 
-  return { pause, start, refresh, send, flush, sent, mistake };
+  return { pause, refresh, send, flush, sent, mistake };
 }
 
 /**
@@ -174,8 +178,6 @@ export function KeeperHome({
   // The cues are computed only on the keeper's device, once its home is up and idle (story #98),
   // so the first cue is ready by the Start tap.
   useWarmCues();
-  // "Something hurts" lays its report out warm (story 105): it is laid out once ahead, on idle.
-  useEffect(() => warmPainReport(), []);
   // The player's code, ahead of the Start tap, so Start never waits on the network.
   useEffect(() => {
     const id = setTimeout(() => void player.preload().catch(() => {}), LOAD_PLAYER_AFTER_MS);
@@ -189,7 +191,7 @@ export function KeeperHome({
   const [reporting, setReporting] = useState(false);
   const [changed, setChanged] = useState(0);
   const [settled, setSettled] = useState({ today: false, progress: false, training: false });
-  const { pause, start, refresh, send, flush, sent, mistake } = usePause(pauseStore, fetchImpl);
+  const { pause, refresh, send, flush, sent, mistake } = usePause(pauseStore, fetchImpl);
   // The playing session's start event, the stop kept while Resume is offered, and the finish
   // whose XP the finish screen shows.
   const startSent = useRef<{ id: string; session: Session } | null>(null);
@@ -221,6 +223,26 @@ export function KeeperHome({
   const onToday = useMemo(() => settle('today'), [settle]);
   const onProgress = useMemo(() => settle('progress'), [settle]);
   const onTraining = useMemo(() => settle('training'), [settle]);
+  // Each panel shows once every panel above it has settled, so nothing on screen moves as
+  // the home fills in (story #80 AC1).
+  const todaySettled = !!pause || settled.today;
+  const progressSettled = todaySettled && settled.progress;
+  const trainingSettled = progressSettled && (!!pause || settled.training);
+
+  // "Something hurts" lays its report out warm (story 105): once ahead, on idle. It starts only
+  // a while after Start appears (story 106), so it never lands on a quick Start, and its steps
+  // run in idle periods only, so a later tap is never held behind one.
+  useEffect(() => {
+    if (!todaySettled) return;
+    let cancel = () => {};
+    const id = setTimeout(() => {
+      cancel = warmPainReport();
+    }, WARM_PAIN_AFTER_MS);
+    return () => {
+      clearTimeout(id);
+      cancel();
+    };
+  }, [todaySettled]);
 
   // A session already recorded today (on this device or another, before a reload) means
   // today is done: the home offers nothing more to train until tomorrow.
@@ -355,25 +377,26 @@ export function KeeperHome({
     );
   };
 
-  // Each panel shows once every panel above it has settled, so nothing on screen moves as
-  // the home fills in (story #80 AC1).
-  const todaySettled = !!pause || settled.today;
-  const progressSettled = todaySettled && settled.progress;
-  const trainingSettled = progressSettled && (!!pause || settled.training);
+  // "Something hurts" on the home (story 106): the tap's own task writes the pause on the device
+  // and shows the report form, "Tapped by mistake" included, with the paused panel in place of
+  // Start. The home's copy of the pause, and with it the rest of the home (the training list
+  // leaving, the panels below opening), follows after that paint. Nothing here touches audio.
+  const hurtTapped = () => {
+    startPause(pauseStore);
+    setReporting(true);
+    afterPaint(
+      () => startTransition(refresh),
+      () => {},
+    );
+  };
+  const paused = !!pause || reporting;
 
   return (
     <section className="home" aria-labelledby="home-title">
       <div className="home-bar">
         <h1 id="home-title">Keeper home</h1>
-        {!pause && (
-          <button
-            type="button"
-            className="danger session-control safety-control"
-            onClick={() => {
-              start();
-              setReporting(true);
-            }}
-          >
+        {!paused && (
+          <button type="button" className="danger session-control safety-control" onClick={hurtTapped}>
             Something hurts
           </button>
         )}
@@ -381,7 +404,7 @@ export function KeeperHome({
       {reporting && (
         <article className="card" aria-labelledby="report-title">
           <h2 id="report-title">Something hurts</h2>
-          <p>Stop and rest. Tell an adult now. If someone collapses, call the local emergency number.</p>
+          <p>{STOP_AND_REST}</p>
           <PainReportForm
             onSend={send}
             onMistake={(area) => {
@@ -397,11 +420,11 @@ export function KeeperHome({
           Today's session changed. Check it again.
         </p>
       )}
-      {pause ? (
+      {paused ? (
         <PausedPanel
-          mistake={!!pause.mistake}
+          mistake={!!pause?.mistake}
           // While the report form above is still open, its own "Tapped by mistake" is the one.
-          onMistake={reporting && !pause.sent && !pause.report ? undefined : () => mistake(null)}
+          onMistake={reporting && !pause?.sent && !pause?.report ? undefined : () => mistake(null)}
         />
       ) : (
         <TodayPanel

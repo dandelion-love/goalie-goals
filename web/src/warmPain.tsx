@@ -6,17 +6,19 @@
 
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
-import { PainReportForm, SEE_SOMEONE } from './PainScreens';
+import { PainReportForm, SEE_SOMEONE, STOP_AND_REST } from './PainScreens';
 
-/** An idle period at least this long (ms) for each step, so a tap is never held behind one. */
+/**
+ * An idle period at least this long (ms) for each step, so a tap is never held behind one. Each
+ * step is well under it at 4x CPU, and none is forced by a timeout (story 106): a page that is
+ * never idle that long is not warmed, and its first report is laid out cold.
+ */
 const STEP_IDLE_MS = 40;
-/** A page that is never idle warms this long after asking (ms). */
-const WARM_TIMEOUT_MS = 3000;
 
 let warmed = false;
 
 type IdleWindow = typeof globalThis & {
-  requestIdleCallback?: (cb: (deadline?: IdleDeadline) => void, opts?: { timeout: number }) => number;
+  requestIdleCallback?: (cb: (deadline?: IdleDeadline) => void) => number;
   cancelIdleCallback?: (id: number) => void;
 };
 
@@ -24,9 +26,11 @@ const noop = () => {};
 const neverSent = async () => false;
 
 /**
- * Lay the pain report out once, ahead of "Something hurts", in two idle steps: render it into a
- * detached box, then attach the box, lay it out and remove it. Only with requestIdleCallback
- * (a page without it skips the warm-up). Returns a cancel for an unmount.
+ * Lay the pain report out once, ahead of "Something hurts", in three idle steps (story 106: each
+ * well under an idle period): make a detached box and its root, render the report into it (as
+ * the keeper's home shows it, and as the player's finish screen does), then attach the box, lay
+ * it out and remove it. Only with requestIdleCallback (a page without it skips the warm-up).
+ * Returns a cancel for an unmount.
  */
 export function warmPainReport(doc: Document = document): () => void {
   const w = globalThis as IdleWindow;
@@ -36,7 +40,6 @@ export function warmPainReport(doc: Document = document): () => void {
   let id = 0;
   let box: HTMLElement | null = null;
   let root: Root | null = null;
-  const started = Date.now();
   let finished = false;
   const done = () => {
     finished = true;
@@ -47,14 +50,10 @@ export function warmPainReport(doc: Document = document): () => void {
   };
   const idle = (step: () => void) => {
     const ask = () => {
-      const timeout = Math.max(1, WARM_TIMEOUT_MS - (Date.now() - started));
-      id = whenIdle(
-        (deadline) => {
-          if (deadline && !deadline.didTimeout && deadline.timeRemaining() < STEP_IDLE_MS) ask();
-          else step();
-        },
-        { timeout },
-      );
+      id = whenIdle((deadline) => {
+        if (deadline && deadline.timeRemaining() < STEP_IDLE_MS) ask();
+        else step();
+      });
     };
     ask();
   };
@@ -66,23 +65,34 @@ export function warmPainReport(doc: Document = document): () => void {
     box.setAttribute('aria-hidden', 'true');
     box.setAttribute('inert', '');
     root = createRoot(box, { identifierPrefix: 'warm-' });
-    const r = root;
-    flushSync(() =>
-      r.render(
-        <section className="notice finish">
-          <p>{SEE_SOMEONE}</p>
-          <PainReportForm onSend={neverSent} onMistake={noop} />
-        </section>,
-      ),
-    );
     idle(() => {
-      if (!box) return;
-      // Still detached: any report in the page is the real one.
+      const r = root;
+      if (!r) return;
       if (doc.querySelector('.pain-form')) return done();
-      doc.body.appendChild(box);
-      // The layout is the point: it shapes the words and sets up the controls once.
-      void box.offsetHeight;
-      done();
+      flushSync(() =>
+        r.render(
+          <>
+            <article className="card">
+              <h2>Something hurts</h2>
+              <p>{STOP_AND_REST}</p>
+              <PainReportForm onSend={neverSent} onMistake={noop} />
+            </article>
+            <section className="notice finish">
+              <p>{SEE_SOMEONE}</p>
+              <PainReportForm onSend={neverSent} onMistake={noop} />
+            </section>
+          </>,
+        ),
+      );
+      idle(() => {
+        if (!box) return;
+        // Still detached: any report in the page is the real one.
+        if (doc.querySelector('.pain-form')) return done();
+        doc.body.appendChild(box);
+        // The layout is the point: it shapes the words and sets up the controls once.
+        void box.offsetHeight;
+        done();
+      });
     });
   });
   return () => {

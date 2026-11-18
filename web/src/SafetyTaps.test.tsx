@@ -132,6 +132,36 @@ describe('the safety taps run in the tap’s own task (story 101 AC4)', () => {
     await act(async () => {});
   });
 
+  it('Something hurts on the keeper’s home: its first frame is the form with "Tapped by mistake"; the rest of the home follows after paint (story 106)', async () => {
+    const pauseStore = new MemoryPauseStore();
+    render(<App fetchImpl={keeperServer(todayWith()).fetchImpl} wakeLock={wake} pauseStore={pauseStore} />);
+    await screen.findByRole('button', { name: 'Start session' });
+    await screen.findByRole('heading', { name: 'Your training' });
+
+    const tap = tapOutsideAct(screen.getByRole('button', { name: 'Something hurts' }));
+    expect(pauseStore.value).not.toBeNull();
+    await tap;
+
+    await microtasksOnly();
+    // The tap's own frame: the report form and its "Tapped by mistake" control, and the paused
+    // panel in place of Start.
+    const form = screen.getByRole('form', { name: 'Pain report' });
+    expect(form.querySelector('button.secondary')?.textContent).toBe('Tapped by mistake');
+    expect(screen.getByRole('heading', { name: 'Training is paused' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Something hurts' })).toBeNull();
+    // Only one "Tapped by mistake": the form's.
+    expect(screen.getAllByRole('button', { name: 'Tapped by mistake' })).toHaveLength(1);
+    // Not needed for that frame: the rest of the home, which reads the home's copy of the pause.
+    expect(screen.getByRole('heading', { name: 'Your training' })).toBeTruthy();
+
+    // After the paint, the home shows the pause: the training list is gone, the form stays.
+    await vi.waitFor(() => expect(screen.queryByRole('heading', { name: 'Your training' })).toBeNull());
+    expect(screen.getByRole('form', { name: 'Pain report' })).toBe(form);
+    expect(screen.getAllByRole('button', { name: 'Tapped by mistake' })).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: 'Training is paused' })).toBeTruthy();
+  });
+
   it('the method catches a deferral: a transition has not rendered after the microtasks', async () => {
     function Deferred() {
       const [on, setOn] = useState(false);
@@ -207,6 +237,29 @@ describe('the safety taps never touch audio (story 103 AC3)', () => {
         await act(async () => {});
       });
     }
+  }
+
+  for (const state of ['suspended', 'closed'] as const) {
+    it(`Something hurts on the keeper’s home, with the context ${state}: no context made and none resumed, in the tap or after its paint (story 106)`, async () => {
+      vi.stubGlobal('AudioContext', FakeAudioContext);
+      render(<App fetchImpl={keeperServer(todayWith()).fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
+      await screen.findByRole('button', { name: 'Start session' });
+      // The home makes the context once it is idle.
+      await vi.waitFor(() => expect(made.length).toBeGreaterThan(0));
+      const current = made[made.length - 1];
+      current.state = state;
+      const count = made.length;
+      const resumes = made.map((c) => c.resumes);
+
+      await pressOutsideAct(screen.getByRole('button', { name: 'Something hurts' }));
+      await microtasksOnly();
+      expect(made).toHaveLength(count);
+      expect(made.map((c) => c.resumes)).toEqual(resumes);
+      // The home's pause, after the paint: still no audio.
+      await vi.waitFor(() => expect(screen.queryByRole('heading', { name: 'Your training' })).toBeNull());
+      expect(made).toHaveLength(count);
+      expect(made.map((c) => c.resumes)).toEqual(resumes);
+    });
   }
 
   it('no tap in the player but Start makes a context: Next with none there makes none', async () => {
