@@ -32,6 +32,8 @@ Research findings and decisions behind the app, as an Open Knowledge Format bund
 * [Quality measures](/quality/index.md) - usability heuristics, SUS, WCAG 2.2, platform guidelines, legibility at a distance, visual consistency, game feel, motion, sound, copy and response times, and what each means for a two-person training app
 * [Usability](/usability/index.md) - lightweight usability methods for one household, and the privacy-safe ten-minute home check with its proxy check
 
+* [Exercise dossiers](/dossiers/index.md) - the policy for linking clips of professional goalkeepers from a dossier, the link record, the pre-release link check and a first sample
+
 ## Decisions
 
 * [Decisions](/decisions/index.md) - choices the app is built on, each with its sources

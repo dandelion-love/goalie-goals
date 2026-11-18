@@ -4,7 +4,7 @@ title: Exercise media
 description: The media and text sources the app uses to illustrate exercises, how attribution is shown, the stored format, how an exercise with no open media is illustrated, and what is never used.
 tags: [decision, exercise-media, licensing, attribution, privacy]
 status: draft
-generated: { by: claude-code/opus-5.5, at: 2026-11-18T06:30:00Z }
+generated: { by: claude-code/opus-5.5, at: 2026-11-18T06:40:00Z }
 sources:
   - { id: databases, resource: /exercise-media/open-exercise-databases.md, title: Open exercise databases with media }
   - { id: icon-sets, resource: /exercise-media/icon-and-illustration-sets.md, title: Open icon and illustration sets }
@@ -93,6 +93,7 @@ In order:
 - The vector figure rig and the diagram vocabulary are the first media stories; most goalkeeper content depends on them.
 - A snapshot script for Everkinetic and wger media applies the filters above and writes manifest entries.
 - The credits manifest and the CI content check land before the first borrowed asset.
+- A dossier's links out to official clips are not media in the app and are never embedded; the [clip link policy](/dossiers/clip-link-policy.md) governs them.
 - The repository still needs a licence decision by a person (see the [reuse decision](/decisions/exercise-content-reuse.md)); media under CC BY-SA 4.0 lives in a content folder with its own licence notice.
 
 [^databases]: Open exercise databases with media

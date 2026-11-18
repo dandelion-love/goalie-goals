@@ -16,6 +16,10 @@
 
 * [Parent approval as a primary behaviour](/decisions/parent-approval.md) - The parent approves every new exercise, load increase, plan change and any sharing before the keeper sees it; a pain report pauses all training until the parent clears it; while anything waits, only already-approved sessions run.
 
+## Exercise dossiers
+
+* [Policy for linking goalkeeper clips from a dossier](/dossiers/clip-link-policy.md) - Official channels only, opened outside the app with no embed, tracking or referrer, within the platform's age rules, chosen by the move with a spread across clubs, leagues and countries, and approved by the parent once for the household and per link with its exercise.
+
 ## UX patterns
 
 * [UX patterns this app adopts](/decisions/ux-patterns.md) - Which game-like learning-app patterns the app adopts, how each is adapted to physical training done by a keeper and a parent together, and which it leaves out and why.
