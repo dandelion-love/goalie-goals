@@ -110,6 +110,12 @@ class Rules(unittest.TestCase):
                          message=True)
         self.assertClean(j("1+me", AT, "users.noreply", ".github.com"))
 
+    def test_package_versions_are_not_emails(self) -> None:
+        self.assertClean(j("https://unpkg.com/react", AT, "18.3.1/umd/react.js"))
+        self.assertClean(j("npm i body-muscles", AT, "2.0.4"))
+        self.assertFlags(j("write to kid", AT, "mail.example2", ".org"), "email address")
+        self.assertFlags(j("kid", AT, "gmail", ".com"), "email address")
+
     def test_places_and_paths(self) -> None:
         self.assertFlags(j("V5K", " 0A1"), "postal code")
         self.assertFlags(j("C:", "\\", "Users\\someone\\x"), "private filesystem path")
