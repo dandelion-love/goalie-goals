@@ -93,8 +93,8 @@ if [[ -n "${GOALIE_ROLES:-}" ]]; then
 fi
 
 # Git Bash must not rewrite the IAP audience (an API resource name) as a Windows path.
-# This is set only after docker has received its local build path. It has no effect on Linux.
-export MSYS2_ARG_CONV_EXCL="*"
+# Limit the exclusion to this argument so the cloud launcher can still convert its own paths.
+export MSYS2_ARG_CONV_EXCL="^|^IAP_AUDIENCE="
 
 run_quiet "update the runtime image" gcloud run services update "$SERVICE" \
   --project "$PROJECT" --region "$REGION" --image "$IMAGE" \
