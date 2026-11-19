@@ -30,6 +30,7 @@ import {
 const DOSSIER_REQUESTS = [
   'dossier-broad-jump-stick',
   'dossier-glute-bridge',
+  'dossier-head-height-catch',
   'dossier-lateral-shuffle',
   'dossier-plank',
   'dossier-pogo-hops',
@@ -543,7 +544,7 @@ describe('training routes', () => {
       'card-squat-to-box',
       'card-split-squat',
       'card-set-position',
-      'card-lateral-shuffle',
+      'card-head-height-catch',
       'card-wall-chest-pass',
       'session-strong-middle',
       'session-spring-legs',

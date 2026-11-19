@@ -22,6 +22,7 @@ import { FakeFirestore } from './fakeFirestore.js';
 const DOSSIER_REQUESTS = [
   'dossier-broad-jump-stick',
   'dossier-glute-bridge',
+  'dossier-head-height-catch',
   'dossier-lateral-shuffle',
   'dossier-plank',
   'dossier-pogo-hops',
