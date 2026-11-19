@@ -8,6 +8,7 @@ import { WeekPanel as WeekPanelBody } from './WeekPanel';
 import { StartFresh } from './StartFresh';
 import { Reveal } from './Loading';
 import { useMoment } from './motion';
+import { Equipment } from './Equipment';
 
 // The parent's home, in its own chunk (story 101 AC2): the keeper's device never loads it.
 
@@ -62,6 +63,7 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
       </Reveal>
       <Reveal open={daysOpen}>
         <TrainingDays fetchImpl={fetchImpl} onChange={changed} onSettled={onDays} />
+        <Equipment fetchImpl={fetchImpl} onChange={changed} />
       </Reveal>
       <Reveal open={inboxOpen}>
         <div className={layout === 'expanded' ? 'panes' : 'stack'}>

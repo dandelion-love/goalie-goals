@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Keeper wearing gloves passes a football with both hands from the chest to a wall</title>
+  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <line x1="329" y1="19" x2="329" y2="186" stroke="#9ca3af" stroke-width="6"/>
+  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="96" cy="49" r="11"/><line x1="96" y1="63" x2="96" y2="121"/>
+    <polyline points="96,121 80,151 75,184"/><polyline points="96,121 113,151 118,184"/>
+    <polyline points="96,76 124,91 152,81"/><polyline points="96,82 123,99 151,89"/>
+  </g>
+  <circle cx="167" cy="85" r="14" fill="#fff" stroke="#2563eb" stroke-width="4"/>
+  <g fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round"><path d="M196 85 H288" stroke-dasharray="6 8"/><polyline points="278,75 288,85 278,95"/></g>
+</svg>

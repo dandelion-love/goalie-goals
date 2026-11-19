@@ -7,7 +7,7 @@ import { ApprovalService, MemoryApprovalStore, MemoryAuditLog } from '../src/app
 import { InAppNotifier } from '../src/notifier.js';
 import { cardSeconds, doseText, loadContent } from '../src/content.js';
 import { MemorySnapshotStore, TrainingService, cardItemId, sessionItemId, type SessionTemplate } from '../src/training.js';
-import { STARTER_PACK, WeeklyPlan, checkPlanRules, layOut } from '../src/weeklyPlan.js';
+import { STARTER_PACK as CURRENT_PACK, WeeklyPlan, checkPlanRules, layOut } from '../src/weeklyPlan.js';
 
 // Fixtures: the invented cast and invented days; content is the repo's own exercise cards.
 const SAM = { account: 'sam@example.com', role: 'parent' as const };
@@ -16,7 +16,9 @@ const CONTENT = loadContent();
 const MON = '2026-01-05';
 const FRI = '2026-01-09';
 
-const QUICK = STARTER_PACK.find((s) => s.id === 'quick-feet-strong-arms')!;
+// Freeze the week from story 109 so its historical trade remains independently testable.
+const QUICK = { ...CURRENT_PACK.find((s) => s.id === 'quick-feet-strong-arms')!, cardIds: ['set-position', 'lateral-shuffle', 'wall-push-up'] };
+const STARTER_PACK = CURRENT_PACK.map((s) => s.id === QUICK.id ? QUICK : s);
 /** The session as it was before story 109, for the trade and the approval gate. */
 const QUICK_BEFORE: SessionTemplate = { ...QUICK, cardIds: ['lateral-shuffle', 'broad-jump-stick', 'wall-push-up'] };
 const PACK_BEFORE = STARTER_PACK.map((s) => (s.id === QUICK.id ? QUICK_BEFORE : s));

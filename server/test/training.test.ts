@@ -37,6 +37,7 @@ const DOSSIER_REQUESTS = [
   'dossier-side-plank',
   'dossier-split-squat',
   'dossier-squat-to-box',
+  'dossier-wall-chest-pass',
   'dossier-wall-push-up',
 ];
 
@@ -543,7 +544,7 @@ describe('training routes', () => {
       'card-split-squat',
       'card-set-position',
       'card-lateral-shuffle',
-      'card-wall-push-up',
+      'card-wall-chest-pass',
       'session-strong-middle',
       'session-spring-legs',
       'session-quick-feet-strong-arms',

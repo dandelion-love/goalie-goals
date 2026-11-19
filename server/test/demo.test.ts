@@ -37,6 +37,7 @@ const DOSSIER_REQUESTS = [
   'dossier-side-plank',
   'dossier-split-squat',
   'dossier-squat-to-box',
+  'dossier-wall-chest-pass',
   'dossier-wall-push-up',
 ];
 

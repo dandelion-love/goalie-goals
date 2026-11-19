@@ -56,6 +56,8 @@ export const DEMO_PARENT = { account: 'sam@example.com', role: 'parent' as const
  * before the keeper can read it, as production waits for the owner.
  */
 export async function seedDemoSession(training: TrainingService, date: string): Promise<void> {
+  // The invented demo household has the equipment it needs; real households start unknown.
+  await training.equipment.write('available');
   await training.proposeFor(date);
   await training.dossiers.propose();
   for (const r of await training.approvals.pending()) {

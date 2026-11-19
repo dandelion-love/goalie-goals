@@ -1,0 +1,97 @@
+{
+  "id": "wall-chest-pass",
+  "name": "Wall chest pass",
+  "aliases": [
+    "two-handed chest pass"
+  ],
+  "category": "strength",
+  "why": "Keepers push the ball when passing or punching. Practise a two-handed push.",
+  "goal": [
+    "upper-body-push",
+    "trunk-stability"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only",
+      "other:ball",
+      "other:wall",
+      "other:goalkeeper-gloves"
+    ],
+    "any": []
+  },
+  "space_m": [
+    2,
+    2
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "Stand 2 m from a solid wall. Clear the rebound path. Move breakables away.",
+    "equipment": "A football, a solid wall and goalkeeper gloves. No medicine ball.",
+    "parent": "Stand side-on, away from the ball and rebound path."
+  },
+  "steps": [
+    "Put on goalkeeper gloves. Stand about 2 m from the wall.",
+    "Hold the football at your chest with both hands.",
+    "Push the ball to the wall at chest height. Straighten both arms together.",
+    "Catch the rebound. Bring the ball back to your chest."
+  ],
+  "cues": [
+    "Ball at chest",
+    "Both arms straight",
+    "Aim chest height"
+  ],
+  "mistakes": [
+    {
+      "mistake": "The ball starts away from the chest",
+      "fix": "Bring the ball to your chest before each push."
+    },
+    {
+      "mistake": "One arm finishes before the other",
+      "fix": "Push with both hands together."
+    },
+    {
+      "mistake": "The ball hits too high or low",
+      "fix": "Aim for chest height on the wall."
+    }
+  ],
+  "parent_check": [
+    "Ball leaves from the chest with both hands",
+    "Both arms finish straight together",
+    "Ball hits the wall at about chest height"
+  ],
+  "stop_if": [
+    "Pain in a wrist or finger",
+    "Pain in the shoulder or elbow",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
+    "Slipping on the floor"
+  ],
+  "easier": {
+    "variant": "Stand 1 m from the wall.",
+    "use_when": "The rebound or pass is hard to control."
+  },
+  "harder": {
+    "variant": "Practise the next approved punch shape.",
+    "move_on_when": "Every rep clean at 2 x 15, two sessions in a row. Then the owner approves."
+  },
+  "dose": {
+    "kind": "reps",
+    "sets": 2,
+    "reps": 10,
+    "per_side": false,
+    "rest_s": 60,
+    "tempo": "push together and catch"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "wall-push-up"
+  ],
+  "media": {
+    "figure": "content/figures/wall-chest-pass.svg"
+  },
+  "spec": "content/exercises/wall-chest-pass.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

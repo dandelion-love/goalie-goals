@@ -98,9 +98,10 @@ describe('AC2: one estimate, the same minutes everywhere a session is offered', 
     production: false,
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     approvals = new ApprovalService({ store: new MemoryApprovalStore(), audit: new MemoryAuditLog(), notifier: new InAppNotifier() });
     training = new TrainingService({ approvals, content: CONTENT, plan: new WeeklyPlan() });
+    await training.equipment.write('available');
   });
 
   afterEach(async () => {

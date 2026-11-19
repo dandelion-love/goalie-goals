@@ -30,6 +30,7 @@ const DOSSIER_REQUESTS = [
   'dossier-split-squat',
   'dossier-squat-to-box',
   'dossier-wall-push-up',
+  'dossier-wall-chest-pass',
 ];
 
 // Fixtures: the invented cast and invented training content only.

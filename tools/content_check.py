@@ -8,8 +8,8 @@ equipment-model Decision. The check fails a card when:
   file name;
 - `stop_if` or `substitutes` is empty, or a substitute is unknown, itself, shares no
   goal tag, or carries a higher risk (equipment-model Decision, how the planner swaps);
-- it needs more than the "bodyweight and home" default profile has (equipment, floor
-  space, surface);
+- it needs more than the "bodyweight and home" profile, apart from optional goalkeeper
+  gloves which are checked against the parent's availability setting at runtime;
 - its dose is outside the training-rules Decision's limits (LIMITS), or uses words of
   maximal effort;
 - its stop signs leave out a warning sign every card must carry (REQUIRED_STOPS: a pain
@@ -375,7 +375,8 @@ def check(root: Path) -> list[str]:
             elif rank[other["risk"]] > rank[card["risk"]]:
                 found.append(f"{rel}: substitute {sub} has a higher risk")
         # Default profile.
-        extra = set(card["needs"]["all"]) - HOME_PROFILE["equipment"]
+        # Gloves are an optional, parent-confirmed requirement, not a default possession.
+        extra = set(card["needs"]["all"]) - HOME_PROFILE["equipment"] - {"other:goalkeeper-gloves"}
         if extra:
             found.append(f"{rel}: needs {', '.join(sorted(extra))}, outside the default profiles")
         if card["needs"]["any"] and not any(

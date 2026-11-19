@@ -55,6 +55,7 @@ import {
   type GenerationStore,
 } from './generation.js';
 import { HouseholdReset, ResetPainGate, registerHouseholdRoutes } from './householdReset.js';
+import { FirestoreEquipmentStore, MemoryEquipmentStore, registerEquipmentRoutes } from './equipment.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -233,6 +234,7 @@ export async function buildApp({
   // development and the demo too (story 116). The dev mock's copy lets the demo seed start the
   // themes on today (src/demo.ts); unseeded, it keeps the real Monday-first order.
   const startedStore = !training && db ? new FirestoreStartedStore(db) : undefined;
+  const equipment = training?.equipment ?? (db ? new FirestoreEquipmentStore(db) : new MemoryEquipmentStore());
   const ownPlan = training ? undefined : config.devMockIdentity ? new DemoWeeklyPlan() : new WeeklyPlan();
   const trainingService =
     training ??
@@ -242,6 +244,7 @@ export async function buildApp({
       plan: ownPlan!,
       // Story 118: a session started before a restart is still started after it.
       started: startedStore,
+      equipment,
     });
   if (!training) await trainingService.loadStarted();
   // The app's own in-memory store for the training days, kept by name for the demo seed.
@@ -358,6 +361,7 @@ export async function buildApp({
   registerPainRoutes(app, { pain: painService, roles: roleStore, gate: resetPainGate, currentGeneration: () => currentGeneration });
 
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused() });
+  registerEquipmentRoutes(app, equipment, roleStore);
   registerDossierRoutes(app, { dossiers: trainingService.dossiers, approvals: approvalService, roles: roleStore });
   if (scheduleService) registerScheduleRoutes(app, { schedule: scheduleService, roles: roleStore });
 
@@ -392,11 +396,13 @@ export async function buildApp({
 
   // Every store the app made or was given that can delete its part of the household.
   const parts: HouseholdPart[] = [];
-  for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store]) {
+  for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store, equipment]) {
     if (isPart(p)) parts.push(p);
   }
   // Starting fresh keeps the parent's training days (story 121).
-  const household = new Household(parts, isPart(usedScheduleStore) ? [usedScheduleStore] : []);
+  const kept: HouseholdPart[] = [equipment];
+  if (isPart(usedScheduleStore)) kept.push(usedScheduleStore);
+  const household = new Household(parts, kept);
   app.decorate('household', household);
 
   const notifier = approvalService.notifier as { clear?: unknown };

@@ -16,6 +16,7 @@ import { itemVersion } from './approvals.js';
 import { asObject, type FsDb } from './firestoreDb.js';
 import { cardSeconds, doseText, type CardSource, type ContentLibrary, type Dose, type ExerciseCard } from './content.js';
 import { DossierService, type ClientDossier } from './dossiers.js';
+import { MemoryEquipmentStore, type EquipmentStore } from './equipment.js';
 
 /** A timed, low-risk move in a warm-up or cool-down (no equipment, no jumping). */
 export interface Move {
@@ -103,6 +104,8 @@ export interface ClientSession {
   warmUp: Move[];
   cards: ClientCard[];
   coolDown: Move[];
+  /** Must be confirmed online at the start because equipment can change on another device. */
+  requiresGloves?: boolean;
 }
 
 export interface TodayResponse {
@@ -296,6 +299,7 @@ export interface TrainingServiceDeps {
   snapshots?: MemorySnapshotStore;
   /** Where the started marker outlives a restart (story 118); in memory only when not given. */
   started?: StartedStore;
+  equipment?: EquipmentStore;
 }
 
 /** A client session with each card's approved dossier attached (story 115). */
@@ -315,6 +319,7 @@ export class TrainingService {
   readonly plan: TrainingPlan;
   private readonly snapshots: MemorySnapshotStore;
   private readonly startedStore: StartedStore | undefined;
+  readonly equipment: EquipmentStore;
   /** Exercise dossiers (story 115), approved like the cards they explain. */
   readonly dossiers: DossierService;
 
@@ -324,12 +329,14 @@ export class TrainingService {
     plan = new SingleSessionPlan(),
     snapshots = new MemorySnapshotStore(),
     started,
+    equipment = new MemoryEquipmentStore(),
   }: TrainingServiceDeps) {
     this.approvals = approvals;
     this.content = content;
     this.plan = plan;
     this.snapshots = snapshots;
     this.startedStore = started;
+    this.equipment = equipment;
     this.dossiers = new DossierService({ approvals, content: () => this.content });
   }
 
@@ -420,11 +427,17 @@ export class TrainingService {
   }
 
   private async playable(session: SessionSnapshot): Promise<boolean> {
+    if (!(await this.equipmentMet(session))) return false;
     if (!(await this.approvals.isApproved(session.itemId, session.itemVersion))) return false;
     for (const c of session.cards) {
       if (!(await this.approvals.isApproved(c.itemId, c.itemVersion))) return false;
     }
     return true;
+  }
+
+  private async equipmentMet(session: SessionSnapshot): Promise<boolean> {
+    return !session.cards.some((c) => c.source.card.needs?.all.includes('other:goalkeeper-gloves')) ||
+      await this.equipment.read() === 'available';
   }
 
   async today(date: string): Promise<TodayResponse> {
@@ -470,10 +483,12 @@ export class TrainingService {
    * not start.
    */
   async markStarted(itemId: string, version: string): Promise<boolean> {
+    return this.equipment.guard(async () => {
     const snap = this.snapshots.sessions.get(version);
     if (!snap || snap.itemId !== itemId || !(await this.playable(snap))) return false;
     await this.rememberStarted(snap);
     return true;
+    });
   }
 
   /**
@@ -492,8 +507,10 @@ export class TrainingService {
     actor: { account: string; role: Role },
     date: string,
   ): Promise<boolean> {
+    return this.equipment.guard(async () => {
     const snap = this.snapshots.sessions.get(version);
     if (!snap || snap.itemId !== itemId || !DATE_RE.test(date)) return false;
+    if (!(await this.equipmentMet(snap))) return false;
     const undone: ApprovalRequest[] = [];
     for (const item of [snap, ...snap.cards]) {
       if (await this.approvals.isApproved(item.itemId, item.itemVersion)) continue;
@@ -506,6 +523,7 @@ export class TrainingService {
     await this.rememberStarted(snap);
     if (!already) for (const r of undone) await this.approvals.logLateStart(r, actor);
     return true;
+    });
   }
 
   /** Whether a started session used this item version (the session itself or one of its cards). */
@@ -579,6 +597,7 @@ export class TrainingService {
       warmUp: s.template.warmUp.map((m) => ({ ...m })),
       cards: s.cards.map((c) => this.cardToClient(c)),
       coolDown: s.template.coolDown.map((m) => ({ ...m })),
+      requiresGloves: s.cards.some((c) => c.source.card.needs?.all.includes('other:goalkeeper-gloves')),
     };
   }
 

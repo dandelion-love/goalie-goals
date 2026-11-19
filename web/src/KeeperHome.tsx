@@ -193,6 +193,8 @@ export function KeeperHome({
     return () => clearTimeout(id);
   }, []);
   const [playing, setPlaying] = useState<Session | null>(null);
+  const [equipmentMessage, setEquipmentMessage] = useState('');
+  const equipmentStart = useRef(false);
   const [finishedHere, setDoneToday] = useState(false);
   const [recordedToday, setRecordedToday] = useState(false);
   const [progress, setProgress] = useState<FinishProgressState>(null);
@@ -369,11 +371,28 @@ export function KeeperHome({
   // Paused: show the pause, and offer nothing to train.
   const tryStart = (session: Session) => {
     // Paused, or already started (a second tap while the player is still rendering).
-    if (pauseStore.read() || startSent.current) return;
+    if (pauseStore.read() || startSent.current || equipmentStart.current) return;
     // The Start tap unlocks sound for the session (iPadOS plays audio only after a tap). It
     // resumes the context the home made on idle, or, on a quick Start, makes it here: the one tap
     // that may (story 103).
     sound.unlockForStart();
+    if (session.requiresGloves) {
+      equipmentStart.current = true;
+      setEquipmentMessage('Checking goalkeeper gloves…');
+      void (fetchImpl ?? fetch)('/api/training/started', {
+        method: 'POST', credentials: 'same-origin', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ itemId: session.itemId, itemVersion: session.itemVersion }),
+      }).then((response) => {
+        if (!response.ok || pauseStore.read()) throw new Error();
+        setEquipmentMessage('');
+        startTransition(() => setPlaying(session));
+      }).catch(() => {
+        setEquipmentMessage('Connect to check that goalkeeper gloves are available before starting.');
+        setChanged((n) => n + 1);
+      }).finally(() => { equipmentStart.current = false; });
+      return;
+    }
     // A transition (story #98 AC5): the tap paints its response at once, and the player, a
     // large render, follows without holding the tap's frame. Its start cue plays as it shows.
     startTransition(() => setPlaying(session));
@@ -436,6 +455,7 @@ export function KeeperHome({
           Today's session changed. Check it again.
         </p>
       )}
+      {equipmentMessage && <p role="status">{equipmentMessage}</p>}
       {paused ? (
         <PausedPanel
           mistake={!!pause?.mistake}

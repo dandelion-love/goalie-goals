@@ -27,6 +27,7 @@ export interface ExerciseCard {
   category: string;
   why: string;
   risk: string;
+  needs?: { all: string[]; any: string[][] };
   setup: Record<string, string>;
   steps: string[];
   cues: string[];

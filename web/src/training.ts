@@ -55,6 +55,7 @@ export interface Session {
   warmUp: Move[];
   cards: Card[];
   coolDown: Move[];
+  requiresGloves?: boolean;
 }
 
 export interface Today {

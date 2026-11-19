@@ -38,10 +38,11 @@ let approvals: ApprovalService;
 let plan: WeeklyPlan;
 let training: TrainingService;
 
-beforeEach(() => {
+beforeEach(async () => {
   approvals = new ApprovalService({ store: new MemoryApprovalStore(), audit: new MemoryAuditLog(), notifier: new InAppNotifier() });
   plan = new WeeklyPlan();
   training = new TrainingService({ approvals, content: CONTENT, plan });
+  await training.equipment.write('available');
 });
 
 async function approveAllPending() {
@@ -63,7 +64,7 @@ describe('AC1: the weekly plan', () => {
     ]);
     expect(plan.sessionFor(MON)!.cardIds).toEqual(['plank', 'side-plank', 'glute-bridge']);
     expect(plan.sessionFor(WED)!.cardIds).toEqual(['pogo-hops', 'squat-to-box', 'split-squat']);
-    expect(plan.sessionFor(FRI)!.cardIds).toEqual(['set-position', 'lateral-shuffle', 'wall-push-up']);
+    expect(plan.sessionFor(FRI)!.cardIds).toEqual(['set-position', 'lateral-shuffle', 'wall-chest-pass']);
     // The same pattern the next week.
     expect(titleOn('2026-01-12')).toBe('Strong middle');
   });

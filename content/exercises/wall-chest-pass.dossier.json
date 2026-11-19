@@ -1,0 +1,203 @@
+{
+  "id": "wall-chest-pass",
+  "card": "content/exercises/wall-chest-pass.json",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0",
+  "reviewed_at": "2026-11-19T00:00:00Z",
+  "stale_after": "2027-11-19T00:00:00Z",
+  "sources": [
+    {
+      "id": "white-2018",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/30144021/",
+      "title": "White et al. Match-play and performance test responses of soccer goalkeepers: a review of current literature (Sports Med, 2018)",
+      "kind": "review",
+      "population": "adult",
+      "band": "adults",
+      "year": 2018
+    },
+    {
+      "id": "faigenbaum-2007",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/24149486/",
+      "title": "Faigenbaum et al. Effects of a short-term plyometric and resistance training program on fitness performance in boys (J Sports Sci Med, 2007)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "early teens",
+      "year": 2007
+    },
+    {
+      "id": "faigenbaum-2001",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/11726257/",
+      "title": "Faigenbaum et al. Effects of different resistance training protocols on upper-body strength and endurance development in children (J Strength Cond Res, 2001)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "children",
+      "year": 2001
+    },
+    {
+      "id": "faigenbaum-2002",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/12495243/",
+      "title": "Faigenbaum et al. Comparison of 1 and 2 days per week of strength training in children (Res Q Exerc Sport, 2002)",
+      "kind": "trial",
+      "population": "youth",
+      "band": "children",
+      "year": 2002
+    },
+    {
+      "id": "ioc-2015",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/26084524/",
+      "title": "Bergeron et al. IOC consensus statement on youth athletic development (Br J Sports Med, 2015)",
+      "kind": "position-statement",
+      "population": "youth",
+      "band": "children and teens",
+      "year": 2015
+    },
+    {
+      "id": "kowalski-2022",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/35599715/",
+      "title": "Kowalski et al. Shoulder electromyography activity during push-up variations: a scoping review (Shoulder Elbow, 2022)",
+      "kind": "review",
+      "population": "adult",
+      "band": "adults",
+      "year": 2022
+    }
+  ],
+  "why": {
+    "headline": "Practise a two-handed push with the ball.",
+    "claims": [
+      {
+        "action": "distribution",
+        "text": "Adult goalkeepers use their hands to start attacks. This card practises a two-handed push.",
+        "sources": [
+          "white-2018"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "action": "distribution",
+        "text": "A youth trial measured chest throws after mixed training. The trial used a heavier ball.",
+        "sources": [
+          "faigenbaum-2007"
+        ],
+        "evidence": "youth"
+      }
+    ]
+  },
+  "expect": {
+    "claims": [
+      {
+        "text": "In two trials, children trained twice weekly on machines. After 8 weeks, chest press strength rose 11.5 to 16.8%.",
+        "sources": [
+          "faigenbaum-2001",
+          "faigenbaum-2002"
+        ],
+        "evidence": "youth",
+        "outcome": {
+          "measure": "chest press strength",
+          "change_pct": [
+            11.5,
+            16.8
+          ],
+          "weeks": [
+            8,
+            8
+          ],
+          "sessions_per_week": [
+            2,
+            2
+          ],
+          "band": "children"
+        }
+      },
+      {
+        "text": "In a youth trial, two mixed programs trained twice weekly. After 6 weeks, chest throws went 5.6 to 14.4% further.",
+        "sources": [
+          "faigenbaum-2007"
+        ],
+        "evidence": "youth",
+        "outcome": {
+          "measure": "seated medicine ball chest throw",
+          "change_pct": [
+            5.6,
+            14.4
+          ],
+          "weeks": [
+            6,
+            6
+          ],
+          "sessions_per_week": [
+            2,
+            2
+          ],
+          "band": "early teens"
+        }
+      }
+    ],
+    "keep_up": {
+      "text": "Everyone learns at their own pace. Young people develop at different rates.",
+      "sources": [
+        "ioc-2015"
+      ],
+      "evidence": "youth"
+    }
+  },
+  "muscles": {
+    "map": [
+      {
+        "muscle": "pectorals",
+        "plain": "Your chest muscles",
+        "role": "helping",
+        "basis": "measured",
+        "sources": [
+          "kowalski-2022"
+        ],
+        "evidence": "adult"
+      },
+      {
+        "muscle": "triceps",
+        "plain": "The muscles at the back of your upper arms",
+        "role": "helping",
+        "basis": "measured",
+        "sources": [
+          "kowalski-2022"
+        ],
+        "evidence": "adult"
+      }
+    ],
+    "note": {
+      "text": "Adult studies measured these muscles in push-ups, not this pass.",
+      "sources": [
+        "kowalski-2022"
+      ],
+      "evidence": "adult"
+    }
+  },
+  "clips": [],
+  "science": {
+    "claims": [
+      {
+        "text": "In one youth study, mixed training included resistance work. Chest throws were tested with a heavier ball.",
+        "sources": [
+          "faigenbaum-2007"
+        ],
+        "evidence": "youth"
+      },
+      {
+        "text": "In a youth trial, some groups trained with chest presses. Some also used medicine balls.",
+        "sources": [
+          "faigenbaum-2001"
+        ],
+        "evidence": "youth"
+      }
+    ],
+    "limits": [
+      {
+        "text": "The youth trials tested whole programs, not this football pass. They do not predict your result.",
+        "sources": [
+          "faigenbaum-2007",
+          "faigenbaum-2001"
+        ],
+        "evidence": "youth"
+      }
+    ]
+  }
+}

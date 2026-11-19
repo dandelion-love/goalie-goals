@@ -344,6 +344,38 @@
       "licence": "MIT",
       "source": "drawn for this repo (maskable app icon)",
       "checked": "2026-11-18"
+    },
+    {
+      "path": "content/exercises/wall-chest-pass.json",
+      "title": "Wall chest pass exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-19"
+    },
+    {
+      "path": "content/exercises/wall-chest-pass.spec.md",
+      "title": "Wall chest pass acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-19"
+    },
+    {
+      "path": "content/figures/wall-chest-pass.svg",
+      "title": "Wall chest pass figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-19"
+    },
+    {
+      "path": "content/exercises/wall-chest-pass.dossier.json",
+      "title": "Wall chest pass dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited sources (clean-room; no text copied)",
+      "checked": "2026-11-19"
     }
   ]
 }
