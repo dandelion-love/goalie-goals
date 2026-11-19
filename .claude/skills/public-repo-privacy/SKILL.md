@@ -93,6 +93,22 @@ repeating it: the ask is public too. Then, with the owner:
 - A pushed commit: rewrite history only on the owner's word, then ask GitHub Support to
   purge cached views. Assume it was copied.
 
+## Reviewers' public drafts
+
+Before posting any review, comment, or verdict, the reviewer runs
+`python3 tools/privacy_guard.py --text < draft.md` on the exact public draft. Read the
+same draft manually for personal details, keeper and parent wording, and copied text or
+assets. Correct any finding and check the revised exact draft again before posting.
+The guard does not replace the manual read.
+
+For a public comment that needs correction, follow **If something private got out**
+above: stop and tell the owner without repeating the private detail; editing leaves
+history and deletion does not undo disclosure. The separate [tool-recovery follow-up
+#129](https://github.com/dandelion-love/goalie-goals/issues/129) tracks repair of the
+comment-edit tools; it does not replace this escalation procedure. In a mock walkthrough,
+if an invented comment exposes a prohibited detail, notify the owner about the kind of
+detail and location, then follow the removal and escalation steps; do not reproduce it.
+
 ## Before you publish
 
 - [ ] No real names, except GitHub logins and labels the board already defines.
