@@ -4,7 +4,7 @@ title: Quality rubric for look, feel and usability
 description: The rubric the reviewer scores to judge polish - 37 items across visual consistency, type and colour, layout and touch, motion, sound, feedback latency, copy tone and usability, each 0-3 with anchors, a numeric target and a repeatable method on a local demo-data run - plus the pair-check targets and the baseline scores from the reviewer's first audit.
 tags: [decision, quality, rubric, clean-room, accessibility, performance]
 status: draft
-generated: { by: claude-code/opus-5.5, at: 2026-11-18T06:30:00Z }
+generated: { by: codex/gpt-6, at: 2026-11-19T00:29:45Z }
 sources:
   - { id: quality, resource: /quality/index.md, title: Quality measures for a game-like training app }
   - { id: heuristics, resource: /quality/usability-heuristics.md, title: Usability heuristics and severity ratings }
@@ -89,6 +89,47 @@ Every audit runs the same way, so two runs of the same commit give the same scor
   metadata. Recordings, if any, only of the demo cast on this local run. Evidence stays
   on the reviewer's machine unless the reviewer attaches a demo-data screenshot to the
   audit comment.
+
+### Reliable timing and test runs
+
+Before approving a new timing criterion, the reviewer records the reference commit,
+baseline result and rig, the visible failure the limit represents, and the rule for
+noise and inconclusive runs. Run the proposed criterion on the reference build first;
+if the baseline cannot meet it or the measurement cannot distinguish noise from the
+failure, send the plan back for revision before implementation.
+
+The builder and reviewer coordinate so only one measurement or deploy-test run uses
+the shared host at a time. Do not run either alongside a heavy build; run at most two
+builds at once, and each builder stops the demo processes it started. For timed audits,
+record host CPU load before and during the run, alongside the commit, rig and results.
+When load exceeds about 15%, do not score an absolute timing result from that run.
+If a comparison is useful, interleave reference and current builds back to back under
+the same conditions, report each pair and the median difference, and label the result
+as comparative. A paired result cannot establish an absolute ceiling: repeat that
+measurement on a quiet host before claiming the absolute criterion passes. If load or
+other interference differs materially between pairs, hold the result and rerun.
+
+**Worked timing record:** In the [#54 interim audit](https://github.com/dandelion-love/goalie-goals/issues/54#issuecomment-6983710853),
+background load made absolute timing unscorable. The [paired audit](https://github.com/dandelion-love/goalie-goals/issues/54#issuecomment-6984081470)
+interleaved reference `7a201de` and current `2361cf6` at 4x CPU with demo data;
+host load was 35.5% median (19–60%). The reference's quiet FL1 baseline was 72 ms.
+The user-visible failure under examination was a delayed response to a tap. The paired
+run reported the difference, not a clean absolute pass, and deferred the absolute reread
+to a quiet audit. A new criterion would record that baseline and noise rule *before*
+plan approval; this historical record illustrates the method, not such an approval.
+
+For an unexplained flaky test, the builder records the exact test name, failing run and
+evidence at the first sighting. At a second unexplained failure, open or update a
+root-cause issue and pause overlapping work when confidence in the affected screens is
+impaired. Preserve assertions and coverage; do not skip, retry, loosen assertions or
+extend timeouts to manufacture a pass. A deploy remains blocked while its required
+suite fails, until the root cause is fixed and the required verification passes.
+
+**Worked test record:** [#122](https://github.com/dandelion-love/goalie-goals/issues/122)
+names the Recovery and WeekPanel failures and the later expanded first-render failures,
+including ApprovalScreens and TrainingDays. Those failures block deployment; the
+inbox growth mentioned there is a hypothesis, not a confirmed cause. The issue requires
+reproduction before the fix, preserved coverage and twenty consecutive full web runs.
 
 ### Audited screens
 

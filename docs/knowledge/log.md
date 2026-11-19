@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-19
+
+* **Changed**: quality-rubric: baseline timing checks, run isolation, noisy audit handling and escalation of repeated test flakes (story 128).
+
 ## 2026-11-18
 
 * **Changed**: training-rules: a session is at most 15 minutes, warm-up and cool-down included, by the app's one estimate (4 s a rep, hold times, rests between sets, the moves' own seconds, rounded to the nearest minute), on the owner's decision to relax the "about 10 minutes" of the starter plan and show each session's length clearly (story 120).
