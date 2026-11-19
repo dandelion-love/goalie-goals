@@ -239,7 +239,7 @@ describe('AC4: the parent sets the training days', () => {
       action: 'changed',
       actorRole: 'parent',
       kind: 'schedule',
-      title: 'the training days (Tue, Thu, Sat)',
+      title: 'the training days',
     });
   });
 
@@ -323,7 +323,7 @@ describe('AC4: training days routes', () => {
     const wed = await a.inject({ method: 'GET', url: `/api/training/today?date=${WED}`, headers: as(KAI) });
     expect(wed.json()).toMatchObject({ planned: false, today: null });
     const history = await a.inject({ method: 'GET', url: '/api/audit', headers: as(SAM) });
-    expect(history.json().events.at(-1)).toMatchObject({ action: 'changed', kind: 'schedule', title: 'the training days (Tue, Thu, Sat)' });
+    expect(history.json().events.at(-1)).toMatchObject({ action: 'changed', kind: 'schedule', title: 'the training days' });
   });
 
   it('refuses consecutive days with a message, and a keeper outright', async () => {

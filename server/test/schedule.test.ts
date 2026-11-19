@@ -4,7 +4,8 @@ import { buildApp } from '../src/app.js';
 import { ConfigError, loadConfig, type Config } from '../src/config.js';
 import { TestSigner } from '../src/devIdentity.js';
 import { IDENTITY_HEADER, ProxyJwtVerifier } from '../src/identity.js';
-import { ApprovalService, MemoryApprovalStore, MemoryAuditLog } from '../src/approvals.js';
+import { ApprovalService, FirestoreAuditLog, MemoryApprovalStore, MemoryAuditLog } from '../src/approvals.js';
+import { FakeFirestore as HouseholdFirestore } from './fakeFirestore.js';
 import { InAppNotifier } from '../src/notifier.js';
 import { loadContent } from '../src/content.js';
 import { TrainingService } from '../src/training.js';
@@ -146,6 +147,16 @@ describe('AC1: the training days survive a restart on Firestore', () => {
 });
 
 describe('AC2: only the weekdays and their date are stored', () => {
+  it('records a successful change without copying the chosen weekdays into the audit', async () => {
+    const audit = new MemoryAuditLog();
+    const service = new ScheduleService({ store: new MemoryScheduleStore(), plan: new WeeklyPlan(), audit, content: () => CONTENT });
+    await service.set(PARENT, [2, 4, 6], TUE);
+    const events = await audit.list();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ action: 'changed', title: 'the training days' });
+    expect(JSON.stringify(events[0])).not.toMatch(/Tue|Thu|Sat/);
+  });
+
   it('the household document holds the changes and nothing else', async () => {
     const db = new FakeFirestore();
     const service = new ScheduleService({ store: new FirestoreScheduleStore(db), plan: new WeeklyPlan(), audit: new MemoryAuditLog(), content: () => CONTENT });
@@ -213,7 +224,7 @@ describe('AC3: a failed write is refused and the old days stay', () => {
     expect(await service.set(PARENT, [2, 4, 6], MON)).toEqual([2, 4, 6]);
     expect(service.days(MON)).toEqual([2, 4, 6]);
     expect(await new FirestoreScheduleStore(db).list()).toEqual([{ from: MON, days: [2, 4, 6] }]);
-    expect((await audit.list())[0]).toMatchObject({ action: 'changed', title: 'the training days (Tue, Thu, Sat)' });
+    expect((await audit.list())[0]).toMatchObject({ action: 'changed', title: 'the training days' });
   });
 
   it('the route answers 503 with the plain message, and the days stay', async () => {
@@ -231,6 +242,23 @@ describe('AC3: a failed write is refused and the old days stay', () => {
     } finally {
       await app.close();
     }
+  });
+
+  it('returns the same 503 and keeps the old days when schedule and audit writes both fail', async () => {
+    const db = new HouseholdFirestore();
+    const audit = new FirestoreAuditLog(db);
+    const approvals = new ApprovalService({ store: new MemoryApprovalStore(), audit, notifier: new InAppNotifier() });
+    const training = new TrainingService({ approvals, content: CONTENT, plan: new WeeklyPlan() });
+    const app = await buildApp({ config: testConfig(), verifier: new ProxyJwtVerifier(AUDIENCE, signer.keys), approvals, training, scheduleStore: new FirestoreScheduleStore(db) });
+    try {
+      db.failWrites = true;
+      const put = await app.inject({ method: 'PUT', url: '/api/training/days', headers: as(SAM), payload: { days: [2, 4, 6], date: MON } });
+      expect(put.statusCode).toBe(503);
+      expect(put.json()).toEqual({ error: 'unavailable', message: SAVE_FAILED });
+      const days = await app.inject({ method: 'GET', url: `/api/training/days?date=${MON}`, headers: as(SAM) });
+      expect(days.json().days).toEqual([1, 3, 5]);
+      expect(await audit.list()).toEqual([]);
+    } finally { await app.close(); }
   });
 });
 

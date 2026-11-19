@@ -14,7 +14,6 @@ import {
   isWeekday,
   layOut,
   sortWeekdays,
-  weekdaysText,
   type ScheduleChange,
   type Weekday,
   type WeeklyPlan,
@@ -201,7 +200,12 @@ export class ScheduleService {
       await this.store.append(change);
     } catch {
       // The error itself (its stack, any resource names) stays out of the audit.
-      await this.log(actor, 'refused', 'the training days', 'The change could not be saved');
+      // The audit may share the failed database; still return the plain failure to the parent.
+      try {
+        await this.log(actor, 'refused', 'the training days', 'The change could not be saved');
+      } catch {
+        // No audit record can be promised while that store is unavailable.
+      }
       throw new ScheduleError('unavailable', SAVE_FAILED);
     }
     try {
@@ -210,7 +214,7 @@ export class ScheduleService {
       // The store has the change; if it cannot be read back now, apply it to what was loaded.
       this.plan.load([...this.plan.changeLog(), change]);
     }
-    await this.log(actor, 'changed', `the training days (${weekdaysText(chosen)})`, null);
+    await this.log(actor, 'changed', 'the training days', null);
     return chosen;
   }
 
