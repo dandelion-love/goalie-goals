@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Keeper catches a gently tossed ball in front of the face, hands behind the ball</title>
+  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
+  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="110" cy="52" r="11"/><line x1="110" y1="66" x2="110" y2="120"/>
+    <polyline points="110,120 92,151 87,184"/><polyline points="110,120 128,151 133,184"/>
+    <polyline points="110,75 87,91 91,57"/><polyline points="110,75 133,91 129,57"/>
+    <circle cx="282" cy="52" r="11"/><line x1="282" y1="66" x2="282" y2="120"/>
+    <polyline points="282,120 266,153 263,184"/><polyline points="282,120 298,153 302,184"/>
+    <polyline points="282,76 258,89 239,78"/>
+  </g>
+  <circle cx="110" cy="49" r="15" fill="#fff" stroke="#2563eb" stroke-width="4"/>
+  <g fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round"><path d="M231 51 Q185 21 145 43" stroke-dasharray="6 8"/><polyline points="153,32 145,43 158,47"/></g>
+</svg>

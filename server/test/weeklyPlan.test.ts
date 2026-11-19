@@ -64,7 +64,7 @@ describe('AC1: the weekly plan', () => {
     ]);
     expect(plan.sessionFor(MON)!.cardIds).toEqual(['plank', 'side-plank', 'glute-bridge']);
     expect(plan.sessionFor(WED)!.cardIds).toEqual(['pogo-hops', 'squat-to-box', 'split-squat']);
-    expect(plan.sessionFor(FRI)!.cardIds).toEqual(['set-position', 'lateral-shuffle', 'wall-chest-pass']);
+    expect(plan.sessionFor(FRI)!.cardIds).toEqual(['set-position', 'head-height-catch', 'wall-chest-pass']);
     // The same pattern the next week.
     expect(titleOn('2026-01-12')).toBe('Strong middle');
   });
@@ -306,7 +306,7 @@ describe('AC4: training days routes', () => {
       themes: [
         { day: 1, name: 'Mon', title: 'Strong middle', minutes: 12 },
         { day: 3, name: 'Wed', title: 'Spring legs', minutes: 15 },
-        { day: 5, name: 'Fri', title: 'Quick feet, strong arms', minutes: 12 },
+        { day: 5, name: 'Fri', title: 'Quick feet, strong arms', minutes: 13 },
       ],
     });
     const kai = await a.inject({ method: 'GET', url: '/api/training/days', headers: as(KAI) });

@@ -51,8 +51,8 @@ describe('AC1: the 15-minute limit', () => {
     expect(cardSeconds({ kind: 'reps', sets: 2, reps: 10, per_side: false, rest_s: 60 })).toBe(140);
     // A hold each side: 2 sets of 20 s each side, rest 45 s -> 2 x 40 + 45.
     expect(cardSeconds({ kind: 'hold', sets: 2, seconds: 20, per_side: true, rest_s: 45 })).toBe(125);
-    expect(STARTER_PACK.map(seconds)).toEqual([691, 912, 739]);
-    expect(STARTER_PACK.map((t) => templateMinutes(t, CONTENT))).toEqual([12, 15, 12]);
+    expect(STARTER_PACK.map(seconds)).toEqual([691, 912, 765]);
+    expect(STARTER_PACK.map((t) => templateMinutes(t, CONTENT))).toEqual([12, 15, 13]);
   });
 
   it('whole minutes, rounded to the nearest, never 0', () => {
@@ -134,7 +134,7 @@ describe('AC2: one estimate, the same minutes everywhere a session is offered', 
       next.push(res.json().next.minutes as number);
     }
     const estimate = STARTER_PACK.map((t) => templateMinutes(t, CONTENT));
-    expect(estimate).toEqual([12, 15, 12]);
+    expect(estimate).toEqual([12, 15, 13]);
     expect(requested).toEqual(estimate);
     expect(today).toEqual(estimate);
     expect(themes).toEqual(estimate);

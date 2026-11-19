@@ -1,0 +1,46 @@
+{
+  "id": "head-height-catch",
+  "card": "content/exercises/head-height-catch.json",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0",
+  "reviewed_at": "2026-11-19T00:00:00Z",
+  "stale_after": "2027-11-19T00:00:00Z",
+  "sources": [
+    {"id":"capalbo-2022","url":"https://doi.org/10.1002/jaba.937","title":"Capalbo et al. Training soccer goalkeeping skills: Is video modeling enough? (J Appl Behav Anal, 2022)","kind":"lab-study","population":"youth","band":"children","year":2022},
+    {"id":"wood-2017","url":"https://doi.org/10.1371/journal.pone.0171782","title":"Wood et al. A randomized controlled trial of a group-based gaze training intervention for children with developmental coordination disorder (PLOS One, 2017)","kind":"trial","population":"youth","band":"children","year":2017},
+    {"id":"dandola-2013","url":"https://pubmed.ncbi.nlm.nih.gov/23966939/","title":"D'Andola et al. Spatiotemporal characteristics of muscle patterns for ball catching (Front Comput Neurosci, 2013)","kind":"lab-study","population":"adult","band":"adults","year":2013},
+    {"id":"ioc-2015","url":"https://pubmed.ncbi.nlm.nih.gov/26084524/","title":"Bergeron et al. IOC consensus statement on youth athletic development (Br J Sports Med, 2015)","kind":"position-statement","population":"youth","band":"children and teens","year":2015}
+  ],
+  "why": {
+    "headline": "Practise catching the ball in front of your face.",
+    "claims": [
+      {"action":"set-position","text":"Two young goalkeepers practised goalkeeper skills with video guidance and feedback.","sources":["capalbo-2022"],"evidence":"youth"},
+      {"action":"set-position","text":"One study taught children to throw and catch from a wall.","sources":["wood-2017"],"evidence":"youth"}
+    ]
+  },
+  "expect": {
+    "claims": [
+      {"text":"Children with a coordination disorder practised once weekly for 4 weeks. One group caught 31% more balls.","sources":["wood-2017"],"evidence":"youth","outcome":{"measure":"catch success after technique instruction","change_pct":[31,31],"weeks":[4,4],"sessions_per_week":[1,1],"band":"children"}},
+      {"text":"The study's gaze-training group practised once weekly for 4 weeks. They caught 51% more balls.","sources":["wood-2017"],"evidence":"youth","outcome":{"measure":"catch success after gaze instruction","change_pct":[51,51],"weeks":[4,4],"sessions_per_week":[1,1],"band":"children"}}
+    ],
+    "keep_up": {"text":"Everyone learns at their own pace. Young people develop at different rates.","sources":["ioc-2015"],"evidence":"youth"}
+  },
+  "muscles": {
+    "map": [
+      {"muscle":"biceps","plain":"The muscles at the front of your upper arms","role":"helping","basis":"measured","sources":["dandola-2013"],"evidence":"adult"},
+      {"muscle":"triceps","plain":"The muscles at the back of your upper arms","role":"helping","basis":"measured","sources":["dandola-2013"],"evidence":"adult"}
+    ],
+    "note":{"text":"An adult study measured these muscles in a different one-handed catch.","sources":["dandola-2013"],"evidence":"adult"}
+  },
+  "clips": [],
+  "science": {
+    "claims": [
+      {"text":"In the children's study, both groups practised a throw and catch task. Their instructions differed.","sources":["wood-2017"],"evidence":"youth"},
+      {"text":"The study found no clear group difference in simple catch success.","sources":["wood-2017"],"evidence":"youth"}
+    ],
+    "limits": [
+      {"text":"The study used a wall rebound, not a parent's toss. It does not predict your result.","sources":["wood-2017"],"evidence":"youth"},
+      {"text":"The goalkeeper study included only two children. Their practice used video feedback.","sources":["capalbo-2022"],"evidence":"youth"}
+    ]
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "id": "head-height-catch",
+  "name": "Head-height catch",
+  "aliases": [
+    "high catch"
+  ],
+  "category": "footwork",
+  "why": "Keepers catch high balls. Practise catching in front of your face.",
+  "goal": [
+    "set-position"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only",
+      "other:ball",
+      "other:goalkeeper-gloves"
+    ],
+    "any": []
+  },
+  "space_m": [
+    2,
+    2
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "A clear 2 m square for the keeper. Move breakables away. The parent stands about 3 m away.",
+    "equipment": "Goalkeeper gloves and a soft or light ball. Indoors, use a soft ball.",
+    "parent": "Stand about 3 m away. Wait until the keeper is set. Toss gently to head height."
+  },
+  "steps": [
+    "Put on goalkeeper gloves. Face the parent and get set.",
+    "The parent tosses gently to head height.",
+    "Catch in front of your face. Keep your hands behind the ball and thumbs close.",
+    "Freeze with the ball. Then return it to the parent."
+  ],
+  "cues": [
+    "Hands behind ball",
+    "Thumbs close",
+    "Freeze the catch"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Ball against the chest",
+      "fix": "Catch in front of your face."
+    },
+    {
+      "mistake": "Ball drops or bobbles",
+      "fix": "Ask for a gentler toss."
+    },
+    {
+      "mistake": "Thumbs away from the ball",
+      "fix": "Bring your thumbs behind the ball."
+    }
+  ],
+  "parent_check": [
+    "Ball caught in front of the face, not against the chest",
+    "No drop or bobble",
+    "Thumbs behind the ball during the freeze"
+  ],
+  "stop_if": [
+    "A ball hits the face",
+    "Pain in a hand, wrist or finger",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
+    "Slipping on the floor"
+  ],
+  "easier": {
+    "variant": "Catch a gentle toss at chest height.",
+    "use_when": "The head-height catch is not clean."
+  },
+  "harder": {
+    "variant": "Catch a gentle toss just above head height.",
+    "move_on_when": "Every rep clean at 2 x 15, two sessions in a row. Then the owner approves."
+  },
+  "dose": {
+    "kind": "reps",
+    "sets": 2,
+    "reps": 10,
+    "per_side": false,
+    "rest_s": 60,
+    "tempo": "catch and freeze"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "set-position"
+  ],
+  "media": {
+    "figure": "content/figures/head-height-catch.svg"
+  },
+  "spec": "content/exercises/head-height-catch.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

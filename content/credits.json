@@ -376,6 +376,38 @@
       "licence": "CC-BY-SA-4.0",
       "source": "written for this repo from the cited sources (clean-room; no text copied)",
       "checked": "2026-11-19"
+    },
+    {
+      "path": "content/exercises/head-height-catch.json",
+      "title": "Head-height catch exercise card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-18"
+    },
+    {
+      "path": "content/exercises/head-height-catch.spec.md",
+      "title": "Head-height catch acceptance spec",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-18"
+    },
+    {
+      "path": "content/figures/head-height-catch.svg",
+      "title": "Head-height catch figure",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo",
+      "checked": "2026-11-18"
+    },
+    {
+      "path": "content/exercises/head-height-catch.dossier.json",
+      "title": "Head-height catch exercise dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-19"
     }
   ]
 }

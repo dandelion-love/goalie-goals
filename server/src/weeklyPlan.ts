@@ -53,8 +53,8 @@ export const STARTER_PACK: readonly SessionTemplate[] = [
     id: 'quick-feet-strong-arms',
     title: 'Quick feet, strong arms',
     warmUp,
-    // Set position comes first; the wall chest pass trades places with the wall push-up.
-    cardIds: ['set-position', 'lateral-shuffle', 'wall-chest-pass'],
+    // Set position comes first; the catch trades places with the lateral shuffle.
+    cardIds: ['set-position', 'head-height-catch', 'wall-chest-pass'],
     coolDown,
   },
 ];
