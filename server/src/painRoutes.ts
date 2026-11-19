@@ -3,6 +3,8 @@
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Role, RoleStore } from './roles.js';
+import type { ResetPainGate } from './householdReset.js';
+import { GENERATION_HEADER, requestGeneration } from './generation.js';
 import { DATE_RE, utcDate } from './training.js';
 import { PainError, type PainReport, type PainService } from './pain.js';
 
@@ -27,7 +29,7 @@ function reportFor(role: Role, r: PainReport) {
 
 export function registerPainRoutes(
   app: FastifyInstance,
-  { pain, roles, clock = () => new Date() }: { pain: PainService; roles: RoleStore; clock?: () => Date },
+  { pain, roles, gate, currentGeneration, clock = () => new Date() }: { pain: PainService; roles: RoleStore; gate?: ResetPainGate; currentGeneration?: () => number; clock?: () => Date },
 ): void {
   const dateOf = (value: unknown) => (typeof value === 'string' && DATE_RE.test(value) ? value : utcDate(clock()));
 
@@ -53,7 +55,11 @@ export function registerPainRoutes(
       const role = await roleOf(req, reply);
       if (!role) return reply;
       const b = req.body ?? {};
+      if (gate && !gate.beginWrite()) return reply.code(503).send({ error: 'reset_in_progress' });
       try {
+        if (currentGeneration && requestGeneration(req.headers[GENERATION_HEADER]) !== currentGeneration()) {
+          return reply.code(409).send({ error: 'stale_generation' });
+        }
         const report = await pain.report(
           { account: req.identity!.account, role },
           {
@@ -66,6 +72,8 @@ export function registerPainRoutes(
         return { paused: true, report: reportFor(role, report) };
       } catch (e) {
         return fail(reply, e);
+      } finally {
+        gate?.endWrite();
       }
     },
   );

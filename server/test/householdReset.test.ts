@@ -331,3 +331,31 @@ describe('AC4: the reset generation', () => {
     expect(requestGeneration('one')).toBeNull();
   });
 });
+
+
+describe('reset and pain report interleaving', () => {
+  it('does not acknowledge a new-generation report until deletion has finished', async () => {
+    gen = 0;
+    const a = await boot(new FakeFirestore());
+    const remove = a.household.deleteTraining.bind(a.household);
+    let resume!: () => void;
+    let entered!: () => void;
+    const deleting = new Promise<void>((resolve) => { entered = resolve; });
+    const blocked = new Promise<void>((resolve) => { resume = resolve; });
+    a.household.deleteTraining = async () => { entered(); await blocked; await remove(); };
+    const resetRequest = reset(a);
+    await deleting;
+    const payload = { id: 'pain-interleave-0001', bodyArea: 'knee', date: WED };
+    try {
+      const during = await a.inject({ method: 'POST', url: '/api/pain', headers: as(KAI, 1), payload });
+      expect(during.statusCode).toBe(503);
+      expect(during.json()).toEqual({ error: 'reset_in_progress' });
+    } finally { resume(); }
+    expect((await resetRequest).statusCode).toBe(200);
+    const retry = await a.inject({ method: 'POST', url: '/api/pain', headers: as(KAI, 1), payload });
+    expect(retry.statusCode).toBe(200);
+    const status = await a.inject({ method: 'GET', url: '/api/pain/status', headers: as(KAI, 1) });
+    expect(status.json().paused).toBe(true);
+    expect(status.json().reports.map((r: { id: string }) => r.id)).toContain(payload.id);
+  });
+});

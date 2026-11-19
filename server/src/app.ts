@@ -54,7 +54,7 @@ import {
   requestGeneration,
   type GenerationStore,
 } from './generation.js';
-import { HouseholdReset, registerHouseholdRoutes } from './householdReset.js';
+import { HouseholdReset, ResetPainGate, registerHouseholdRoutes } from './householdReset.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -354,7 +354,8 @@ export async function buildApp({
     }
     await painService.renotify();
   }
-  registerPainRoutes(app, { pain: painService, roles: roleStore });
+  const resetPainGate = new ResetPainGate();
+  registerPainRoutes(app, { pain: painService, roles: roleStore, gate: resetPainGate, currentGeneration: () => currentGeneration });
 
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused() });
   registerDossierRoutes(app, { dossiers: trainingService.dossiers, approvals: approvalService, roles: roleStore });
@@ -403,6 +404,7 @@ export async function buildApp({
     roles: roleStore,
     reset: new HouseholdReset({
       data: household,
+      gate: resetPainGate,
       generation: generationStore,
       onGeneration: setGeneration,
       approvals: approvalService,
