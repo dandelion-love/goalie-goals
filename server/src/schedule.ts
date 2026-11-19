@@ -41,6 +41,11 @@ export class MemoryScheduleStore implements ScheduleStore {
   clear(): void {
     this.#changes = [];
   }
+
+  /** Delete the training days with the household; starting fresh keeps them (story 121). */
+  async deleteAll(): Promise<void> {
+    this.#changes = [];
+  }
 }
 
 /**

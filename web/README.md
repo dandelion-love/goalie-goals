@@ -45,6 +45,18 @@ The installable web app: TypeScript, React, Vite and
   visible again, released at the end. Without it (a Home Screen app below iPadOS 18.4, or a
   refused request) the player shows "Screen may dim: tap the timer to keep it awake" and a
   running timer waits for a tap once 50 s pass without one.
+- **Start fresh** (`src/StartFresh.tsx`, story 121): the last card on the parent's home,
+  below the History. It opens a confirm step that lists what is cleared and what stays (with
+  a line about the pause), asks the parent to type `RESET`, and has **Cancel**; **Clear all
+  data** stays disabled until the word is typed. The server checks the role and the word again.
+- **Reset generation** (`src/generation.ts`, story 121): `App` wraps every API call. It sends
+  the device's last seen generation (`X-Household-Generation`) and reads the server's on each
+  answer. An answer that names a new one drops today's cached session and the outbox of
+  session starts, finishes and history records before the caller sees it, and the home draws
+  again from the server with "Training data was cleared. Starting fresh." A pain report made on
+  the device and not yet sent is never dropped: it keeps its pause and is sent under the new
+  generation, and the pause holds until the server says training is paused. A pause whose
+  report the server already had is dropped. Nothing is dropped without such an answer.
 - **Not set up**: a signed-in account with no role. It shows no data.
 - **Session expired**: `/api/me` returned `401`. **Reconnect** navigates the app window to
   the start URL, so the sign-in proxy's redirect runs inside the installed app.

@@ -186,6 +186,16 @@ describe('the words on both homes (AC1)', () => {
     checkCopy('P1 parent home', ELSEWHERE);
   });
 
+  it("parent home: Start fresh's confirm step (story 121)", async () => {
+    render(<App fetchImpl={parentServer()} wakeLock={wake} />);
+    const card = (await screen.findByRole('heading', { name: 'Start fresh' }, { timeout: 5000 })).closest('article') as HTMLElement;
+    fireEvent.click(within(card).getByRole('button', { name: 'Start fresh' }));
+    await within(card).findByText('Training is paused now. This also clears the pause.');
+    // The step's own sentences stay within the in-session limit.
+    for (const s of copyOnScreen(card).sentences) expect(words(s), s).toBeLessThanOrEqual(IN_SESSION);
+    checkCopy('P2 start fresh', ELSEWHERE);
+  });
+
   it('keeper home, the player at every phase, and the finish screen', async () => {
     const server = keeperServer(todayWith());
     // Story 114: cards in Your training, each with its next step.

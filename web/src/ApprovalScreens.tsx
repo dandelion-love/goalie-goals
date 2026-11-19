@@ -396,6 +396,7 @@ const ACTION_TEXT: Record<AuditEntry['action'], string> = {
   changed: 'set',
   undone: 'undid the approval of',
   started: 'started',
+  reset: 'reset',
 };
 
 const REFUSED_VERB: Record<AuditEntry['kind'], string> = {
@@ -405,6 +406,7 @@ const REFUSED_VERB: Record<AuditEntry['kind'], string> = {
   dossier: 'answer',
   pause: 'clear',
   schedule: 'change',
+  household: 'reset',
 };
 
 /** The audit item of a keeper's "Tapped by mistake" note (story 104). */

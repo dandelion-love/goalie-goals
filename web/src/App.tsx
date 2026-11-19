@@ -9,6 +9,7 @@ import { createWakeLock, type WakeLockController } from './wakeLock';
 import { LocalOfflineStore, useOnline, type OfflineStore } from './offline';
 import { MotionRoot } from './motion';
 import { chunk, ChunkBoundary } from './chunks';
+import { LocalGenerationStore, withGeneration, type GenerationStore } from './generation';
 
 // Each role's home is its own chunk (story 101 AC2): the first script holds only this shell,
 // and a device loads the home of the role it is signed in as, never the other one.
@@ -49,6 +50,8 @@ export interface AppProps {
   offlineStore?: OfflineStore;
   /** The outbox of session starts and finishes (story #94); localStorage otherwise. */
   outboxStore?: OutboxStore;
+  /** The household's reset generation this device last saw (story 121); localStorage otherwise. */
+  generationStore?: GenerationStore;
 }
 
 export function App({
@@ -60,19 +63,35 @@ export function App({
   now,
   offlineStore,
   outboxStore,
+  generationStore,
 }: AppProps) {
   const layout = useLayout();
   const wake = useMemo(() => wakeLock ?? createWakeLock(), [wakeLock]);
   const store = useMemo(() => pauseStore ?? new LocalPauseStore(), [pauseStore]);
   const cache = useMemo(() => offlineStore ?? new LocalOfflineStore(), [offlineStore]);
   const outbox = useMemo(() => outboxStore ?? new LocalOutboxStore(), [outboxStore]);
+  const generations = useMemo(() => generationStore ?? new LocalGenerationStore(), [generationStore]);
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [epoch, setEpoch] = useState(0);
+  /** Resets this device has seen (story 121): the home starts again from the server's data. */
+  const [fresh, setFresh] = useState(0);
   const online = useOnline();
+  // Story 121: every request names this device's generation, and an answer from after a reset
+  // drops the device's copies from before it.
+  const api = useMemo(
+    () =>
+      withGeneration(
+        fetchImpl ?? ((input, init) => fetch(input, init)),
+        generations,
+        { outbox, pause: store, cache },
+        () => setFresh((n) => n + 1),
+      ),
+    [fetchImpl, generations, outbox, store, cache],
+  );
 
   const load = useCallback(async () => {
     setView((v) => (v.kind === 'offline' ? v : { kind: 'loading' }));
-    const me = await fetchMe(fetchImpl);
+    const me = await fetchMe(api);
     if (me.kind === 'signed-in') preloadHome(me.role);
     // Unreachable, but this device has been signed in before: open its home from what it saved.
     const role = me.kind === 'error' ? cache.readRole() : null;
@@ -86,7 +105,7 @@ export function App({
       }
       setView(role ? { kind: 'offline', role } : me);
     });
-  }, [fetchImpl, cache]);
+  }, [api, cache]);
 
   useEffect(() => {
     void load();
@@ -112,12 +131,19 @@ export function App({
         </header>
         <main className="app-main">
           {offline && <OfflineNotice role={role} onRetry={load} />}
+          {fresh > 0 && (
+            <p className="fresh-notice" role="status">
+              Training data was cleared. Starting fresh.
+            </p>
+          )}
           <ChunkBoundary>
             <Suspense fallback={LOADING}>
               <Screen
+                // A reset seen: the home draws again from the server, nothing kept from before.
+                key={fresh}
                 view={view.kind === 'offline' ? { kind: 'signed-in', role: view.role } : view}
                 layout={layout}
-                fetchImpl={fetchImpl}
+                fetchImpl={api}
                 onReconnect={onReconnect}
                 onRetry={load}
                 wakeLock={wake}

@@ -1235,3 +1235,38 @@ button:active:not(:disabled) {
   min-height: calc(var(--text-md) * var(--leading-md));
   margin: var(--space-2) 0 0;
 }
+
+/* Start fresh (story 121): the last card on the parent's home, apart from the everyday ones. */
+.start-fresh {
+  margin-top: var(--space-6);
+}
+
+.start-fresh-confirm {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.start-fresh-confirm ul {
+  margin: 0;
+}
+
+.start-fresh-head,
+.start-fresh-pause,
+.start-fresh-field {
+  font-weight: var(--weight-bold);
+}
+
+.start-fresh-confirm input {
+  font: inherit;
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.fresh-notice {
+  text-align: center;
+  font-weight: var(--weight-bold);
+  margin: var(--space-3) 0;
+}

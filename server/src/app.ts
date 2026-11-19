@@ -17,11 +17,20 @@ import {
   FirestoreApprovalStore,
   FirestoreAuditLog,
   MemoryApprovalStore,
-  MemoryAuditLog,
+  RenewableAuditLog,
 } from './approvals.js';
 import { hasBadge, registerApprovalRoutes } from './approvalRoutes.js';
 import { seedDemoRequests, seedDemoSession } from './demoData.js';
-import { DemoAuditLog, DemoRefused, DemoWeeklyPlan, localDate, resetDemoHousehold, seedDemoHousehold, type DemoTarget } from './demo.js';
+import {
+  assertDemoTarget,
+  DemoAuditLog,
+  DemoRefused,
+  DemoWeeklyPlan,
+  localDate,
+  resetDemoHousehold,
+  seedDemoHousehold,
+  type DemoTarget,
+} from './demo.js';
 import { loadContent } from './content.js';
 import { FirestoreStartedStore, TrainingService, utcDate } from './training.js';
 import { registerTrainingRoutes } from './trainingRoutes.js';
@@ -38,6 +47,14 @@ import { registerScheduleRoutes } from './scheduleRoutes.js';
 import { FirestoreHistoryStore, HistoryService, MemoryHistoryStore, type HistoryStore } from './history.js';
 import { registerHistoryRoutes } from './historyRoutes.js';
 import type { FsDb } from './firestoreDb.js';
+import {
+  FirestoreGenerationStore,
+  GENERATION_HEADER,
+  MemoryGenerationStore,
+  requestGeneration,
+  type GenerationStore,
+} from './generation.js';
+import { HouseholdReset, registerHouseholdRoutes } from './householdReset.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -58,12 +75,22 @@ export interface HouseholdPart {
  * Everything the household keeps in the app's own stores: approvals and their audit log,
  * progress, pain reports, the started marker, the training days and the session history.
  * Deleting the household deletes every one of them (story 118). Roles stay in config.
+ * Starting fresh (story 121) deletes the training data and keeps the `kept` parts: the
+ * parent's training days.
  */
 export class Household {
-  constructor(private readonly parts: readonly HouseholdPart[]) {}
+  constructor(
+    private readonly parts: readonly HouseholdPart[],
+    private readonly kept: readonly HouseholdPart[] = [],
+  ) {}
 
   async deleteAll(): Promise<void> {
     for (const p of this.parts) await p.deleteAll();
+  }
+
+  /** Start fresh: every part but the kept ones (story 121). */
+  async deleteTraining(): Promise<void> {
+    for (const p of this.parts) if (!this.kept.includes(p)) await p.deleteAll();
   }
 }
 
@@ -103,6 +130,11 @@ export interface AppDeps {
    * pass a fake). With `memory`, every store is in memory, as tests and the demo use.
    */
   firestore?: FsDb;
+  /**
+   * The household's reset generation (story 121); follows the household's data store unless
+   * given: Firestore in production, in memory otherwise.
+   */
+  generation?: GenerationStore;
   logger?: boolean;
   /** Send log lines here (tests read them); implies the logger at every level. */
   logStream?: { write(line: string): void };
@@ -148,6 +180,7 @@ export async function buildApp({
   history,
   historyStore,
   firestore,
+  generation,
   logger = false,
   logStream,
 }: AppDeps): Promise<FastifyInstance> {
@@ -179,14 +212,20 @@ export async function buildApp({
   const roleStore: RoleStore = roles ?? ownRoles!;
   const verify = verifier;
   const db = await householdDb(config, firestore);
+  // Story 121: read once at startup (the server runs as one instance), then kept current here.
+  const generationStore = generation ?? (db ? new FirestoreGenerationStore(db) : new MemoryGenerationStore());
+  let currentGeneration = await generationStore.read();
+  const setGeneration = (n: number) => {
+    currentGeneration = n;
+  };
   // The app's own stores, kept by name so the dev-only demo reset can reach the in-memory ones.
   // With Firestore (production), the household's approvals and audit log live there (story 118).
   const own = approvals
     ? undefined
     : {
         store: db ? new FirestoreApprovalStore(db) : new MemoryApprovalStore(),
-        // The dev mock's log can start again on a demo reset; each log is append-only.
-        audit: db ? new FirestoreAuditLog(db) : config.devMockIdentity ? new DemoAuditLog() : new MemoryAuditLog(),
+        // The memory log can start again (a demo reset, a fresh start); each log is append-only.
+        audit: db ? new FirestoreAuditLog(db) : config.devMockIdentity ? new DemoAuditLog() : new RenewableAuditLog(),
         notifier: new InAppNotifier(),
       };
   const approvalService = approvals ?? new ApprovalService(own!);
@@ -259,6 +298,13 @@ export async function buildApp({
 
   app.decorateRequest('identity', undefined);
 
+  // Story 121: every API response names the household's generation, so a device learns of a
+  // reset at its next sync, whatever it asked for.
+  app.addHook('onSend', async (req, reply, payload) => {
+    if (req.url.startsWith('/api/')) reply.header(GENERATION_HEADER, String(currentGeneration));
+    return payload;
+  });
+
   // Every /api route except the dev switch needs a verified identity.
   app.addHook('preHandler', async (req, reply) => {
     if (!req.url.startsWith('/api/') || req.url.startsWith('/api/dev/')) return;
@@ -271,6 +317,16 @@ export async function buildApp({
     } catch {
       req.log.info('identity header rejected');
       return reply.code(401).header('cache-control', 'no-store').send({ error: 'unauthenticated' });
+    }
+    // Story 121: a write made before a reset (queued on a device that has not seen it yet) is
+    // refused, never replayed into the new history. A device that sends no generation has
+    // never seen a reset: it counts as generation 0.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const sent = requestGeneration(req.headers[GENERATION_HEADER]);
+      if (sent !== currentGeneration) {
+        req.log.info({ reason: 'stale-generation' }, 'write refused');
+        return reply.code(409).header('cache-control', 'no-store').send({ error: 'stale_generation' });
+      }
     }
   });
 
@@ -338,8 +394,22 @@ export async function buildApp({
   for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store]) {
     if (isPart(p)) parts.push(p);
   }
-  const household = new Household(parts);
+  // Starting fresh keeps the parent's training days (story 121).
+  const household = new Household(parts, isPart(usedScheduleStore) ? [usedScheduleStore] : []);
   app.decorate('household', household);
+
+  const notifier = approvalService.notifier as { clear?: unknown };
+  registerHouseholdRoutes(app, {
+    roles: roleStore,
+    reset: new HouseholdReset({
+      data: household,
+      generation: generationStore,
+      onGeneration: setGeneration,
+      approvals: approvalService,
+      training: trainingService,
+      inbox: typeof notifier.clear === 'function' ? { clear: () => (notifier.clear as () => void).call(notifier) } : undefined,
+    }),
+  });
 
   // The demo household (src/demo.ts): only on the app's own in-memory stores, with the mock on.
   const demo: DemoTarget | undefined =
@@ -381,10 +451,14 @@ export async function buildApp({
       reply.header('cache-control', 'no-store');
       try {
         const today = localDate();
-        await resetDemoHousehold(target, today);
+        // Refused before anything is deleted when the data is not the demo household's.
+        await assertDemoTarget(target);
+        // Story 121: devices drop what they held of the old demo at their next sync.
+        setGeneration(await generationStore.bump());
         // The household's session history goes with it (story 113), and every other store
-        // that can delete its part (story 118).
+        // that can delete its part (story 118), before the seed writes the demo again.
         await household.deleteAll();
+        await resetDemoHousehold(target, today);
         req.log.info('demo household reset');
         return { ok: true, date: today };
       } catch (e) {
