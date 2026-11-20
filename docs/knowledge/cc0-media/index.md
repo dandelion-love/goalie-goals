@@ -36,6 +36,7 @@ Public-domain (CC0) media for the app: exercise figures and pose references, rew
 
 # Rigs and poses
 
+* [Pose a low dive for the vector figure](/cc0-media/low-dive-pose.md) - A reproducible CC0 rig reference and its translation into an original SVG, without prescribing an exercise.
 * [CC0 rigged characters and animation sets](/cc0-media/rigged-characters.md) - Kenney, Quaternius, Poly Pizza and OpenGameArt's CC0 filter, plus the sources ruled out, with each licence read from the pack or model page and the date checked.
 * [Open tools to pose and render a rig](/cc0-media/posing-and-rendering-tools.md) - Blender with Freestyle lines, its SVG exporter, three.js in a headless browser and its SVG renderer: licences, output formats and how each would fit a build step.
 * [Rendering exercise poses from a CC0 rig](/cc0-media/rig-render-feasibility.md) - One goalkeeper set position rendered from a Kenney CC0 character in a flat style, what each current card would need, and a comparison with the parametric vector figure that recommends one.

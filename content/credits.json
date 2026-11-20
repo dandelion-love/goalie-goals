@@ -258,6 +258,16 @@
       "checked": "2026-11-17"
     },
     {
+      "path": "content/figures/low-dive.svg",
+      "title": "Low sideways dive figure",
+      "author": "the goalie-goals contributors; Kenney (CC0 reference model)",
+      "licence": "CC-BY-SA-4.0",
+      "source": "drawn for this repo using Model/characterMedium.fbx from Kenney Animated Characters Protagonists 1.1 as an offline pose reference: https://kenney.nl/assets/animated-characters-protagonists (CC0-1.0)",
+      "checked": "2026-11-20",
+      "adapted": true,
+      "changes": "posed the rig, projected its joints and redrew them as a simplified original vector figure"
+    },
+    {
       "path": "content/figures/lateral-shuffle.svg",
       "title": "Lateral shuffle figure",
       "author": "the goalie-goals contributors",
