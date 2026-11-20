@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import type { Config } from '../src/config.js';
@@ -72,6 +75,29 @@ describe('content', () => {
 });
 
 describe('the approval request (AC3)', () => {
+  it('requires a new approval for the corrected keep-it-up text', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'plank-approval-'));
+    try {
+      cpSync(new URL('../../content', import.meta.url), join(dir, 'content'), { recursive: true });
+      const file = join(dir, 'content', 'exercises', 'plank.dossier.json');
+      const old = JSON.parse(readFileSync(file, 'utf8'));
+      old.expect.keep_up.text = 'Training about twice a week, as in your plan, keeps gains coming. In one youth study, jump gains lasted 8 weeks after training stopped. Everyone improves at their own pace.';
+      writeFileSync(file, JSON.stringify(old, null, 2));
+      const oldContent = loadContent(join(dir, 'content'));
+      training.setContent(oldContent);
+      await training.dossiers.propose();
+      const first = await dossierRequest();
+      await approvals.approve(first.id, PARENT);
+      training.setContent(CONTENT);
+      await training.dossiers.propose();
+      const next = await dossierRequest();
+      expect(next.itemVersion).not.toBe(first.itemVersion);
+      expect(await approvals.isApproved(next.itemId, next.itemVersion)).toBe(false);
+      const awaiting = await training.dossiers.forRequest(next);
+      expect(awaiting?.expect.at(-1)?.text).toBe('Keep practising. In one youth study, jump gains remained after training. They were measured 8 weeks after the program ended. Everyone improves at their own pace.');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
   it('asks the parent once per version, in plain words', async () => {
     await training.dossiers.propose();
     await training.dossiers.propose();
