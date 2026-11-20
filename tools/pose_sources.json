@@ -1,0 +1,17 @@
+{
+  "sources": [
+    {
+      "id": "synthetic-squat-v1",
+      "kind": "synthetic",
+      "enabled": true,
+      "description": "Invented pose fixture for the offline renderer; not a person's motion."
+    },
+    {
+      "id": "nasa-ared",
+      "kind": "reference",
+      "enabled": false,
+      "url": "https://www.nasa.gov/video-detail/train-like-an-astronaut-ared/",
+      "description": "Coverage-table candidate only; real-footage processing is not implemented."
+    }
+  ]
+}

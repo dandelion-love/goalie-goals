@@ -1,0 +1,7 @@
+{
+  "source_id": "synthetic-squat-v1",
+  "poses": [
+    {"root": [180, 105], "angles": {"torso": -90, "thigh": 90, "shin": 90, "upper_arm": 0, "forearm": 0}, "duration_ms": 3000},
+    {"root": [155, 137], "angles": {"torso": -60, "thigh": 0, "shin": 90, "upper_arm": 0, "forearm": 0}, "duration_ms": 1000}
+  ]
+}
