@@ -338,8 +338,10 @@
       "title": "Wall push-up figure",
       "author": "the goalie-goals contributors",
       "licence": "CC-BY-SA-4.0",
-      "source": "drawn for this repo",
-      "checked": "2026-11-17"
+      "source": "original vector drawn for this repo from the existing wall push-up card and spec; no external pose reference",
+      "checked": "2026-11-20",
+      "adapted": true,
+      "changes": "added a second original pose, an animation and still poses for reduced motion"
     },
     {
       "path": "web/public/icon.svg",

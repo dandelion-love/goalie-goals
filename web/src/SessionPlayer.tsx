@@ -48,6 +48,31 @@ export interface SessionPlayerProps {
   onExit: () => void;
 }
 
+/** The figure is version-bound. A fragment requests motion; the same approved SVG holds stills. */
+function DrillFigure({ card }: { card: Card }) {
+  const [reduced, setReduced] = useState(() =>
+    typeof matchMedia !== 'function' || matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return;
+    const media = matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReduced(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  useEffect(() => setFailed(false), [card.figureUrl]);
+  const src = card.id === 'wall-push-up' && !reduced ? `${card.figureUrl}#motion` : card.figureUrl;
+  return (
+    <figure className="drill-figure">
+      {failed ? <p role="status">Picture unavailable. Follow the steps below.</p> :
+        <img src={src} alt={`${card.name}: how the move looks`} onError={() => setFailed(true)} />}
+      <figcaption className="credit">{card.credit}</figcaption>
+    </figure>
+  );
+}
+
 export const WAKE_FALLBACK_TEXT = 'Screen may dim: tap the timer to keep it awake.';
 
 /** The ~10 minute session: warm-up, each approved card, cool-down, then a finish screen. */
@@ -443,10 +468,7 @@ function CardStep({
   return (
     <div className={layout === 'expanded' ? 'player-panes card-panes' : 'player-stack'}>
       <div className="player-main">
-        <figure className="drill-figure">
-          <img src={card.figureUrl} alt={`${card.name}: how the move looks`} />
-          <figcaption className="credit">{card.credit}</figcaption>
-        </figure>
+        <DrillFigure card={card} />
         <p className="dose">{`${card.doseText}${dose.tempo ? `. Tempo: ${dose.tempo}.` : '.'}`}</p>
       </div>
       <div className="player-controls">{controls}</div>

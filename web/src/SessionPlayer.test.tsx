@@ -64,8 +64,24 @@ const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('butto
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
   setViewport(1024, 768);
+});
+
+it('switches the approved wall figure to still poses for reduced motion and keeps the steps if the image fails', () => {
+  let listener: (() => void) | undefined;
+  const media = { matches: false, addEventListener: (_: string, cb: () => void) => { listener = cb; }, removeEventListener: () => {} };
+  vi.stubGlobal('matchMedia', () => media);
+  const wall = { ...PLANK, id: 'wall-push-up', name: 'Wall push-up', figureUrl: '/api/training/cards/wall-push-up/figure.svg?v=approved' };
+  render(<SessionPlayer session={demoSession({ warmUp: [], cards: [wall] })} layout="medium" wakeLock={fakeWake('active')} onExit={() => {}} />);
+  const figure = screen.getByRole('img', { name: 'Wall push-up: how the move looks' });
+  expect(figure.getAttribute('src')).toBe(`${wall.figureUrl}#motion`);
+  act(() => { media.matches = true; listener?.(); });
+  expect(figure.getAttribute('src')).toBe(wall.figureUrl);
+  fireEvent.error(figure);
+  expect(screen.getByText('Picture unavailable. Follow the steps below.')).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Steps' })).toBeTruthy();
 });
 
 describe.each(SIZES)('session player on $name', ({ width, height, layout, panes }) => {
