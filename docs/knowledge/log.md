@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-20
+
+* **Added**: low-dive-pose: a reproducible CC0 rig reference and an original vector figure (story 68).
+
 ## 2026-11-19
 
 * **Changed**: quality-rubric: baseline timing checks, run isolation, noisy audit handling and escalation of repeated test flakes (story 128).
