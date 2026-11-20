@@ -69,6 +69,41 @@ An empty `allowed_members` fails the plan and names the variable, never its valu
 runtime starts on a public placeholder image until the app's own image exists; only the
 sign-in proxy may invoke it, and only the allowed accounts get through the proxy.
 
+## Firestore access review
+
+The web package declares no Firebase or Firestore SDK; the server uses
+`@google-cloud/firestore` (`web/package.json`, `server/package.json`, and
+`server/src/app.ts`). `infra/app/main.tf` enables the Firestore API and grants the
+runtime identity `roles/datastore.user`. These files describe the intended app path,
+not every path that the deployed database permits.
+
+On 2026-11-20, a read of the deployed project's enabled services using
+`gcloud services list --enabled` showed the Firestore API enabled and the Firebase
+Management API (`firebase.googleapis.com`) not enabled. A read of the project policy
+using `gcloud projects get-iam-policy` showed the runtime identity as the only direct
+member of the project-level `roles/datastore.user` binding, no project-level custom
+role bindings, and two broad administrative role bindings. These are project-policy
+observations, not an effective-access inventory. No identities or project identifiers
+belong in this public note.
+
+**Client access remains unverified.** The service list does not establish the active
+Firestore security rules or deny unauthenticated and end-user REST access. The project
+policy alone does not establish effective permissions: inherited policies, groups,
+administrative roles, custom roles at other levels, and other applicable grants still
+need review. Server libraries use IAM; Firebase client requests and unauthenticated or
+end-user REST requests can be subject to security rules. See Google's
+[REST authorization guidance](https://docs.cloud.google.com/firestore/native/docs/use-rest-api)
+and [security overview](https://docs.cloud.google.com/firestore/native/docs/security/get-started).
+
+Before enabling Firebase or adding a client integration, first establish and deploy a
+deny-all ruleset, then verify client read and write denial with the emulator. Reassess
+active rules, enabled services, and effective IAM when access configuration or principals
+change. Compare the project policy and inherited organization/folder policies, expand
+group membership and relevant custom or administrative role permissions, and investigate
+any newly granted Firestore data permission. Record sources and conclusions without
+publishing identities. Until that review is complete, do not claim the database denies
+all client access.
+
 ## Sign-in proxy
 
 A project with no organisation can't get an OAuth client for the sign-in proxy from any
