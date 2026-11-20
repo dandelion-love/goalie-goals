@@ -23,6 +23,7 @@ import type { Role } from './roles.js';
 import type { Dose, DoseKind } from './content.js';
 import { DATE_RE, type TrainingService } from './training.js';
 import type { Outcome } from './progression.js';
+import type { FsDb } from './firestoreDb.js';
 
 export const OUTCOMES: readonly Outcome[] = ['done', 'stopped', 'hurt'];
 
@@ -43,7 +44,11 @@ export interface CardRecord {
   dose: RecordDose;
   /** Positions in the card version's cue list, one for each set rated good. */
   cueIds: number[];
+  /** Parent-confirmed actual work, indexed by completed set; absent on older records. */
+  squatSets?: (SquatSet | null)[];
 }
+
+export interface SquatSet { actualReps: number; clean: boolean; revision?: number }
 
 export interface HistoryRecord {
   /** The device's id for this record: a resend with the same id is kept once. */
@@ -64,6 +69,7 @@ export interface HistoryStore {
   add(record: HistoryRecord): Promise<boolean>;
   /** Every record, in no set order. */
   list(): Promise<HistoryRecord[]>;
+  confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean>;
   /** Delete every record: the household's records go with the household. */
   deleteAll(): Promise<void>;
 }
@@ -81,6 +87,12 @@ export class MemoryHistoryStore implements HistoryStore {
 
   async list(): Promise<HistoryRecord[]> {
     return [...this.#records.values()].map(copy);
+  }
+
+  async confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean> {
+    const record = this.#records.get(id);
+    if (!record || !putSquatSet(record, version, set, evidence, previous)) return false;
+    return true;
   }
 
   async deleteAll(): Promise<void> {
@@ -135,6 +147,9 @@ function readCard(value: unknown): CardRecord | null {
   if (typeof c.cardId !== 'string' || typeof c.itemVersion !== 'string' || typeof c.name !== 'string') return null;
   if (!isInt(c.setsDone) || !isInt(c.setsPlanned) || !dose || !Array.isArray(c.cueIds)) return null;
   if (!c.cueIds.every((n) => isInt(n))) return null;
+  const squatSets = c.squatSets;
+  if (squatSets !== undefined && (!Array.isArray(squatSets) || !squatSets.every((s) =>
+    s === null || (s && typeof s === 'object' && isInt(s.actualReps, 1) && typeof s.clean === 'boolean' && isInt(s.revision, 1))))) return null;
   return {
     cardId: c.cardId,
     itemVersion: c.itemVersion,
@@ -143,7 +158,24 @@ function readCard(value: unknown): CardRecord | null {
     setsPlanned: c.setsPlanned,
     dose,
     cueIds: [...(c.cueIds as number[])],
+    ...(squatSets !== undefined ? { squatSets: squatSets as (SquatSet | null)[] } : {}),
   };
+}
+
+function putSquatSet(record: HistoryRecord, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): boolean {
+  const card = record.cards.find((c) => c.cardId === 'squat-to-box' && c.itemVersion === version);
+  if (!card || !isInt(set) || set >= card.setsDone || set >= card.setsPlanned || card.dose.kind !== 'reps' ||
+      !isInt(evidence.actualReps, 1) || !isInt(card.dose.reps, 1) || evidence.actualReps > card.dose.reps ||
+      typeof evidence.clean !== 'boolean') return false;
+  const sets = [...(card.squatSets ?? [])];
+  const current = sets[set] ?? null;
+  const sameValue = (a: SquatSet | null, b: SquatSet | null) => a === null ? b === null : b !== null && a.actualReps === b.actualReps && a.clean === b.clean;
+  if (current && sameValue(current, evidence) && current.revision === (previous?.revision ?? 0) + 1) return true;
+  if (!sameValue(current, previous) || (current?.revision ?? 0) !== (previous?.revision ?? 0)) return false;
+  while (sets.length <= set) sets.push(null);
+  sets[set] = { ...evidence, revision: (current?.revision ?? 0) + 1 };
+  card.squatSets = sets;
+  return true;
 }
 
 /** A stored document back to a record; null (left out) when it is not well formed. */
@@ -185,6 +217,21 @@ export class FirestoreHistoryStore implements HistoryStore {
   async list(): Promise<HistoryRecord[]> {
     const snap = await this.db.collection(this.collection).get();
     return snap.docs.map((d) => readRecord(d.id, d.data())).filter((r): r is HistoryRecord => r !== null);
+  }
+
+  async confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean> {
+    // Use the same document as history, so household deletion removes confirmations too.
+    const db = this.db as unknown as FsDb;
+    if (typeof db.runTransaction !== 'function') throw new Error('History transactions unavailable');
+    const ref = db.collection(this.collection).doc(id);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const record = readRecord(id, snap.data());
+      if (!record || !putSquatSet(record, version, set, evidence, previous)) return false;
+      const { id: _id, ...data } = record;
+      tx.set(ref, data);
+      return true;
+    });
   }
 
   async deleteAll(): Promise<void> {
@@ -235,6 +282,8 @@ export interface HistoryCardView {
   goodCount: number;
   /** The cues rated good, each once, in the card's order; empty when the version is unknown. */
   goodCues: string[];
+  itemVersion?: string;
+  squatSets?: (SquatSet | null)[];
 }
 
 export interface HistoryView {
@@ -351,6 +400,7 @@ export class HistoryService {
         work: workText(c.dose),
         goodCount: c.cueIds.length,
         goodCues: good,
+        ...(c.cardId === 'squat-to-box' ? { itemVersion: c.itemVersion, squatSets: c.squatSets ?? [] } : {}),
       };
     });
     return {

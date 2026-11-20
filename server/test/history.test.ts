@@ -19,6 +19,7 @@ import {
   type HistoryRecord,
   type HistoryStore,
 } from '../src/history.js';
+import { FakeFirestore as TransactionFirestore } from './fakeFirestore.js';
 
 // Story 113: each session's sets and form ratings in a shared history. Invented cast only; no
 // real Firestore (a fake client in memory).
@@ -408,5 +409,60 @@ describe('the demo reset deletes the household with its history', () => {
     expect((await dev.inject({ method: 'GET', url: '/api/history/sessions', headers: asDev(SAM) })).json().sessions).toHaveLength(1);
     expect((await dev.inject({ method: 'POST', url: '/api/dev/demo/reset', headers: asDev(SAM) })).statusCode).toBe(200);
     expect((await dev.inject({ method: 'GET', url: '/api/history/sessions', headers: asDev(SAM) })).json().sessions).toEqual([]);
+  });
+});
+
+describe('parent-confirmed squat evidence', () => {
+  const squat: HistoryRecord = {
+    id: 'rec-squat-001', date: '2026-01-05', itemId: 'session-example', itemVersion: 'session-version',
+    title: 'Example', outcome: 'done', at: new Date('2026-01-05T12:00:00Z'),
+    cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version', name: 'Squat to box',
+      setsDone: 1, setsPlanned: 2, dose: { kind: 'reps', reps: 10, perSide: false }, cueIds: [] }],
+  };
+  const url = '/api/history/squat-set';
+  const payload = { id: squat.id, version: 'card-version', set: 0, actualReps: 10, clean: true, previous: null };
+  it('authorizes only the parent, limits evidence to a completed set and shares it with both roles', async () => {
+    const { a, store } = await ready();
+    await store.add(squat);
+    const put = (who: string, data: Record<string, unknown>) => a.inject({ method: 'PUT', url, headers: as(who), payload: data });
+    expect((await put(KAI, payload)).statusCode).toBe(403);
+    expect((await put(STRANGER, payload)).statusCode).toBe(403);
+    for (const invalid of [{ ...payload, set: 1 }, { ...payload, actualReps: 15 }, { ...payload, version: 'wrong' }, { ...payload, extra: 'no' }]) {
+      expect((await put(SAM, invalid)).statusCode).toBe(400);
+    }
+    expect((await put(SAM, payload)).statusCode).toBe(200);
+    expect((await put(SAM, payload)).statusCode).toBe(200);
+    for (const who of [SAM, KAI]) {
+      const sessions = await read(a, who);
+      expect(sessions[0].cards[0].squatSets).toEqual([{ actualReps: 10, clean: true, revision: 1 }]);
+      const status = await a.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(who) });
+      expect(status.json()).toEqual({ status: 'unknown' });
+    }
+    const changed = { ...payload, actualReps: 8, clean: false, previous: { actualReps: 10, clean: true, revision: 1 } };
+    expect((await put(SAM, changed)).statusCode).toBe(200);
+    expect((await put(SAM, payload)).statusCode).toBe(400);
+    expect((await store.list())[0].cards[0].squatSets).toEqual([{ actualReps: 8, clean: false, revision: 2 }]);
+    const pause = await a.inject({ method: 'POST', url: '/api/pain', headers: as(KAI), payload: { id: 'pain-synthetic-1', bodyArea: 'knee', date: DATE } });
+    expect(pause.statusCode).toBe(200);
+    for (const who of [SAM, KAI]) {
+      expect((await a.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(who) })).json()).toEqual({ status: 'held' });
+    }
+    await a.inject({ method: 'POST', url: '/api/pain/clear', headers: as(SAM), payload: {} });
+    expect((await a.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(SAM) })).json()).toEqual({ status: 'unknown' });
+    expect((await a.inject({ method: 'PUT', url, headers: { ...as(SAM), 'x-household-generation': '99' }, payload })).statusCode).toBe(409);
+    expect((await a.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(STRANGER) })).statusCode).toBe(403);
+    expect(logLines.join('')).not.toContain('rec-squat-001');
+    await store.deleteAll();
+    expect(await store.list()).toEqual([]);
+    expect((await put(SAM, payload)).statusCode).toBe(400);
+  });
+  it('persists confirmations in the history document and removes them with history', async () => {
+    const db = new TransactionFirestore();
+    const store = new FirestoreHistoryStore(db);
+    await store.add(squat);
+    expect(await store.confirmSquatSet(squat.id, 'card-version', 0, { actualReps: 8, clean: false }, null)).toBe(true);
+    expect((await new FirestoreHistoryStore(db).list())[0].cards[0].squatSets).toEqual([{ actualReps: 8, clean: false, revision: 1 }]);
+    await store.deleteAll();
+    expect(await store.list()).toEqual([]);
   });
 });
