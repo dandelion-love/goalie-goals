@@ -59,7 +59,7 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
       </Reveal>
       {/* Recent sessions (story 113): their own panel, apart from the approvals history. */}
       <Reveal open={sessionsOpen}>
-        <SessionHistory fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onSessions} />
+        <SessionHistory parent fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onSessions} />
       </Reveal>
       <Reveal open={daysOpen}>
         <TrainingDays fetchImpl={fetchImpl} onChange={changed} onSettled={onDays} />

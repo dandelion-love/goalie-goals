@@ -18,6 +18,7 @@ import { LoadSpace, useSettled } from './Loading';
 import { SAVING, SavingAnnouncer, savingProps, useOneAtATime } from './Saving';
 import { shortDate } from './dates';
 import { nextStep } from './ladders';
+import { SquatEvidenceStatus } from './SessionHistory';
 import { DossierToggle } from './DossierScreens';
 import { fetchDossiers, fetchRequestDossier, type Dossier } from './dossier';
 
@@ -365,6 +366,7 @@ export function ApprovedTraining({
                       <h3>{i.title}</h3>
                       <p>{i.detail}</p>
                       {i.kind === 'exercise' && <NextStepLine itemId={i.itemId} />}
+                      {i.kind === 'exercise' && cardIdOf(i.itemId) === 'squat-to-box' && <SquatEvidenceStatus fetchImpl={fetchImpl} refresh={refresh} />}
                       {dossier && <DossierToggle dossier={dossier} level={4} />}
                     </li>
                   );

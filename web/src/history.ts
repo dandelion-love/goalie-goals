@@ -14,6 +14,8 @@ export interface HistoryCard {
   goodCount: number;
   /** The cues rated good, looked up by id against the card version on the server. */
   goodCues: string[];
+  itemVersion?: string;
+  squatSets?: ({ actualReps: number; clean: boolean; revision: number } | null)[];
 }
 
 export interface HistorySession {

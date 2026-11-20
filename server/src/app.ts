@@ -392,7 +392,7 @@ export async function buildApp({
       store: historyStore ?? (db ? new FirestoreHistoryStore(db) : new MemoryHistoryStore()),
       training: trainingService,
     });
-  registerHistoryRoutes(app, { history: historyService, roles: roleStore });
+  registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration });
 
   // Every store the app made or was given that can delete its part of the household.
   const parts: HouseholdPart[] = [];

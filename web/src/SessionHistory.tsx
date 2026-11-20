@@ -22,7 +22,45 @@ function goodLine(c: HistoryCard): string | null {
   return null;
 }
 
-function SessionLine({ session }: { session: HistorySession }) {
+function SquatSetForm({ session, card, set, fetchImpl, onSaved }: { session: HistorySession; card: HistoryCard; set: number; fetchImpl?: typeof fetch; onSaved: () => void }) {
+  const saved = card.squatSets?.[set];
+  const [reps, setReps] = useState(saved ? String(saved.actualReps) : '');
+  const [clean, setClean] = useState(saved ? (saved.clean ? 'yes' : 'no') : '');
+  const [message, setMessage] = useState('');
+  async function save() {
+    setMessage('Saving…');
+    try {
+      const response = await (fetchImpl ?? fetch)('/api/history/squat-set', {
+        method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ id: session.id, version: card.itemVersion, set, actualReps: Number(reps), clean: clean === 'yes', previous: saved ?? null }),
+      });
+      if (!response.ok) throw new Error('save failed');
+      setMessage('Saved.');
+      onSaved();
+    } catch { setMessage('Could not save. Check the reps and try again.'); }
+  }
+  return <div className="squat-set">
+    <p>Set {set + 1}</p>
+    <label>Reps completed <input type="number" min="1" step="1" value={reps} onChange={(e) => setReps(e.target.value)} /></label>{' '}
+    <label>Every rep clean? <select value={clean} onChange={(e) => setClean(e.target.value)}><option value="">Choose</option><option value="yes">Yes</option><option value="no">No</option></select></label>{' '}
+    <button type="button" disabled={!reps || !clean} onClick={save}>Save set</button>
+    <span role="status">{message}</span>
+  </div>;
+}
+
+export function SquatEvidenceStatus({ fetchImpl, refresh = 0 }: { fetchImpl?: typeof fetch; refresh?: number }) {
+  const [status, setStatus] = useState<'unknown' | 'held'>('unknown');
+  useEffect(() => {
+    let live = true;
+    (fetchImpl ?? fetch)('/api/history/squat-evidence', { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then((r) => r.ok ? r.json() : Promise.reject()).then((v: { status?: string }) => { if (live) setStatus(v.status === 'held' ? 'held' : 'unknown'); })
+      .catch(() => { if (live) setStatus('unknown'); });
+    return () => { live = false; };
+  }, [fetchImpl, refresh]);
+  return <p className="meta">{status === 'held' ? 'Squat progress is on hold.' : 'Squat readiness: evidence incomplete or unknown.'} Paused box squat needs its own approval.</p>;
+}
+
+function SessionLine({ session, parent, fetchImpl, onSaved }: { session: HistorySession; parent: boolean; fetchImpl?: typeof fetch; onSaved: () => void }) {
   return (
     <li>
       <details className="session-record">
@@ -37,6 +75,10 @@ function SessionLine({ session }: { session: HistorySession }) {
               <li key={c.cardId}>
                 <span>{cardLine(c)}</span>
                 {good && <span className="meta">{good}</span>}
+                {c.cardId === 'squat-to-box' && c.squatSets?.map((s, index) => s &&
+                  <span className="meta" key={index}>Set {index + 1}: {s.actualReps} reps, {s.clean ? 'all clean' : 'not all clean'} (parent confirmed).</span>)}
+                {parent && c.cardId === 'squat-to-box' && c.itemVersion && Array.from({ length: c.setsDone }, (_, set) =>
+                  <SquatSetForm key={`${c.itemVersion}:${set}`} session={session} card={c} set={set} fetchImpl={fetchImpl} onSaved={onSaved} />)}
               </li>
             );
           })}
@@ -50,11 +92,13 @@ export function SessionHistory({
   fetchImpl,
   refresh = 0,
   onSettled,
+  parent = false,
 }: {
   fetchImpl?: typeof fetch;
   /** Reload when this changes (a session recorded, the app reconnected). */
   refresh?: number;
   onSettled?: () => void;
+  parent?: boolean;
 }) {
   const [state, setState] = useState<{ kind: 'loading' } | { kind: 'ready'; data: HistorySession[] } | { kind: 'error' }>({
     kind: 'loading',
@@ -75,6 +119,7 @@ export function SessionHistory({
   return (
     <article className="card sessions" aria-labelledby="sessions-title" aria-busy={state.kind === 'loading'}>
       <h2 id="sessions-title">Recent sessions</h2>
+      <SquatEvidenceStatus fetchImpl={fetchImpl} refresh={refresh + attempt} />
       {state.kind !== 'ready' && (
         <LoadSpace
           failed={state.kind === 'error'}
@@ -90,7 +135,7 @@ export function SessionHistory({
       {state.kind === 'ready' && state.data.length > 0 && (
         <ol className="session-list">
           {state.data.map((s) => (
-            <SessionLine key={s.id} session={s} />
+            <SessionLine key={s.id} session={s} parent={parent} fetchImpl={fetchImpl} onSaved={() => setAttempt((n) => n + 1)} />
           ))}
         </ol>
       )}

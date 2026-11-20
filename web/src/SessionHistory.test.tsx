@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { App } from './App';
 import { ParentHome } from './ParentHome';
 import { SessionHistory } from './SessionHistory';
@@ -63,6 +63,32 @@ const SESSIONS: HistorySession[] = [
     ],
   },
 ];
+
+describe('squat evidence', () => {
+  it('lets only the parent enter a completed set and shows the shared unknown state', async () => {
+    const sample: HistorySession = { id: 'rec-squat-001', date: '2026-01-05', title: 'Example', outcome: 'done',
+      setsDone: 1, setsPlanned: 2, goodCount: 0, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version',
+        name: 'Squat to box', setsDone: 1, setsPlanned: 2, work: '10 reps', goodCount: 0, goodCues: [], squatSets: [] }] };
+    const writes: unknown[] = [];
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/history/squat-set') { writes.push(JSON.parse(String(init?.body))); return json({ ok: true }); }
+      if (String(input) === '/api/history/squat-evidence') return json({ status: 'unknown' });
+      return json({ sessions: [sample] });
+    }) as typeof fetch;
+    const { unmount } = render(<SessionHistory parent fetchImpl={fetchImpl} />);
+    expect(await screen.findByText(/Squat readiness: evidence incomplete or unknown/)).toBeTruthy();
+    fireEvent.click(await screen.findByText(/Example, Done/));
+    fireEvent.change(screen.getByLabelText('Reps completed'), { target: { value: '10' } });
+    fireEvent.change(screen.getByLabelText('Every rep clean?'), { target: { value: 'yes' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save set' }));
+    await waitFor(() => expect(writes).toEqual([{ id: sample.id, version: 'card-version', set: 0, actualReps: 10, clean: true, previous: null }]));
+    unmount();
+    render(<SessionHistory fetchImpl={fetchImpl} />);
+    fireEvent.click(await screen.findByText(/Example, Done/));
+    expect(screen.queryByLabelText('Reps completed')).toBeNull();
+    expect(screen.getByText(/Squat readiness: evidence incomplete or unknown/)).toBeTruthy();
+  });
+});
 
 const APPROVAL: AuditEntry = {
   id: 'e1',
