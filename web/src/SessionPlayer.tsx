@@ -54,6 +54,7 @@ function DrillFigure({ card }: { card: Card }) {
     typeof matchMedia !== 'function' || matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
   const [failed, setFailed] = useState(false);
+  const [stillFailed, setStillFailed] = useState(false);
   useEffect(() => {
     if (typeof matchMedia !== 'function') return;
     const media = matchMedia('(prefers-reduced-motion: reduce)');
@@ -62,12 +63,13 @@ function DrillFigure({ card }: { card: Card }) {
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
-  useEffect(() => setFailed(false), [card.figureUrl]);
+  useEffect(() => { setFailed(false); setStillFailed(false); }, [card.figureUrl]);
   const src = card.id === 'wall-push-up' && !reduced ? `${card.figureUrl}#motion` : card.figureUrl;
   return (
     <figure className="drill-figure">
-      {failed ? <p role="status">Picture unavailable. Follow the steps below.</p> :
-        <img src={src} alt={`${card.name}: how the move looks`} onError={() => setFailed(true)} />}
+      {!failed ? <img src={src} alt={`${card.name}: how the move looks`} onError={() => setFailed(true)} /> :
+        card.figureStill && !stillFailed ? <img src={card.figureStill} alt={`${card.name}: still positions`} onError={() => setStillFailed(true)} /> :
+          <p role="status">Picture unavailable. Follow the steps below.</p>}
       <figcaption className="credit">{card.credit}</figcaption>
     </figure>
   );

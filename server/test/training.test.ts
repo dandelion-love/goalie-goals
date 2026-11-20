@@ -404,6 +404,7 @@ describe('story 148: an edited figure requires a new approval', () => {
       await approveAllPending();
       const before = (await training.today(DATE)).today!.cards[0];
       expect(await training.figure('wall-push-up', before.itemVersion)).toBe(previous);
+      expect(Buffer.from(before.figureStill!.split(',')[1], 'base64').toString('utf8')).toBe(previous);
 
       training.setContent(CONTENT);
       await training.proposeFor(DATE);
@@ -411,9 +412,14 @@ describe('story 148: an edited figure requires a new approval', () => {
       expect(next.itemVersion).not.toBe(before.itemVersion);
       expect(await training.figure('wall-push-up', next.itemVersion)).toBeNull();
       expect(await training.figure('wall-push-up', before.itemVersion)).toBe(previous);
+      const waiting = (await training.today(DATE)).lastApproved!.cards[0];
+      expect(waiting.itemVersion).toBe(before.itemVersion);
+      expect(waiting.figureStill).toBe(before.figureStill);
 
       await approveAllPending();
       expect(await training.figure('wall-push-up', next.itemVersion)).toBe(CONTENT.cards.get('wall-push-up')!.figureSvg);
+      const after = (await training.today(DATE)).today!.cards[0];
+      expect(Buffer.from(after.figureStill!.split(',')[1], 'base64').toString('utf8')).toBe(CONTENT.cards.get('wall-push-up')!.figureSvg);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

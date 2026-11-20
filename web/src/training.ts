@@ -42,6 +42,8 @@ export interface Card {
   seconds?: number;
   timer: 'reps' | 'interval' | 'countdown' | 'none';
   figureUrl: string;
+  /** Still image from this exact approved card snapshot; older saved sessions may lack it. */
+  figureStill?: string;
   credit: string;
   /** The card's dossier (story 115): sent only once the parent has approved it. */
   dossier?: Dossier;

@@ -91,6 +91,8 @@ export interface ClientCard {
   seconds: number;
   timer: ExerciseCard['timer'];
   figureUrl: string;
+  /** A still copy of this approved snapshot's figure, for when its image cannot be loaded. */
+  figureStill?: string;
   credit: string;
   /** The card's dossier (story 115), only when its version is approved; absent otherwise. */
   dossier?: ClientDossier;
@@ -620,6 +622,7 @@ export class TrainingService {
       seconds: cardSeconds(card.dose),
       timer: card.timer,
       figureUrl: `/api/training/cards/${encodeURIComponent(card.id)}/figure.svg?v=${encodeURIComponent(c.itemVersion)}`,
+      ...(card.id === 'wall-push-up' ? { figureStill: `data:image/svg+xml;base64,${Buffer.from(c.source.figureSvg, 'utf8').toString('base64')}` } : {}),
       credit: c.source.credit,
     };
   }
