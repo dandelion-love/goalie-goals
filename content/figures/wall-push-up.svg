@@ -1,12 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
-  <title id="title">Wall push-up: hands on the wall at shoulder height, body straight, chest moves toward the wall</title>
-  <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/>
-  <rect x="304" y="16" width="14" height="170" fill="#e5e7eb" stroke="#1f2937" stroke-width="3"/>
-  <g fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="232" y1="44" x2="282" y2="44"/><polyline points="272,34 282,44 272,54"/></g>
-  <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="262" cy="72" r="11"/>
-    <line x1="250" y1="86" x2="200" y2="135"/>
-    <polyline points="200,135 175,160 150,184"/>
-    <polyline points="250,86 274,88 300,90"/>
+<svg xmlns="http://www.w3.org/2000/svg" id="motion" viewBox="0 0 360 200" width="360" height="200" role="img" aria-labelledby="title">
+  <title id="title">Wall push-up: straight body, bend the elbows toward the wall, then push away</title>
+  <style>
+    .animated { opacity: 0; }
+    @media (prefers-reduced-motion: no-preference) {
+      svg:target .still { display: none; }
+      svg:target .animated { opacity: 1; }
+      .bend { animation: pose 4s steps(1, end) infinite; }
+      .start { animation: start-pose 4s steps(1, end) infinite; }
+      @keyframes pose { 0%, 100% { opacity: 0; } 50%, 85% { opacity: 1; } }
+      @keyframes start-pose { 0%, 100% { opacity: 1; } 50%, 85% { opacity: 0; } }
+    }
+  </style>
+  <g class="still">
+    <g transform="translate(0 47) scale(.49)">
+      <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/><rect x="304" y="16" width="14" height="170" fill="#e5e7eb" stroke="#1f2937" stroke-width="3"/>
+      <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><circle cx="262" cy="72" r="11"/><line x1="250" y1="86" x2="200" y2="135"/><polyline points="200,135 175,160 150,184"/><polyline points="250,86 274,88 300,90"/></g>
+    </g>
+    <g transform="translate(180 47) scale(.49)">
+      <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/><rect x="304" y="16" width="14" height="170" fill="#e5e7eb" stroke="#1f2937" stroke-width="3"/>
+      <g fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><circle cx="284" cy="67" r="11"/><line x1="273" y1="82" x2="211" y2="133"/><polyline points="211,133 180,159 150,184"/><polyline points="273,82 264,106 300,90"/></g>
+    </g>
+    <g fill="#374151" font-family="sans-serif" font-size="13" text-anchor="middle"><text x="88" y="170">Arms straight</text><text x="268" y="170">Elbows bent</text></g>
+  </g>
+  <g class="animated">
+    <line x1="8" y1="186" x2="352" y2="186" stroke="#9ca3af" stroke-width="3" stroke-linecap="round"/><rect x="304" y="16" width="14" height="170" fill="#e5e7eb" stroke="#1f2937" stroke-width="3"/>
+    <g class="start" fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><circle cx="262" cy="72" r="11"/><line x1="250" y1="86" x2="200" y2="135"/><polyline points="200,135 175,160 150,184"/><polyline points="250,86 274,88 300,90"/></g>
+    <g class="bend" fill="none" stroke="#1f2937" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><circle cx="284" cy="67" r="11"/><line x1="273" y1="82" x2="211" y2="133"/><polyline points="211,133 180,159 150,184"/><polyline points="273,82 264,106 300,90"/></g>
   </g>
 </svg>

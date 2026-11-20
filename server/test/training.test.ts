@@ -389,6 +389,37 @@ describe('story #91 AC3: reworded card text is a new version the parent approves
   });
 });
 
+describe('story 148: an edited figure requires a new approval', () => {
+  it('keeps the previous approved figure and refuses the new figure until approved', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'goalie-figure-'));
+    try {
+      cpSync(defaultContentRoot(), join(dir, 'content'), { recursive: true });
+      const file = join(dir, 'content', 'figures', 'wall-push-up.svg');
+      const previous = '<svg xmlns="http://www.w3.org/2000/svg"><title>Previous figure</title></svg>';
+      writeFileSync(file, previous);
+      const old = loadContent(join(dir, 'content'));
+      plan.template = { ...STARTER_SESSION, cardIds: ['wall-push-up'] };
+      training.setContent(old);
+      await training.proposeFor(DATE);
+      await approveAllPending();
+      const before = (await training.today(DATE)).today!.cards[0];
+      expect(await training.figure('wall-push-up', before.itemVersion)).toBe(previous);
+
+      training.setContent(CONTENT);
+      await training.proposeFor(DATE);
+      const next = (await approvals.pending()).find((r) => r.itemId === 'card-wall-push-up')!;
+      expect(next.itemVersion).not.toBe(before.itemVersion);
+      expect(await training.figure('wall-push-up', next.itemVersion)).toBeNull();
+      expect(await training.figure('wall-push-up', before.itemVersion)).toBe(previous);
+
+      await approveAllPending();
+      expect(await training.figure('wall-push-up', next.itemVersion)).toBe(CONTENT.cards.get('wall-push-up')!.figureSvg);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 /** The squat-to-box setup line the player showed before story 117 shortened it. */
 const OLD_SQUAT_PARENT = 'Stand side-on, about 2 m away, where you can see knees and back.';
 
