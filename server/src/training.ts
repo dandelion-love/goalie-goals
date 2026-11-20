@@ -622,7 +622,7 @@ export class TrainingService {
       seconds: cardSeconds(card.dose),
       timer: card.timer,
       figureUrl: `/api/training/cards/${encodeURIComponent(card.id)}/figure.svg?v=${encodeURIComponent(c.itemVersion)}`,
-      ...(card.id === 'wall-push-up' ? { figureStill: `data:image/svg+xml;base64,${Buffer.from(c.source.figureSvg, 'utf8').toString('base64')}` } : {}),
+      ...(['wall-push-up', 'squat-to-box'].includes(card.id) ? { figureStill: `data:image/svg+xml;base64,${Buffer.from(c.source.figureSvg, 'utf8').toString('base64')}` } : {}),
       credit: c.source.credit,
     };
   }
