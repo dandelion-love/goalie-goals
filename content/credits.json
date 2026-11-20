@@ -330,8 +330,12 @@
       "title": "Squat to box figure",
       "author": "the goalie-goals contributors",
       "licence": "CC-BY-SA-4.0",
-      "source": "drawn for this repo",
-      "checked": "2026-11-17"
+      "source": "original vector adapted from this repo's figure and card spec; generic lower-body pose reference: NASA ARED video, https://www.nasa.gov/video-detail/train-like-an-astronaut-ared/ (NASA media guidelines apply; no endorsement implied)",
+      "checked": "2026-11-20",
+      "adapted": true,
+      "changes": "added original still positions and animation; the reference uses a resistance bar and no box, so the box and arms follow the card spec",
+      "model_assisted": true,
+      "model_assistance": "Codex visually assessed the public reference for a generic lower-body pose; no Gemini extraction was performed"
     },
     {
       "path": "content/figures/wall-push-up.svg",

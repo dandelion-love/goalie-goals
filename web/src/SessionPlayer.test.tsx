@@ -69,18 +69,18 @@ afterEach(() => {
   setViewport(1024, 768);
 });
 
-it('switches the approved wall figure to still poses for reduced motion and keeps the steps if the image fails', () => {
+it.each([['wall-push-up', 'Wall push-up'], ['squat-to-box', 'Squat to box']])('switches the approved %s figure to still poses and keeps the steps if the image fails', (id, name) => {
   let listener: (() => void) | undefined;
   const media = { matches: false, addEventListener: (_: string, cb: () => void) => { listener = cb; }, removeEventListener: () => {} };
   vi.stubGlobal('matchMedia', () => media);
-  const wall = { ...PLANK, id: 'wall-push-up', name: 'Wall push-up', figureUrl: '/api/training/cards/wall-push-up/figure.svg?v=approved', figureStill: 'data:image/svg+xml;base64,PHN2Zy8+' };
+  const wall = { ...PLANK, id, name, figureUrl: `/api/training/cards/${id}/figure.svg?v=approved`, figureStill: 'data:image/svg+xml;base64,PHN2Zy8+' };
   render(<SessionPlayer session={demoSession({ warmUp: [], cards: [wall] })} layout="medium" wakeLock={fakeWake('active')} onExit={() => {}} />);
-  const figure = screen.getByRole('img', { name: 'Wall push-up: how the move looks' });
+  const figure = screen.getByRole('img', { name: `${name}: how the move looks` });
   expect(figure.getAttribute('src')).toBe(`${wall.figureUrl}#motion`);
   act(() => { media.matches = true; listener?.(); });
   expect(figure.getAttribute('src')).toBe(wall.figureUrl);
   fireEvent.error(figure);
-  const still = screen.getByRole('img', { name: 'Wall push-up: still positions' });
+  const still = screen.getByRole('img', { name: `${name}: still positions` });
   expect(still.getAttribute('src')).toBe(wall.figureStill);
   fireEvent.error(still);
   expect(screen.getByText('Picture unavailable. Follow the steps below.')).toBeTruthy();

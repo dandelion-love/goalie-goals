@@ -390,36 +390,36 @@ describe('story #91 AC3: reworded card text is a new version the parent approves
 });
 
 describe('story 148: an edited figure requires a new approval', () => {
-  it('keeps the previous approved figure and refuses the new figure until approved', async () => {
+  it.each(['wall-push-up', 'squat-to-box'])('keeps the approved %s figure and refuses the new version until approved', async (cardId) => {
     const dir = mkdtempSync(join(tmpdir(), 'goalie-figure-'));
     try {
       cpSync(defaultContentRoot(), join(dir, 'content'), { recursive: true });
-      const file = join(dir, 'content', 'figures', 'wall-push-up.svg');
+      const file = join(dir, 'content', 'figures', `${cardId}.svg`);
       const previous = '<svg xmlns="http://www.w3.org/2000/svg"><title>Previous figure</title></svg>';
       writeFileSync(file, previous);
       const old = loadContent(join(dir, 'content'));
-      plan.template = { ...STARTER_SESSION, cardIds: ['wall-push-up'] };
+      plan.template = { ...STARTER_SESSION, cardIds: [cardId] };
       training.setContent(old);
       await training.proposeFor(DATE);
       await approveAllPending();
       const before = (await training.today(DATE)).today!.cards[0];
-      expect(await training.figure('wall-push-up', before.itemVersion)).toBe(previous);
+      expect(await training.figure(cardId, before.itemVersion)).toBe(previous);
       expect(Buffer.from(before.figureStill!.split(',')[1], 'base64').toString('utf8')).toBe(previous);
 
       training.setContent(CONTENT);
       await training.proposeFor(DATE);
-      const next = (await approvals.pending()).find((r) => r.itemId === 'card-wall-push-up')!;
+      const next = (await approvals.pending()).find((r) => r.itemId === `card-${cardId}`)!;
       expect(next.itemVersion).not.toBe(before.itemVersion);
-      expect(await training.figure('wall-push-up', next.itemVersion)).toBeNull();
-      expect(await training.figure('wall-push-up', before.itemVersion)).toBe(previous);
+      expect(await training.figure(cardId, next.itemVersion)).toBeNull();
+      expect(await training.figure(cardId, before.itemVersion)).toBe(previous);
       const waiting = (await training.today(DATE)).lastApproved!.cards[0];
       expect(waiting.itemVersion).toBe(before.itemVersion);
       expect(waiting.figureStill).toBe(before.figureStill);
 
       await approveAllPending();
-      expect(await training.figure('wall-push-up', next.itemVersion)).toBe(CONTENT.cards.get('wall-push-up')!.figureSvg);
+      expect(await training.figure(cardId, next.itemVersion)).toBe(CONTENT.cards.get(cardId)!.figureSvg);
       const after = (await training.today(DATE)).today!.cards[0];
-      expect(Buffer.from(after.figureStill!.split(',')[1], 'base64').toString('utf8')).toBe(CONTENT.cards.get('wall-push-up')!.figureSvg);
+      expect(Buffer.from(after.figureStill!.split(',')[1], 'base64').toString('utf8')).toBe(CONTENT.cards.get(cardId)!.figureSvg);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

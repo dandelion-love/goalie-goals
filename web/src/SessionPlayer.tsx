@@ -64,7 +64,8 @@ function DrillFigure({ card }: { card: Card }) {
     return () => media.removeEventListener('change', update);
   }, []);
   useEffect(() => { setFailed(false); setStillFailed(false); }, [card.figureUrl]);
-  const src = card.id === 'wall-push-up' && !reduced ? `${card.figureUrl}#motion` : card.figureUrl;
+  const animated = card.id === 'wall-push-up' || card.id === 'squat-to-box';
+  const src = animated && !reduced ? `${card.figureUrl}#motion` : card.figureUrl;
   return (
     <figure className="drill-figure">
       {!failed ? <img src={src} alt={`${card.name}: how the move looks`} onError={() => setFailed(true)} /> :
