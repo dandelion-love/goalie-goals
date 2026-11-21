@@ -36,6 +36,9 @@ import { Reveal } from './Loading';
 import { chunk } from './chunks';
 import { afterPaint } from './defer';
 import { warmPainReport } from './warmPain';
+import { RoleShell, useDestination } from './RoleShell';
+
+const KEEPER_DESTINATIONS = [{ id: 'today', label: 'Today' }, { id: 'week', label: 'Week' }, { id: 'history', label: 'History' }, { id: 'library', label: 'Training' }] as const;
 
 // The keeper's home, in its own chunk (story 101 AC2): the parent's device never loads it.
 
@@ -201,7 +204,7 @@ export function KeeperHome({
       homeHeading.current?.focus();
     }
   }, [playing]);
-  const [destination, setDestination] = useState<'today' | 'week' | 'history'>('today');
+  const { current: destination, navigate, navigation, content } = useDestination(KEEPER_DESTINATIONS, 'today');
   const [equipmentMessage, setEquipmentMessage] = useState('');
   const equipmentStart = useRef(false);
   const [finishedHere, setDoneToday] = useState(false);
@@ -367,7 +370,7 @@ export function KeeperHome({
           // a large render, follows without holding the tap's frame.
           startTransition(() => {
             returning.current = true;
-            setDestination('today');
+            navigate('today');
             setPlaying(null);
             setProgress(null);
           });
@@ -444,20 +447,11 @@ export function KeeperHome({
   const paused = !!pause || reporting;
 
   return (
-    <section className="home" aria-labelledby="home-title">
-      <div className="home-bar">
-        <h1 id="home-title" ref={homeHeading} tabIndex={-1}>Keeper home</h1>
-        {!paused && (
+    <RoleShell title="Keeper home" destinations={KEEPER_DESTINATIONS} current={destination} navigate={navigate} navigation={navigation} content={content} heading={homeHeading} action={!paused && (
           <button type="button" className="danger session-control safety-control" onClick={hurtTapped}>
             Something hurts
           </button>
-        )}
-      </div>
-      <nav className="keeper-nav" aria-label="Keeper navigation">
-        {([['today', 'Today'], ['week', 'Week'], ['history', 'History']] as const).map(([id, label]) => (
-          <button key={id} type="button" className="secondary" aria-current={destination === id ? 'page' : undefined} onClick={() => setDestination(id)}>{label}</button>
-        ))}
-      </nav>
+        )}>
       {reporting && (
         <article className="card" aria-labelledby="report-title">
           <h2 id="report-title">Something hurts</h2>
@@ -515,7 +509,7 @@ export function KeeperHome({
         <SessionHistory fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onSessions} />
       </Reveal>
       </div>
-      <div hidden={destination !== 'today'}>
+      <div hidden={destination !== 'library'}>
       <Reveal open={sessionsSettled}>
         <div className={layout === 'expanded' ? 'panes' : 'stack'}>
           {!pause && <ApprovedTraining fetchImpl={fetchImpl} refresh={changed + epoch} onSettled={onTraining} />}
@@ -525,6 +519,6 @@ export function KeeperHome({
         </div>
       </Reveal>
       </div>
-    </section>
+    </RoleShell>
   );
 }
