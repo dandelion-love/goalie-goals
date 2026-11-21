@@ -209,6 +209,7 @@ export function KeeperHome({
   // The playing session's start event, the stop kept while Resume is offered, and the finish
   // whose XP the finish screen shows.
   const startSent = useRef<{ id: string; session: Session } | null>(null);
+  const sessionInstance = useRef<string | undefined>(undefined);
   const stopHeld = useRef<string | null>(null);
   const finishShown = useRef<string | null>(null);
   // The server's answers render as a transition (story 101): they never hold a tap's frame.
@@ -291,7 +292,7 @@ export function KeeperHome({
         id = held;
       } else {
         if (held) cancel(outboxStore, held);
-        const event = finishEvent(result, now());
+        const event = finishEvent(result, now(), false, sessionInstance.current);
         enqueue(outboxStore, event);
         id = event.id;
       }
@@ -329,7 +330,7 @@ export function KeeperHome({
   const stopTapped = useCallback(
     (result: SessionResult) => {
       if (stopHeld.current) cancel(outboxStore, stopHeld.current);
-      const event = finishEvent(result, now(), true);
+      const event = finishEvent(result, now(), true, sessionInstance.current);
       enqueue(outboxStore, event);
       stopHeld.current = event.id;
     },
@@ -361,6 +362,7 @@ export function KeeperHome({
           });
           finishShown.current = null;
           startSent.current = null;
+          sessionInstance.current = undefined;
           flush();
           void flushOut();
         }}
@@ -377,14 +379,17 @@ export function KeeperHome({
     // that may (story 103).
     sound.unlockForStart();
     if (session.requiresGloves) {
+      const event = startEvent(session, now(), true);
       equipmentStart.current = true;
       setEquipmentMessage('Checking goalkeeper gloves…');
       void (fetchImpl ?? fetch)('/api/training/started', {
         method: 'POST', credentials: 'same-origin', cache: 'no-store',
         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ itemId: session.itemId, itemVersion: session.itemVersion }),
+        body: JSON.stringify({ itemId: session.itemId, itemVersion: session.itemVersion, instanceId: event.instanceId }),
       }).then((response) => {
         if (!response.ok || pauseStore.read()) throw new Error();
+        sessionInstance.current = event.instanceId;
+        enqueue(outboxStore, { ...event, acknowledged: true });
         setEquipmentMessage('');
         startTransition(() => setPlaying(session));
       }).catch(() => {
@@ -401,7 +406,8 @@ export function KeeperHome({
     // loads again. Offline, the session runs as approved when it was loaded, and the start
     // waits in the outbox; it goes first when the network is back (story #94). The start is
     // kept on the device in the tap and sent after the next paint (story 101 AC1).
-    const event = startEvent(session, now());
+    const event = startEvent(session, now(), true);
+    sessionInstance.current = event.instanceId;
     enqueue(outboxStore, event);
     startSent.current = { id: event.id, session };
     // A send that fails leaves the start in the outbox, for the next send (reconnecting, back

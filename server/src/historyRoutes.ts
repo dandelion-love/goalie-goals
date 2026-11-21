@@ -15,7 +15,13 @@ export function registerHistoryRoutes(
   app.post<{ Body: unknown }>('/api/history/sessions', async (req, reply) => {
     reply.header('cache-control', 'no-store');
     const role = await roles.roleFor(req.identity!.account);
-    const result = await history.submit(role, req.body);
+    if (!gate.beginWrite()) return reply.code(409).send({ error: 'reset-in-progress' });
+    let result;
+    try {
+      if (requestGeneration(req.headers[GENERATION_HEADER]) !== currentGeneration()) return reply.code(409).send({ error: 'stale_generation' });
+      result = await history.submit(role, req.body);
+    }
+    finally { gate.endWrite(); }
     if (result.ok) return { ok: true };
     req.log.info({ role: role ?? 'none', reason: result.reason }, 'session record refused');
     return reply.code(result.status).send({ error: result.reason });

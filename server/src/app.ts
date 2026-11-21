@@ -360,7 +360,6 @@ export async function buildApp({
   const resetPainGate = new ResetPainGate();
   registerPainRoutes(app, { pain: painService, roles: roleStore, gate: resetPainGate, currentGeneration: () => currentGeneration });
 
-  registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused() });
   registerEquipmentRoutes(app, equipment, roleStore);
   registerDossierRoutes(app, { dossiers: trainingService.dossiers, approvals: approvalService, roles: roleStore });
   if (scheduleService) registerScheduleRoutes(app, { schedule: scheduleService, roles: roleStore });
@@ -392,6 +391,7 @@ export async function buildApp({
       store: historyStore ?? (db ? new FirestoreHistoryStore(db) : new MemoryHistoryStore()),
       training: trainingService,
     });
+  registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused(), history: historyService, gate: resetPainGate, currentGeneration: () => currentGeneration });
   registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration });
 
   // Every store the app made or was given that can delete its part of the household.
