@@ -6,6 +6,9 @@ import type { FastifyInstance } from 'fastify';
 import type { RoleStore } from './roles.js';
 import { DATE_RE, utcDate, type TrainingService } from './training.js';
 import type { Clock } from './approvals.js';
+import type { HistoryService } from './history.js';
+import type { ResetPainGate } from './householdReset.js';
+import { GENERATION_HEADER, requestGeneration } from './generation.js';
 
 export function registerTrainingRoutes(
   app: FastifyInstance,
@@ -14,7 +17,8 @@ export function registerTrainingRoutes(
     roles,
     clock = () => new Date(),
     isPaused = async () => false,
-  }: { training: TrainingService; roles: RoleStore; clock?: Clock; isPaused?: () => Promise<boolean> },
+    history, gate, currentGeneration,
+  }: { training: TrainingService; roles: RoleStore; clock?: Clock; isPaused?: () => Promise<boolean>; history?: HistoryService; gate?: ResetPainGate; currentGeneration?: () => number },
 ): void {
   async function allowed(account: string): Promise<boolean> {
     const role = await roles.roleFor(account);
@@ -39,27 +43,35 @@ export function registerTrainingRoutes(
   // #94). If the parent's undo landed first, the session still counts: it is recorded and
   // audited as started before the undo reached the device.
   // Only on the day of the undo: an old undo never reopens a session.
-  app.post<{ Body: { itemId?: unknown; itemVersion?: unknown; late?: unknown; date?: unknown } | undefined }>(
+  app.post<{ Body: { itemId?: unknown; itemVersion?: unknown; late?: unknown; date?: unknown; instanceId?: unknown } | undefined }>(
     '/api/training/started',
     async (req, reply) => {
       reply.header('cache-control', 'no-store');
       const account = req.identity!.account;
       const role = await roles.roleFor(account);
       if (role !== 'keeper' && role !== 'parent') return reply.code(403).send({ error: 'forbidden' });
-      const { itemId, itemVersion, late, date } = req.body ?? {};
+      const { itemId, itemVersion, late, date, instanceId } = req.body ?? {};
       if (typeof itemId !== 'string' || typeof itemVersion !== 'string') {
         return reply.code(400).send({ error: 'invalid' });
       }
+      if (instanceId !== undefined && (typeof instanceId !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(instanceId) || !history)) return reply.code(400).send({ error: 'invalid' });
+      if (gate && !gate.beginWrite()) return reply.code(409).send({ error: 'reset-in-progress' });
+      try {
+      if (currentGeneration && requestGeneration(req.headers[GENERATION_HEADER]) !== currentGeneration()) return reply.code(409).send({ error: 'stale_generation' });
       if (await isPaused()) return reply.code(409).send({ error: 'paused' });
-      if (await training.markStarted(itemId, itemVersion)) return { ok: true };
-      if (
+      const bind = () => typeof instanceId === 'string' ? history!.startInstance(instanceId, itemId, itemVersion) : Promise.resolve(true);
+      let started = await training.markStarted(itemId, itemVersion, bind);
+      let wasLate = false;
+      if (!started &&
         late === true &&
         typeof date === 'string' &&
-        (await training.markStartedLate(itemId, itemVersion, { account, role }, date))
-      ) {
-        return { ok: true, late: true };
+        (await training.markStartedLate(itemId, itemVersion, { account, role }, date, bind))) {
+        started = true;
+        wasLate = true;
       }
-      return reply.code(409).send({ error: 'not_approved' });
+      if (!started) return reply.code(409).send({ error: 'not_approved' });
+      return wasLate ? { ok: true, late: true } : { ok: true };
+      } finally { gate?.endWrite(); }
     },
   );
 

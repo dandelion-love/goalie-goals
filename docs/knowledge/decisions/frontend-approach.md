@@ -66,8 +66,11 @@ What the device may keep, and nothing else:
   history record: for each card, its id and version, the sets done and the **cue ids** rated
   good (a cue's position in that card version's cue list, never its text). The record goes to
   the server's session history after the finish, under the finish's id, and the server keeps
-  it once. No notes or free text. **Each event is
-  deleted as soon as the server confirms it**; an empty outbox leaves nothing on the device.
+  it once. A new session carries an opaque occurrence id from start to its history record.
+  After a start is confirmed, its acknowledged marker remains in the outbox until the matching
+  finish and history are confirmed, including across a reload; reset deletes the marker. It
+  carries no notes or free text and does not prove performance or order. Other confirmed events
+  are deleted; an empty outbox leaves nothing on the device.
   A Stop is queued at the tap and held while Resume is offered, so it survives the app
   closing; Resume deletes it.
 - The figures of today's approved cards, in their own cache. The app keeps exactly today's

@@ -61,12 +61,24 @@ export interface HistoryRecord {
   outcome: Outcome;
   cards: CardRecord[];
   at: Date;
+  /** Absent for records made before session-instance binding. */
+  instanceId?: string;
+}
+
+export interface SessionInstance {
+  id: string;
+  itemId: string;
+  itemVersion: string;
+  cards: { cardId: string; itemVersion: string }[];
+  recordId: string | null;
 }
 
 /** The household's records. Behind an interface like the other stores. */
 export interface HistoryStore {
   /** Keep a record; false (and nothing written) when one with its id is already kept. */
   add(record: HistoryRecord): Promise<boolean>;
+  startInstance(instance: SessionInstance): Promise<boolean>;
+  addBound(record: HistoryRecord, instanceId: string): Promise<boolean>;
   /** Every record, in no set order. */
   list(): Promise<HistoryRecord[]>;
   confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean>;
@@ -78,10 +90,29 @@ const copy = (r: HistoryRecord): HistoryRecord => ({ ...structuredClone(r), at: 
 
 export class MemoryHistoryStore implements HistoryStore {
   #records = new Map<string, HistoryRecord>();
+  #instances = new Map<string, SessionInstance>();
 
   async add(record: HistoryRecord): Promise<boolean> {
     if (this.#records.has(record.id)) return false;
     this.#records.set(record.id, copy(record));
+    return true;
+  }
+
+  async startInstance(instance: SessionInstance): Promise<boolean> {
+    const old = this.#instances.get(instance.id);
+    if (old) return sameInstance(old, instance);
+    this.#instances.set(instance.id, structuredClone(instance));
+    return true;
+  }
+
+  async addBound(record: HistoryRecord, instanceId: string): Promise<boolean> {
+    const instance = this.#instances.get(instanceId);
+    if (!instance || !instanceMatches(instance, record)) return false;
+    const previous = this.#records.get(record.id);
+    if (instance.recordId !== null) return instance.recordId === record.id && !!previous && sameBoundRecord(previous, record, instanceId);
+    if (previous) return false;
+    this.#records.set(record.id, copy({ ...record, instanceId }));
+    instance.recordId = record.id;
     return true;
   }
 
@@ -97,6 +128,7 @@ export class MemoryHistoryStore implements HistoryStore {
 
   async deleteAll(): Promise<void> {
     this.#records.clear();
+    this.#instances.clear();
   }
 }
 
@@ -123,8 +155,22 @@ export interface HistoryDocSnap {
 }
 
 export const HISTORY_COLLECTION = 'sessionHistory';
+export const INSTANCE_COLLECTION = 'sessionInstances';
 const ALREADY_EXISTS = 6;
 const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
+
+function sameInstance(a: SessionInstance, b: SessionInstance): boolean {
+  return a.id === b.id && a.itemId === b.itemId && a.itemVersion === b.itemVersion && JSON.stringify(a.cards) === JSON.stringify(b.cards);
+}
+function instanceMatches(i: SessionInstance, r: HistoryRecord): boolean {
+  return i.itemId === r.itemId && i.itemVersion === r.itemVersion &&
+    JSON.stringify(i.cards) === JSON.stringify(r.cards.map(({ cardId, itemVersion }) => ({ cardId, itemVersion })));
+}
+function sameBoundRecord(old: HistoryRecord, next: HistoryRecord, instanceId: string): boolean {
+  const comparable = (r: HistoryRecord) => ({ id: r.id, date: r.date, itemId: r.itemId, itemVersion: r.itemVersion,
+    outcome: r.outcome, cards: r.cards.map(({ squatSets: _s, ...c }) => c) });
+  return old.instanceId === instanceId && JSON.stringify(comparable(old)) === JSON.stringify(comparable(next));
+}
 
 const isInt = (v: unknown, min = 0): v is number => typeof v === 'number' && Number.isInteger(v) && v >= min;
 const DOSE_KINDS: readonly DoseKind[] = ['reps', 'contacts', 'efforts', 'hold'];
@@ -190,7 +236,9 @@ export function readRecord(id: string, value: unknown): HistoryRecord | null {
   if (!Array.isArray(r.cards)) return null;
   const cards = r.cards.map(readCard);
   if (cards.some((c) => c === null)) return null;
-  return { id, date: r.date, itemId: r.itemId, itemVersion: r.itemVersion, title: r.title, outcome, cards: cards as CardRecord[], at: when };
+  if (r.instanceId !== undefined && (typeof r.instanceId !== 'string' || !ID_RE.test(r.instanceId))) return null;
+  return { id, date: r.date, itemId: r.itemId, itemVersion: r.itemVersion, title: r.title, outcome, cards: cards as CardRecord[], at: when,
+    ...(typeof r.instanceId === 'string' ? { instanceId: r.instanceId } : {}) };
 }
 
 /**
@@ -212,6 +260,39 @@ export class FirestoreHistoryStore implements HistoryStore {
       if ((e as { code?: unknown } | null)?.code === ALREADY_EXISTS) return false;
       throw e;
     }
+  }
+
+  async startInstance(instance: SessionInstance): Promise<boolean> {
+    const db = this.db as unknown as FsDb;
+    const ref = db.collection(INSTANCE_COLLECTION).doc(instance.id);
+    return db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (snap.exists) return sameInstance(snap.data() as unknown as SessionInstance, instance);
+      tx.create(ref, { ...instance });
+      return true;
+    });
+  }
+
+  async addBound(record: HistoryRecord, instanceId: string): Promise<boolean> {
+    const db = this.db as unknown as FsDb;
+    const start = db.collection(INSTANCE_COLLECTION).doc(instanceId);
+    const history = db.collection(this.collection).doc(record.id);
+    return db.runTransaction(async (tx) => {
+      const startSnap = await tx.get(start);
+      const historySnap = await tx.get(history);
+      if (!startSnap.exists) return false;
+      const instance = startSnap.data() as unknown as SessionInstance;
+      if (!instanceMatches(instance, record)) return false;
+      if (instance.recordId !== null) {
+        const previous = readRecord(record.id, historySnap.data());
+        return instance.recordId === record.id && !!previous && sameBoundRecord(previous, record, instanceId);
+      }
+      if (historySnap.exists) return false;
+      const { id: _id, ...data } = record;
+      tx.create(history, { ...data, instanceId });
+      tx.set(start, { ...instance, recordId: record.id });
+      return true;
+    });
   }
 
   async list(): Promise<HistoryRecord[]> {
@@ -237,6 +318,8 @@ export class FirestoreHistoryStore implements HistoryStore {
   async deleteAll(): Promise<void> {
     const snap = await this.db.collection(this.collection).get();
     for (const d of snap.docs) await d.ref.delete();
+    const instances = await this.db.collection(INSTANCE_COLLECTION).get();
+    for (const d of instances.docs) await d.ref.delete();
   }
 }
 
@@ -251,7 +334,7 @@ export type RefusalReason =
 
 export type SubmitResult = { ok: true } | { ok: false; status: number; reason: RefusalReason };
 
-const BODY_FIELDS = new Set(['id', 'date', 'itemId', 'itemVersion', 'outcome', 'cards']);
+const BODY_FIELDS = new Set(['id', 'date', 'itemId', 'itemVersion', 'outcome', 'cards', 'instanceId']);
 const CARD_FIELDS = new Set(['cardId', 'itemVersion', 'setsDone', 'cues']);
 
 const onlyFields = (o: object, allowed: Set<string>) => Object.keys(o).every((k) => allowed.has(k));
@@ -320,6 +403,13 @@ export class HistoryService {
     this.clock = clock;
   }
 
+  async startInstance(id: string, itemId: string, itemVersion: string): Promise<boolean> {
+    if (!ID_RE.test(id)) return false;
+    const shape = this.training.sessionCards(itemId, itemVersion);
+    if (!shape) return false;
+    return this.store.startInstance({ id, itemId, itemVersion, cards: shape.cards.map(({ cardId, itemVersion: version }) => ({ cardId, itemVersion: version })), recordId: null });
+  }
+
   /**
    * Keep a record sent by `role`. Only the keeper's, with allowlisted fields only, for a session
    * that was started, once per id; each card of that session once, its sets and cue ids within
@@ -330,7 +420,7 @@ export class HistoryService {
     if (role !== 'keeper') return refuse(403, 'not-keeper');
     if (!isObject(body)) return refuse(400, 'invalid');
     if (!onlyFields(body, BODY_FIELDS)) return refuse(400, 'unknown-field');
-    const { id, date, itemId, itemVersion, outcome, cards } = body;
+    const { id, date, itemId, itemVersion, outcome, cards, instanceId } = body;
     const ending = OUTCOMES.find((o) => o === outcome);
     if (
       typeof id !== 'string' ||
@@ -344,13 +434,14 @@ export class HistoryService {
     ) {
       return refuse(400, 'invalid');
     }
+    if (instanceId !== undefined && (typeof instanceId !== 'string' || !ID_RE.test(instanceId))) return refuse(400, 'invalid');
     for (const c of cards) {
       if (!isObject(c)) return refuse(400, 'invalid');
       if (!onlyFields(c, CARD_FIELDS)) return refuse(400, 'unknown-field');
       if (typeof c.cardId !== 'string' || typeof c.itemVersion !== 'string' || !isInt(c.setsDone)) return refuse(400, 'invalid');
       if (!Array.isArray(c.cues) || !c.cues.every((n) => isInt(n))) return refuse(400, 'invalid');
     }
-    if ((await this.store.list()).some((r) => r.id === id)) return refuse(409, 'duplicate');
+    if (instanceId === undefined && (await this.store.list()).some((r) => r.id === id)) return refuse(409, 'duplicate');
     const shape = this.training.sessionCards(itemId, itemVersion);
     if (!shape || !this.training.hasStarted({ itemId, itemVersion })) return refuse(409, 'not-started');
 
@@ -374,7 +465,7 @@ export class HistoryService {
     }
     const record: HistoryRecord = { id, date, itemId, itemVersion, title: shape.title, outcome: ending, cards: kept, at: this.clock() };
     // A resend racing the first is kept once: the store has the last word.
-    if (!(await this.store.add(record))) return refuse(409, 'duplicate');
+    if (!(instanceId === undefined ? await this.store.add(record) : await this.store.addBound(record, instanceId as string))) return refuse(409, 'duplicate');
     return { ok: true };
   }
 

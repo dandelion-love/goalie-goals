@@ -97,6 +97,22 @@ afterEach(() => {
 });
 
 describe('the outbox (AC1, AC6)', () => {
+  it('retains the acknowledged occurrence through reload and a delayed held stop', async () => {
+    const store = new LocalOutboxStore();
+    const s = server();
+    const start = startEvent(SESSION, NOW(), true);
+    enqueue(store, start);
+    await flushOutbox(store, s.fetchImpl);
+    expect(store.read()[0]).toMatchObject({ instanceId: start.id, acknowledged: true });
+    const result = { ...RESULT, outcome: 'stopped' as const, cards: [{ cardId: 'plank', itemVersion: PLANK.itemVersion, setsDone: 1, cues: [] }] };
+    const stop = finishEvent(result, NOW(), true, start.instanceId);
+    enqueue(store, stop);
+    const reloaded = new LocalOutboxStore();
+    prepareOnLaunch(reloaded);
+    await flushOutbox(reloaded, s.fetchImpl);
+    expect(s.posts.find((p) => p.url === '/api/history/sessions')?.body.instanceId).toBe(start.id);
+    expect(reloaded.read()).toEqual([]);
+  });
   it('sends events in order, and deletes each one once the server confirms it', async () => {
     const store = new LocalOutboxStore();
     const s = server();
@@ -220,6 +236,7 @@ describe('a session done offline (AC1, AC3)', () => {
       itemId: SESSION.itemId,
       itemVersion: SESSION.itemVersion,
       outcome: 'done',
+      instanceId: s.posts[0].body.instanceId,
       cards: [{ cardId: 'plank', itemVersion: PLANK.itemVersion, setsDone: 2, cues: [1] }],
     });
     expect(localStorage.getItem(OUTBOX_KEY)).toBeNull();
@@ -246,12 +263,12 @@ describe('Stop is kept on the device at the tap (AC1)', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
     click('Stop');
-    expect(stored()).toMatchObject([{ kind: 'finish', outcome: 'stopped', held: true }]);
+    expect(stored()).toMatchObject([{ kind: 'start', acknowledged: true }, { kind: 'finish', outcome: 'stopped', held: true }]);
     click('Resume');
-    expect(localStorage.getItem(OUTBOX_KEY)).toBeNull();
+    expect(stored()).toMatchObject([{ kind: 'start', acknowledged: true }]);
 
     click('Stop');
-    expect(stored()).toMatchObject([{ kind: 'finish', outcome: 'stopped', held: true }]);
+    expect(stored()).toMatchObject([{ kind: 'start', acknowledged: true }, { kind: 'finish', outcome: 'stopped', held: true }]);
     // The app closes before the Resume window ends: nothing was sent yet.
     first.unmount();
     vi.useRealTimers();

@@ -487,3 +487,52 @@ describe('parent-confirmed squat evidence', () => {
     expect(await history.squatEvidenceDetail()).toBe('ambiguous');
   });
 });
+
+describe('session occurrence binding', () => {
+  it.each([
+    ['memory', () => new MemoryHistoryStore()],
+    ['firestore', () => new FirestoreHistoryStore(new TransactionFirestore())],
+  ])('%s binds one matching history record and rejects conflicts', async (_name, makeStore) => {
+    const { a, session, store } = await ready(makeStore());
+    const instanceId = 'instance-0001';
+    const startPayload = { date: DATE, itemId: session.itemId, itemVersion: session.itemVersion, instanceId };
+    const start = () => a.inject({ method: 'POST', url: '/api/training/started', headers: as(KAI), payload: startPayload });
+    expect((await start()).statusCode).toBe(200);
+    expect((await start()).statusCode).toBe(200);
+    const entry = body(session, { instanceId });
+    expect((await send(a, entry)).statusCode).toBe(200);
+    expect((await send(a, entry)).statusCode).toBe(200);
+    expect((await send(a, { ...entry, id: 'rec-another-01' })).statusCode).toBe(409);
+    expect((await send(a, { ...entry, outcome: 'hurt' })).statusCode).toBe(409);
+    expect((await send(a, { ...entry, instanceId: 'instance-bogus' })).statusCode).toBe(409);
+    const badCards = structuredClone(entry.cards);
+    badCards[0].itemVersion = 'other-version';
+    expect((await send(a, { ...entry, cards: badCards })).statusCode).toBe(400);
+    expect((await store.list())).toHaveLength(1);
+    expect((await store.list())[0].instanceId).toBe(instanceId);
+    await store.deleteAll();
+    expect((await send(a, entry)).statusCode).toBe(409);
+    const stale = { ...as(KAI), 'x-household-generation': '99' };
+    expect((await a.inject({ method: 'POST', url: '/api/training/started', headers: stale, payload: startPayload })).statusCode).toBe(409);
+    expect((await a.inject({ method: 'POST', url: '/api/history/sessions', headers: stale, payload: entry })).statusCode).toBe(409);
+  });
+  it.each([
+    ['memory', () => new MemoryHistoryStore()],
+    ['firestore', () => new FirestoreHistoryStore(new TransactionFirestore())],
+  ])('%s keeps parent evidence on the bound set and rejects mismatches or stale replay', async (_name, makeStore) => {
+    const store = makeStore();
+    const id = 'instance-0002';
+    const record: HistoryRecord = { id: 'record-000002', date: DATE, itemId: 'session-test', itemVersion: 'session-version', title: 'Example', outcome: 'done', at: new Date(),
+      cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version', name: 'Squat to box', setsDone: 1, setsPlanned: 2, dose: { kind: 'reps', reps: 10, perSide: false }, cueIds: [] }] };
+    expect(await store.startInstance({ id, itemId: record.itemId, itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null })).toBe(true);
+    expect(await store.startInstance({ id, itemId: 'session-other', itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null })).toBe(false);
+    expect(await store.addBound(record, id)).toBe(true);
+    expect(await store.confirmSquatSet(record.id, 'wrong-version', 0, { actualReps: 10, clean: true }, null)).toBe(false);
+    expect(await store.confirmSquatSet(record.id, 'card-version', 1, { actualReps: 10, clean: true }, null)).toBe(false);
+    expect(await store.confirmSquatSet(record.id, 'card-version', 0, { actualReps: 10, clean: true }, null)).toBe(true);
+    expect(await store.confirmSquatSet(record.id, 'card-version', 0, { actualReps: 10, clean: true }, null)).toBe(true);
+    expect(await store.confirmSquatSet(record.id, 'card-version', 0, { actualReps: 8, clean: false }, { actualReps: 10, clean: true, revision: 1 })).toBe(true);
+    expect(await store.confirmSquatSet(record.id, 'card-version', 0, { actualReps: 10, clean: true }, null)).toBe(false);
+    expect((await store.list())[0]).toMatchObject({ instanceId: id, cards: [{ squatSets: [{ actualReps: 8, clean: false, revision: 2 }] }] });
+  });
+});

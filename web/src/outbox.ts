@@ -22,6 +22,8 @@ export interface StartEvent {
    * The server then accepts it even if the parent's undo landed first (story #94 AC2).
    */
   late: boolean;
+  instanceId?: string;
+  acknowledged?: boolean;
 }
 
 export interface FinishEvent {
@@ -45,6 +47,7 @@ export interface FinishEvent {
    * it; the end of the Resume window, Done, or the app opening again releases it.
    */
   held: boolean;
+  instanceId?: string;
 }
 
 export type OutboxEvent = StartEvent | FinishEvent;
@@ -78,8 +81,9 @@ const OUTCOMES: readonly string[] = ['done', 'stopped', 'hurt'];
 function clean(value: unknown): OutboxEvent | null {
   const e = value as Record<string, unknown> | null;
   if (!e || !str(e.id) || !str(e.date) || !str(e.itemId) || !str(e.itemVersion)) return null;
-  const base = { id: e.id, date: e.date, itemId: e.itemId, itemVersion: e.itemVersion };
-  if (e.kind === 'start') return { ...base, kind: 'start', late: e.late === true };
+  const base = { id: e.id, date: e.date, itemId: e.itemId, itemVersion: e.itemVersion,
+    ...(str(e.instanceId) ? { instanceId: e.instanceId } : {}) };
+  if (e.kind === 'start') return { ...base, kind: 'start', late: e.late === true, ...(e.acknowledged === true ? { acknowledged: true } : {}) };
   if (e.kind === 'finish' && str(e.outcome) && OUTCOMES.includes(e.outcome)) {
     return {
       ...base,
@@ -142,11 +146,12 @@ function newId(): string {
   return `e-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export function startEvent(session: Pick<Session, 'itemId' | 'itemVersion'>, now: Date = new Date()): StartEvent {
-  return { id: newId(), kind: 'start', date: localDate(now), itemId: session.itemId, itemVersion: session.itemVersion, late: false };
+export function startEvent(session: Pick<Session, 'itemId' | 'itemVersion'>, now: Date = new Date(), bindInstance = false): StartEvent {
+  const id = newId();
+  return { id, ...(bindInstance ? { instanceId: id } : {}), kind: 'start', date: localDate(now), itemId: session.itemId, itemVersion: session.itemVersion, late: false };
 }
 
-export function finishEvent(result: SessionResult, now: Date = new Date(), held = false): FinishEvent {
+export function finishEvent(result: SessionResult, now: Date = new Date(), held = false, instanceId?: string): FinishEvent {
   return {
     id: newId(),
     kind: 'finish',
@@ -158,6 +163,7 @@ export function finishEvent(result: SessionResult, now: Date = new Date(), held 
     praised: [...result.praised],
     ...withCards(result.cards?.map((c) => ({ ...c, cues: [...c.cues] }))),
     held,
+    ...(instanceId ? { instanceId } : {}),
   };
 }
 
@@ -190,7 +196,7 @@ export function release(store: OutboxStore, id: string): boolean {
 export function prepareOnLaunch(store: OutboxStore): void {
   const events = store.read();
   if (!events.length) return;
-  store.write(events.map((e) => (e.kind === 'finish' ? { ...e, held: false } : { ...e, late: true })));
+  store.write(events.map((e) => (e.kind === 'finish' ? { ...e, held: false } : e.acknowledged ? e : { ...e, late: true })));
 }
 
 /** The server's answer to one event. Every one of these deletes the event from the device. */
@@ -237,6 +243,7 @@ async function sendRecord(event: FinishEvent, fetchImpl: typeof fetch): Promise<
         itemVersion: event.itemVersion,
         outcome: event.outcome,
         cards: event.cards,
+        ...(event.instanceId ? { instanceId: event.instanceId } : {}),
       }),
     });
     return !retry(res.status);
@@ -249,7 +256,7 @@ async function sendRecord(event: FinishEvent, fetchImpl: typeof fetch): Promise<
 async function send(event: OutboxEvent, fetchImpl: typeof fetch): Promise<Answer | null> {
   const body =
     event.kind === 'start'
-      ? { date: event.date, itemId: event.itemId, itemVersion: event.itemVersion, late: event.late }
+      ? { date: event.date, itemId: event.itemId, itemVersion: event.itemVersion, late: event.late, ...(event.instanceId ? { instanceId: event.instanceId } : {}) }
       : {
           id: event.id,
           date: event.date,
@@ -291,7 +298,7 @@ async function send(event: OutboxEvent, fetchImpl: typeof fetch): Promise<Answer
 async function flushOnce(store: OutboxStore, fetchImpl: typeof fetch): Promise<FlushResult> {
   const answers: Record<string, Answer> = {};
   for (;;) {
-    const [head] = store.read();
+    const head = store.read().find((event) => event.kind !== 'start' || !event.acknowledged);
     // In order: a held stop holds back whatever came after it.
     if (!head || (head.kind === 'finish' && head.held)) break;
     const answer = await send(head, fetchImpl);
@@ -303,10 +310,14 @@ async function flushOnce(store: OutboxStore, fetchImpl: typeof fetch): Promise<F
       break;
     }
     // Answered: delete it from the device.
-    store.write(store.read().filter((e) => e.id !== head.id));
+    if (head.kind === 'start' && head.instanceId && answer.kind === 'confirmed') {
+      store.write(store.read().map((e) => e.id === head.id && e.kind === 'start' ? { ...e, acknowledged: true } : e));
+    } else {
+      store.write(store.read().filter((e) => e.id !== head.id && !(head.kind === 'finish' && head.instanceId && e.kind === 'start' && e.instanceId === head.instanceId)));
+    }
     answers[head.id] = answer;
   }
-  return { answers, waiting: store.read().length };
+  return { answers, waiting: store.read().filter((e) => e.kind !== 'start' || !e.acknowledged).length };
 }
 
 const running = new WeakMap<OutboxStore, Promise<FlushResult>>();

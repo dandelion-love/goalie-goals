@@ -484,10 +484,11 @@ export class TrainingService {
    * version in it approved); false otherwise, so a session whose approval was just undone does
    * not start.
    */
-  async markStarted(itemId: string, version: string): Promise<boolean> {
+  async markStarted(itemId: string, version: string, bind: () => Promise<boolean> = async () => true): Promise<boolean> {
     return this.equipment.guard(async () => {
     const snap = this.snapshots.sessions.get(version);
     if (!snap || snap.itemId !== itemId || !(await this.playable(snap))) return false;
+    if (!(await bind())) return false;
     await this.rememberStarted(snap);
     return true;
     });
@@ -508,6 +509,7 @@ export class TrainingService {
     version: string,
     actor: { account: string; role: Role },
     date: string,
+    bind: () => Promise<boolean> = async () => true,
   ): Promise<boolean> {
     return this.equipment.guard(async () => {
     const snap = this.snapshots.sessions.get(version);
@@ -520,6 +522,7 @@ export class TrainingService {
       if (!request) return false;
       undone.push(request);
     }
+    if (!(await bind())) return false;
     // A resend of the same start is recorded once.
     const already = this.hasStarted(snap);
     await this.rememberStarted(snap);
