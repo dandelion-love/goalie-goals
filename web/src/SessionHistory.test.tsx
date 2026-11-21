@@ -72,11 +72,12 @@ describe('squat evidence', () => {
     const writes: unknown[] = [];
     const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === '/api/history/squat-set') { writes.push(JSON.parse(String(init?.body))); return json({ ok: true }); }
-      if (String(input) === '/api/history/squat-evidence') return json({ status: 'unknown' });
+      if (String(input) === '/api/history/squat-evidence') return json({ status: 'unknown', detail: 'below-target' });
       return json({ sessions: [sample] });
     }) as typeof fetch;
     const { unmount } = render(<SessionHistory parent fetchImpl={fetchImpl} />);
     expect(await screen.findByText(/Squat readiness: evidence incomplete or unknown/)).toBeTruthy();
+    expect(screen.getByText(/latest recorded squat is below the ladder goal/)).toBeTruthy();
     fireEvent.click(await screen.findByText(/Example, Done/));
     fireEvent.change(screen.getByLabelText('Reps completed'), { target: { value: '10' } });
     fireEvent.change(screen.getByLabelText('Every rep clean?'), { target: { value: 'yes' } });
@@ -87,6 +88,7 @@ describe('squat evidence', () => {
     fireEvent.click(await screen.findByText(/Example, Done/));
     expect(screen.queryByLabelText('Reps completed')).toBeNull();
     expect(screen.getByText(/Squat readiness: evidence incomplete or unknown/)).toBeTruthy();
+    expect(screen.getByText(/latest recorded squat is below the ladder goal/)).toBeTruthy();
   });
 });
 
