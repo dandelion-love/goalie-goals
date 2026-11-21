@@ -240,7 +240,7 @@ export function ParentInbox({
                   requestAnimationFrame(() => rowButtons.current.get(r.id)?.focus());
                 }}>Back to inbox</button>
               ) : (
-                <button type="button" className="secondary" disabled={busy !== null} ref={(element) => { if (element) rowButtons.current.set(r.id, element); else rowButtons.current.delete(r.id); }} onClick={() => setSelected(r.id)}>{`Review ${r.title}`}</button>
+                <button type="button" className="secondary" aria-label={`Review ${r.title}`} disabled={busy !== null} ref={(element) => { if (element) rowButtons.current.set(r.id, element); else rowButtons.current.delete(r.id); }} onClick={() => setSelected(r.id)}>Review</button>
               )}
               <p>{r.detail}</p>
               {/* Story 115: the parent reads the whole dossier before answering. */}
