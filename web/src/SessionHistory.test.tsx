@@ -65,6 +65,13 @@ const SESSIONS: HistorySession[] = [
 ];
 
 describe('squat evidence', () => {
+  it.each([true, false])('shows missing parent confirmation to parent=%s', async (parent) => {
+    const fetchImpl = (async (input: RequestInfo | URL) => String(input) === '/api/history/squat-evidence'
+      ? json({ status: 'unknown', detail: 'missing-confirmation' }) : json({ sessions: [] })) as typeof fetch;
+    render(<SessionHistory parent={parent} fetchImpl={fetchImpl} />);
+    expect(await screen.findByText(/recorded squat needs parent confirmation for each set/)).toBeTruthy();
+    expect(screen.getByText(/evidence incomplete or unknown/)).toBeTruthy();
+  });
   it('lets only the parent enter a completed set and shows the shared unknown state', async () => {
     const sample: HistorySession = { id: 'rec-squat-001', date: '2026-01-05', title: 'Example', outcome: 'done',
       setsDone: 1, setsPlanned: 2, goodCount: 0, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version',
