@@ -61,6 +61,7 @@ export function SquatEvidenceStatus({ fetchImpl, refresh = 0 }: { fetchImpl?: ty
     'no-record': ' No squat session is recorded yet.',
     ambiguous: ' The order of recorded sessions is unclear.',
     incomplete: ' A recorded squat has incomplete evidence.',
+    'missing-confirmation': ' A recorded squat needs parent confirmation for each set.',
     'not-clean': ' A recorded squat was not all clean.',
     'below-target': ' A recorded squat is below the ladder goal.',
     'safety-unknown': ' Safety and session order still need checking.',

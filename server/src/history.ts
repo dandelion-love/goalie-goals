@@ -387,7 +387,7 @@ export interface HistoryServiceDeps {
 }
 
 /** A description of recorded evidence, not a clean-session or readiness count. */
-export type SquatEvidenceDetail = 'no-record' | 'ambiguous' | 'incomplete' | 'not-clean' | 'below-target' | 'safety-unknown';
+export type SquatEvidenceDetail = 'no-record' | 'ambiguous' | 'incomplete' | 'missing-confirmation' | 'not-clean' | 'below-target' | 'safety-unknown';
 
 /** How many records the homes show. */
 export const RECENT = 10;
@@ -485,8 +485,8 @@ export class HistoryService {
     const latest = records[0];
     if (records.length > 1 && records[1].record.date === latest.record.date) return 'ambiguous';
     const { record, card } = latest;
-    if (record.outcome !== 'done' || card.setsDone !== card.setsPlanned || card.setsDone === 0 ||
-        !card.squatSets || card.squatSets.length !== card.setsDone || card.squatSets.some((set) => !set)) return 'incomplete';
+    if (record.outcome !== 'done' || card.setsDone !== card.setsPlanned || card.setsDone === 0) return 'incomplete';
+    if (!card.squatSets || card.squatSets.length !== card.setsDone || card.squatSets.some((set) => !set)) return 'missing-confirmation';
     if (card.squatSets.some((set) => !set!.clean)) return 'not-clean';
     // The squat-to-box ladder's recorded goal is 2 x 15 (progression-library Decision).
     if (card.dose.kind === 'reps' && card.dose.reps !== undefined &&

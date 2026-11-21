@@ -474,6 +474,13 @@ describe('parent-confirmed squat evidence', () => {
     await store.deleteAll();
     const completed = structuredClone(squat);
     completed.cards[0].setsDone = 2;
+    await store.add(completed);
+    expect(await history.squatEvidenceDetail()).toBe('missing-confirmation');
+    await store.deleteAll();
+    completed.cards[0].squatSets = [{ actualReps: 10, clean: true, revision: 1 }, null];
+    await store.add(completed);
+    expect(await history.squatEvidenceDetail()).toBe('missing-confirmation');
+    await store.deleteAll();
     completed.cards[0].squatSets = [{ actualReps: 10, clean: true, revision: 1 }, { actualReps: 10, clean: true, revision: 1 }];
     await store.add(completed);
     expect(await history.squatEvidenceDetail()).toBe('below-target');
