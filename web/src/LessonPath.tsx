@@ -166,10 +166,10 @@ function TodayBody({
     const session = today.today;
     return (
       <>
-        <LessonPath session={session} label="Today's session" />
         <button type="button" className="primary session-control wide" disabled={disabled} onClick={() => onStart(session)}>
           Start session
         </button>
+        <LessonPath session={session} label="Today's session" />
       </>
     );
   }
@@ -183,7 +183,6 @@ function TodayBody({
           : "Today's session isn't approved yet."}{' '}
         {last ? 'You can do the last approved version, or rest.' : 'Rest today: recovery counts too.'}
       </p>
-      {last && <LessonPath session={last} label="Last approved version" />}
       <div className="actions">
         {last && (
           <button type="button" className="primary session-control" disabled={disabled} onClick={() => onStart(last)}>
@@ -194,6 +193,7 @@ function TodayBody({
           Rest today
         </button>
       </div>
+      {last && <LessonPath session={last} label="Last approved version" />}
     </div>
   );
 }

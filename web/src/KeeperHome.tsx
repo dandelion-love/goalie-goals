@@ -193,6 +193,7 @@ export function KeeperHome({
     return () => clearTimeout(id);
   }, []);
   const [playing, setPlaying] = useState<Session | null>(null);
+  const [destination, setDestination] = useState<'today' | 'week' | 'history'>('today');
   const [equipmentMessage, setEquipmentMessage] = useState('');
   const equipmentStart = useRef(false);
   const [finishedHere, setDoneToday] = useState(false);
@@ -442,6 +443,11 @@ export function KeeperHome({
           </button>
         )}
       </div>
+      <nav className="keeper-nav" aria-label="Keeper navigation">
+        {([['today', 'Today'], ['week', 'Week'], ['history', 'History']] as const).map(([id, label]) => (
+          <button key={id} type="button" className="secondary" aria-current={destination === id ? 'page' : undefined} onClick={() => setDestination(id)}>{label}</button>
+        ))}
+      </nav>
       {reporting && (
         <article className="card" aria-labelledby="report-title">
           <h2 id="report-title">Something hurts</h2>
@@ -469,6 +475,7 @@ export function KeeperHome({
           onMistake={reporting && !pause?.sent && !pause?.report ? undefined : () => mistake(null)}
         />
       ) : (
+        <div hidden={destination !== 'today'}>
         <TodayPanel
           fetchImpl={fetchImpl}
           onStart={tryStart}
@@ -479,18 +486,26 @@ export function KeeperHome({
           now={now}
           next={next}
         />
+        </div>
       )}
       {/* This week (story 114): the near goal across the week, under today. */}
+      <div hidden={destination !== 'week'}>
       <Reveal open={todaySettled}>
         <WeekPanel fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onWeekSettled} onWeek={onWeek} now={now} />
       </Reveal>
+      </div>
+      <div hidden={destination !== 'today'}>
       <Reveal open={weekSettled}>
         <ProgressPanel fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onProgress} />
       </Reveal>
+      </div>
       {/* Recent sessions (story 113): their own panel, above the approvals. */}
+      <div hidden={destination !== 'history'}>
       <Reveal open={progressSettled}>
         <SessionHistory fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onSessions} />
       </Reveal>
+      </div>
+      <div hidden={destination !== 'today'}>
       <Reveal open={sessionsSettled}>
         <div className={layout === 'expanded' ? 'panes' : 'stack'}>
           {!pause && <ApprovedTraining fetchImpl={fetchImpl} refresh={changed + epoch} onSettled={onTraining} />}
@@ -499,6 +514,7 @@ export function KeeperHome({
           </Reveal>
         </div>
       </Reveal>
+      </div>
     </section>
   );
 }

@@ -92,6 +92,10 @@ function SessionLine({ session, parent, fetchImpl, onSaved }: { session: History
             );
           })}
         </ul>
+        <button type="button" className="secondary" onClick={(event) => {
+          const details = event.currentTarget.closest('details');
+          if (details) { details.open = false; details.querySelector('summary')?.focus(); }
+        }}>Back to sessions</button>
       </details>
     </li>
   );
