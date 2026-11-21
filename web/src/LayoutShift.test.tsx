@@ -104,6 +104,7 @@ describe('the Training days card holds its final size (AC2)', () => {
     const server = parentServer();
     server.hold('/api/training/days');
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
     const card = (await screen.findByRole('heading', { name: 'Training days' })).closest('article')!;
     expect(card.getAttribute('aria-busy')).toBe('true');
     const loading = cardShape(card);
@@ -111,7 +112,7 @@ describe('the Training days card holds its final size (AC2)', () => {
     const wrapper = card.querySelector('.days-skeleton')!;
     for (const p of ['padding', 'margin', 'border', 'min-height', 'height']) expect(cascaded(rules, wrapper, p)).toBeNull();
     // The panels below are mounted (they load) but hidden, and hold their place in the page.
-    const panes = card.closest('.reveal')!.nextElementSibling!;
+    const panes = document.querySelector('.inbox-pane')!.closest('.reveal')!;
     expect(panes.hasAttribute('hidden')).toBe(true);
     await waitFor(() => expect(panes.querySelector('.request')).not.toBeNull());
 
@@ -123,12 +124,13 @@ describe('the Training days card holds its final size (AC2)', () => {
     expect(cardShape(card)).toEqual(loading);
     // The panels below appear after it and in the same place in the page.
     await waitFor(() => expect(panes.hasAttribute('hidden')).toBe(false));
-    expect(card.closest('.reveal')!.nextElementSibling).toBe(panes);
+    expect(panes.isConnected).toBe(true);
   });
 
   it('keeps a place for the message after Save, so a message moves nothing below', async () => {
     const server = parentServer();
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
     const card = (await screen.findByRole('heading', { name: 'Training days' })).closest('article')!;
     const group = await within(card).findByRole('group', { name: 'Training days' });
     const slot = card.querySelector('.days-message')!;
@@ -173,7 +175,8 @@ describe('an answer collapses its item in place (AC3)', () => {
     expect(item.isConnected).toBe(true);
     expect(rows()).toEqual(['Squat to box', 'Lateral shuffle', 'Low pogo hops']);
     expect(list.nextElementSibling).toBe(toastSlot);
-    expect(within(item).queryAllByRole('button')).toHaveLength(0);
+    expect(within(item).queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(within(item).queryByRole('button', { name: 'Decline' })).toBeNull();
     // The outcome sits where the buttons were, at their height.
     expect(outcome.classList.contains('actions')).toBe(true);
     expect(cascaded(rules, outcome, 'min-height')).toBe('var(--target)');
@@ -210,7 +213,7 @@ describe('an answer collapses its item in place (AC3)', () => {
     const before = [...card.children].map((c) => c.className);
     fireEvent.click(within(item).getByRole('button', { name: 'Approve' }));
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toBe("That answer didn't go through. It is still waiting.");
+    expect(alert.textContent).toBe("That answer didn't go through. Check the inbox and try again.");
     expect(alert.parentElement!.className).toBe('toast-slot');
     expect([...card.children].map((c) => c.className)).toEqual(before);
     expect(within(item).getByRole('button', { name: 'Approve' })).toBeTruthy();

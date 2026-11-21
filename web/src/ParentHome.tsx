@@ -21,7 +21,10 @@ const History = memo(HistoryPanel);
 const SessionHistory = memo(SessionHistoryPanel);
 const WeekPanel = memo(WeekPanelBody);
 
-export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl?: typeof fetch; epoch?: number }) {
+export function ParentHome({ fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl?: typeof fetch; epoch?: number }) {
+  const [destination, setDestination] = useState<'inbox' | 'plan' | 'progress' | 'settings'>('progress');
+  const [inboxSummary, setInboxSummary] = useState({ badge: 0, urgent: false });
+  const onInboxSummary = useCallback((badge: number, urgent: boolean) => setInboxSummary((old) => old.badge === badge && old.urgent === urgent ? old : { badge, urgent }), []);
   // Answering a request, or undoing an approval, adds to the history and changes the inbox,
   // so both reload after each.
   const [answered, setAnswered] = useState(0);
@@ -52,33 +55,48 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
   return (
     <section className="home" aria-labelledby="home-title">
       <h1 id="home-title">Parent home</h1>
+      <nav className="keeper-nav" aria-label="Parent navigation">
+        {([['inbox', `Inbox${inboxSummary.badge ? ` (${inboxSummary.badge})` : ''}${inboxSummary.urgent ? ' — urgent' : ''}`], ['plan', 'Plan'], ['progress', 'Progress'], ['settings', 'Settings']] as const).map(([id, label]) => (
+          <button key={id} type="button" className="secondary" aria-current={destination === id ? 'page' : undefined} onClick={() => setDestination(id)}>{label}</button>
+        ))}
+      </nav>
+      <div hidden={destination !== 'progress'}>
       <ProgressPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onProgress} />
+      </div>
       {/* This week (story 114): the days the parent set, each in its state, and what comes next. */}
+      <div hidden={destination !== 'plan'}>
       <Reveal open={weekOpen}>
         <WeekPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onWeek} />
       </Reveal>
+      </div>
       {/* Recent sessions (story 113): their own panel, apart from the approvals history. */}
+      <div hidden={destination !== 'progress'}>
       <Reveal open={sessionsOpen}>
         <SessionHistory parent fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onSessions} />
       </Reveal>
+      </div>
+      <div hidden={destination !== 'plan'}>
       <Reveal open={daysOpen}>
         <TrainingDays fetchImpl={fetchImpl} onChange={changed} onSettled={onDays} />
         <Equipment fetchImpl={fetchImpl} onChange={changed} />
       </Reveal>
+      </div>
       <Reveal open={inboxOpen}>
-        <div className={layout === 'expanded' ? 'panes' : 'stack'}>
-          <div ref={inbox} className="inbox-pane">
-            <ParentInbox fetchImpl={fetchImpl} onChange={inboxChanged} refresh={answered + epoch} onSettled={onInbox} />
+          <div ref={inbox} className="inbox-pane" hidden={destination !== 'inbox'}>
+            <ParentInbox fetchImpl={fetchImpl} onChange={inboxChanged} refresh={answered + epoch} onSettled={onInbox} onSummary={onInboxSummary} />
           </div>
+          <div hidden={destination !== 'progress'}>
           <Reveal open={historyOpen}>
             <History fetchImpl={fetchImpl} refresh={answered + epoch} onChange={changed} />
           </Reveal>
-        </div>
+          </div>
       </Reveal>
       {/* Story 121: at the very bottom, far from Approve and Clear the pause. */}
+      <div hidden={destination !== 'settings'}>
       <Reveal open={historyOpen}>
         <StartFresh fetchImpl={fetchImpl} onDone={changed} />
       </Reveal>
+      </div>
     </section>
   );
 }
