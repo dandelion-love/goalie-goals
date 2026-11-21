@@ -60,9 +60,9 @@ export function SquatEvidenceStatus({ fetchImpl, refresh = 0 }: { fetchImpl?: ty
   const details: Record<string, string> = {
     'no-record': ' No squat session is recorded yet.',
     ambiguous: ' The order of recorded sessions is unclear.',
-    incomplete: ' The latest recorded squat has incomplete evidence.',
-    'not-clean': ' The latest recorded squat was not all clean.',
-    'below-target': ' The latest recorded squat is below the ladder goal.',
+    incomplete: ' A recorded squat has incomplete evidence.',
+    'not-clean': ' A recorded squat was not all clean.',
+    'below-target': ' A recorded squat is below the ladder goal.',
     'safety-unknown': ' Safety and session order still need checking.',
   };
   return <p className="meta">{evidence.status === 'held' ? 'Squat progress is on hold.' : `Squat readiness: evidence incomplete or unknown.${details[evidence.detail ?? ''] ?? ''}`} Paused box squat needs its own approval.</p>;
