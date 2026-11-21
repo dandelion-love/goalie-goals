@@ -281,6 +281,7 @@ describe('the Training days toggles at 390 x 844 (AC4)', () => {
   it('are each at least 44 px both ways, with at least 8 px between them', async () => {
     setViewport(390, 844);
     render(<App fetchImpl={slowServer().fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
     const card = (await screen.findByRole('heading', { name: 'Training days' })).closest('article')!;
     const group = await within(card).findByRole('group', { name: 'Training days' });
     const toggles = within(group).getAllByRole('button');
