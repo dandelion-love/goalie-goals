@@ -176,6 +176,7 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
 
     click('Done for today');
     expect(await screen.findByText("Today's session is done. See you next time.")).toBeTruthy();
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Keeper home' })));
     expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
   });
 
@@ -221,7 +222,7 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
     );
     click('Start set 1');
     const grid = document.querySelector(`.${panes}`)!;
-    const [main, controls, side] = [...grid.children];
+    const [controls, main, side] = [...grid.children];
     expect(main.classList.contains('player-main')).toBe(true);
     expect(controls.classList.contains('player-controls')).toBe(true);
     expect(side.classList.contains('player-side')).toBe(true);
@@ -230,7 +231,7 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
     if (layout === 'expanded') {
       // Landscape: the drill spans the left column, so the controls start the right column.
       expect(grid.classList.contains('card-panes')).toBe(true);
-      expect(cascaded(rules, main, 'grid-row')).toBe('span 2');
+      expect(cascaded(rules, main, 'grid-row')).toBe('1 / 3');
     }
   });
 });
@@ -337,6 +338,7 @@ describe.each([
     const start = within(controls).getByRole('button', { name: 'Start set 1' });
     // Start keeps its place: the first thing in the controls, ahead of the intro.
     expect(controls.firstElementChild).toBe(start);
+    fireEvent.click(within(controls).getByText('For the parent', { selector: 'summary' }));
     const intro = within(controls).getByRole('region', { name: 'For the parent' });
     expect(start.compareDocumentPosition(intro) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     for (const line of [card.setup.space, card.setup.equipment, card.setup.parent, card.why]) {

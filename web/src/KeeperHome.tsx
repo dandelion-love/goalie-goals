@@ -193,6 +193,14 @@ export function KeeperHome({
     return () => clearTimeout(id);
   }, []);
   const [playing, setPlaying] = useState<Session | null>(null);
+  const homeHeading = useRef<HTMLHeadingElement>(null);
+  const returning = useRef(false);
+  useEffect(() => {
+    if (!playing && returning.current) {
+      returning.current = false;
+      homeHeading.current?.focus();
+    }
+  }, [playing]);
   const [destination, setDestination] = useState<'today' | 'week' | 'history'>('today');
   const [equipmentMessage, setEquipmentMessage] = useState('');
   const equipmentStart = useRef(false);
@@ -358,6 +366,8 @@ export function KeeperHome({
           // A transition (story #98 AC5): the tap paints its response at once, and the home,
           // a large render, follows without holding the tap's frame.
           startTransition(() => {
+            returning.current = true;
+            setDestination('today');
             setPlaying(null);
             setProgress(null);
           });
@@ -436,7 +446,7 @@ export function KeeperHome({
   return (
     <section className="home" aria-labelledby="home-title">
       <div className="home-bar">
-        <h1 id="home-title">Keeper home</h1>
+        <h1 id="home-title" ref={homeHeading} tabIndex={-1}>Keeper home</h1>
         {!paused && (
           <button type="button" className="danger session-control safety-control" onClick={hurtTapped}>
             Something hurts

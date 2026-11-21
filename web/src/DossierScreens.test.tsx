@@ -123,6 +123,7 @@ describe("the player's card intro (AC2)", () => {
 
   it('opens an approved dossier from the intro, before set 1, and closes it again', async () => {
     player();
+    fireEvent.click(screen.getByText('For the parent', { selector: 'summary' }));
     const intro = screen.getByRole('region', { name: 'For the parent' });
     const open = within(intro).getByRole('button', { name: 'Why it matters' });
     expect(open.getAttribute('aria-expanded')).toBe('false');
@@ -141,6 +142,7 @@ describe("the player's card intro (AC2)", () => {
 
   it('offers nothing for a card without an approved dossier', () => {
     player([BRIDGE]);
+    fireEvent.click(screen.getByText('For the parent', { selector: 'summary' }));
     const intro = screen.getByRole('region', { name: 'For the parent' });
     expect(within(intro).queryByRole('button', { name: 'Why it matters' })).toBeNull();
   });
