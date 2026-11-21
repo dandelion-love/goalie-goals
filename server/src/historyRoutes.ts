@@ -35,7 +35,8 @@ export function registerHistoryRoutes(
     // A cleared pain pause does not establish growth, break, or step-down conditions.
     // Until those have authoritative evidence, readiness is unknown, never ready.
     try {
-      return { status: (await isPaused()) ? 'held' : 'unknown' };
+      if (await isPaused()) return { status: 'held' };
+      return { status: 'unknown', detail: await history.squatEvidenceDetail() };
     } catch {
       return { status: 'unknown' };
     }

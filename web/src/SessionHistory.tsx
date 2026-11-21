@@ -49,15 +49,23 @@ function SquatSetForm({ session, card, set, fetchImpl, onSaved }: { session: His
 }
 
 export function SquatEvidenceStatus({ fetchImpl, refresh = 0 }: { fetchImpl?: typeof fetch; refresh?: number }) {
-  const [status, setStatus] = useState<'unknown' | 'held'>('unknown');
+  const [evidence, setEvidence] = useState<{ status: 'unknown' | 'held'; detail?: string }>({ status: 'unknown' });
   useEffect(() => {
     let live = true;
     (fetchImpl ?? fetch)('/api/history/squat-evidence', { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-      .then((r) => r.ok ? r.json() : Promise.reject()).then((v: { status?: string }) => { if (live) setStatus(v.status === 'held' ? 'held' : 'unknown'); })
-      .catch(() => { if (live) setStatus('unknown'); });
+      .then((r) => r.ok ? r.json() : Promise.reject()).then((v: { status?: string; detail?: string }) => { if (live) setEvidence({ status: v.status === 'held' ? 'held' : 'unknown', detail: v.detail }); })
+      .catch(() => { if (live) setEvidence({ status: 'unknown' }); });
     return () => { live = false; };
   }, [fetchImpl, refresh]);
-  return <p className="meta">{status === 'held' ? 'Squat progress is on hold.' : 'Squat readiness: evidence incomplete or unknown.'} Paused box squat needs its own approval.</p>;
+  const details: Record<string, string> = {
+    'no-record': ' No squat session is recorded yet.',
+    ambiguous: ' The order of recorded sessions is unclear.',
+    incomplete: ' A recorded squat has incomplete evidence.',
+    'not-clean': ' A recorded squat was not all clean.',
+    'below-target': ' A recorded squat is below the ladder goal.',
+    'safety-unknown': ' Safety and session order still need checking.',
+  };
+  return <p className="meta">{evidence.status === 'held' ? 'Squat progress is on hold.' : `Squat readiness: evidence incomplete or unknown.${details[evidence.detail ?? ''] ?? ''}`} Paused box squat needs its own approval.</p>;
 }
 
 function SessionLine({ session, parent, fetchImpl, onSaved }: { session: HistorySession; parent: boolean; fetchImpl?: typeof fetch; onSaved: () => void }) {

@@ -303,6 +303,9 @@ export interface HistoryServiceDeps {
   clock?: () => Date;
 }
 
+/** A description of recorded evidence, not a clean-session or readiness count. */
+export type SquatEvidenceDetail = 'no-record' | 'ambiguous' | 'incomplete' | 'not-clean' | 'below-target' | 'safety-unknown';
+
 /** How many records the homes show. */
 export const RECENT = 10;
 
@@ -381,6 +384,23 @@ export class HistoryService {
       (a, b) => b.date.localeCompare(a.date) || b.at.getTime() - a.at.getTime(),
     );
     return records.slice(0, limit).map((r) => this.view(r));
+  }
+
+  async squatEvidenceDetail(): Promise<SquatEvidenceDetail> {
+    const records = (await this.store.list())
+      .flatMap((record) => record.cards.filter((card) => card.cardId === 'squat-to-box').map((card) => ({ record, card })))
+      .sort((a, b) => b.record.date.localeCompare(a.record.date));
+    if (!records.length) return 'no-record';
+    const latest = records[0];
+    if (records.length > 1 && records[1].record.date === latest.record.date) return 'ambiguous';
+    const { record, card } = latest;
+    if (record.outcome !== 'done' || card.setsDone !== card.setsPlanned || card.setsDone === 0 ||
+        !card.squatSets || card.squatSets.length !== card.setsDone || card.squatSets.some((set) => !set)) return 'incomplete';
+    if (card.squatSets.some((set) => !set!.clean)) return 'not-clean';
+    // The squat-to-box ladder's recorded goal is 2 x 15 (progression-library Decision).
+    if (card.dose.kind === 'reps' && card.dose.reps !== undefined &&
+        (card.setsPlanned < 2 || card.dose.reps < 15 || card.squatSets.some((set) => set!.actualReps < 15))) return 'below-target';
+    return 'safety-unknown';
   }
 
   /** Delete the household's records (the household is deleted, or the demo reset). */

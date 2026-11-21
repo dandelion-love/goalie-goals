@@ -436,7 +436,7 @@ describe('parent-confirmed squat evidence', () => {
       const sessions = await read(a, who);
       expect(sessions[0].cards[0].squatSets).toEqual([{ actualReps: 10, clean: true, revision: 1 }]);
       const status = await a.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(who) });
-      expect(status.json()).toEqual({ status: 'unknown' });
+      expect(status.json()).toEqual({ status: 'unknown', detail: 'incomplete' });
     }
     const changed = { ...payload, actualReps: 8, clean: false, previous: { actualReps: 10, clean: true, revision: 1 } };
     expect((await put(SAM, changed)).statusCode).toBe(200);
@@ -448,7 +448,7 @@ describe('parent-confirmed squat evidence', () => {
       expect((await a.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(who) })).json()).toEqual({ status: 'held' });
     }
     await a.inject({ method: 'POST', url: '/api/pain/clear', headers: as(SAM), payload: {} });
-    expect((await a.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(SAM) })).json()).toEqual({ status: 'unknown' });
+    expect((await a.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(SAM) })).json()).toEqual({ status: 'unknown', detail: 'incomplete' });
     expect((await a.inject({ method: 'PUT', url, headers: { ...as(SAM), 'x-household-generation': '99' }, payload })).statusCode).toBe(409);
     expect((await a.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(STRANGER) })).statusCode).toBe(403);
     expect(logLines.join('')).not.toContain('rec-squat-001');
@@ -464,5 +464,26 @@ describe('parent-confirmed squat evidence', () => {
     expect((await new FirestoreHistoryStore(db).list())[0].cards[0].squatSets).toEqual([{ actualReps: 8, clean: false, revision: 1 }]);
     await store.deleteAll();
     expect(await store.list()).toEqual([]);
+  });
+  it('describes recorded evidence without declaring readiness', async () => {
+    const store = new MemoryHistoryStore();
+    const history = new HistoryService({ store, training });
+    expect(await history.squatEvidenceDetail()).toBe('no-record');
+    await store.add(squat);
+    expect(await history.squatEvidenceDetail()).toBe('incomplete');
+    await store.deleteAll();
+    const completed = structuredClone(squat);
+    completed.cards[0].setsDone = 2;
+    completed.cards[0].squatSets = [{ actualReps: 10, clean: true, revision: 1 }, { actualReps: 10, clean: true, revision: 1 }];
+    await store.add(completed);
+    expect(await history.squatEvidenceDetail()).toBe('below-target');
+    await store.deleteAll();
+    completed.cards[0].squatSets![1]!.clean = false;
+    await store.add(completed);
+    expect(await history.squatEvidenceDetail()).toBe('not-clean');
+    const other = structuredClone(completed);
+    other.id = 'rec-squat-002';
+    await store.add(other);
+    expect(await history.squatEvidenceDetail()).toBe('ambiguous');
   });
 });
