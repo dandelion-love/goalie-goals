@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-22
+
+* **Changed**: progression unlock rules: recorded the owner's capped final squat dose increment and retained separate dose and parent approvals (story 196).
+
 ## 2026-11-20
 
 * **Added**: low-dive-pose: a reproducible CC0 rig reference and an original vector figure (story 68).

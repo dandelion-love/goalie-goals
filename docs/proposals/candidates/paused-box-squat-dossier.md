@@ -14,7 +14,7 @@ Use a stable low box or step. Lower with control, pause for two seconds above th
 
 ## Approval and safety
 
-The exact card, neutral fallback figure, dossier and sources need independent review and owner content approval. A parent must separately approve the exact version in the app before any real use. The prior dose must reach its approved target through reviewed single-lever steps, with two clean sessions and parent approval for each change. The current starting card is two sets of ten; the final 14-to-15 step needs rule clarification. Pain, growth, breaks, restart and step-down conditions remain separate holds.
+The exact card, neutral fallback figure, dossier and sources need independent review and owner content approval. A parent must separately approve the exact version in the app before any real use. The prior dose must reach its approved target through reviewed single-lever steps, with two clean sessions and parent approval for each change. The current starting card is two sets of ten; the owner chose a capped one-repetition final step from 14 to 15 under those same conditions. Pain, growth, breaks, restart and step-down conditions remain separate holds.
 
 ## Open review work
 

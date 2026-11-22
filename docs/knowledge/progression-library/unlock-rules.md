@@ -4,7 +4,7 @@ title: Unlock rules for the progression library
 description: How a rung unlocks and steps back down, refining the training-rules progression rule - what a clean repetition is, the test every parent cue must pass (and the rejection when it fails), steps inside a rung, two clean sessions in a row, the parent's in-app approval as the last step, and the step-down triggers.
 tags: [progression-library, unlock, progression, parent-approval, safety]
 status: draft
-generated: { by: claude-code/opus-5.5, at: 2026-11-18T07:30:00Z }
+generated: { by: codex/gpt-6, at: 2026-11-22T20:59:45Z }
 sources:
   - { id: nsca-2009, resource: https://pubmed.ncbi.nlm.nih.gov/19620931/, title: "Faigenbaum et al. Youth resistance training: updated position statement paper from the NSCA (J Strength Cond Res, 2009)" }
   - { id: moran-2017-cmj, resource: https://pubmed.ncbi.nlm.nih.gov/28129282/, title: "Moran et al. Age-related variation in male youth athletes' countermovement jump after plyometric training: a meta-analysis (J Strength Cond Res, 2017)" }
@@ -12,6 +12,7 @@ sources:
   - { id: parent-approval, resource: /decisions/parent-approval.md, title: Parent approval as a primary behaviour }
   - { id: progression-design, resource: /decisions/progression-design.md, title: Progression design for two people training together }
   - { id: plyo, resource: /training/plyometrics-and-landing.md, title: Plyometrics and landing mechanics }
+  - { id: final-step, resource: 'https://github.com/dandelion-love/goalie-goals/issues/196#issuecomment-7085599529', title: Owner decision on the capped final repetition step }
 ---
 
 # Summary
@@ -71,6 +72,11 @@ parent's approval of the change:[^training-rules][^parent-approval]
 Skill rungs where the cue, not the volume, is the point may unlock at the starting dose
 when the ladder table says so. No step ever goes past a training-rules limit.
 
+For the squat-to-box ladder, the final step from 2 × 14 to the existing 2 × 15 cap is
+one additional repetition per set, after two clean sessions and the parent's in-app
+approval of that change. Each exact dose version also requires owner content approval;
+the decision on the increment does not itself approve a dose or exercise.[^final-step]
+
 # Unlocking the next rung
 
 1. The keeper reaches the rung's top dose.
@@ -111,3 +117,4 @@ never breaks a streak or costs credit; it is shown as part of the plan.[^progres
 [^parent-approval]: Parent approval Decision (this bundle)
 [^progression-design]: Progression design Decision (this bundle)
 [^plyo]: Plyometrics and landing mechanics (this bundle)
+[^final-step]: Owner's decision on the capped final step (issue 196)
