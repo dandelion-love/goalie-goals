@@ -82,7 +82,7 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
       </Reveal>
       </div>
       {destination === 'equipment' && <EquipmentCatalog fetchImpl={fetchImpl} onChange={changed} />}
-      {destination === 'tree' && <ProgressionLibrary fetchImpl={fetchImpl} refresh={answered + epoch} />}
+      {destination === 'tree' && <ProgressionLibrary fetchImpl={fetchImpl} refresh={answered + epoch} parent />}
       <Reveal open={inboxOpen}>
           <div ref={inbox} className="inbox-pane" hidden={destination !== 'inbox'}>
             <ParentInbox layout={layout} fetchImpl={fetchImpl} onChange={inboxChanged} refresh={answered + epoch} onSettled={onInbox} onSummary={onInboxSummary} onGoPlan={() => navigate('plan')} />

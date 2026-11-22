@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { ApprovedExerciseDetail } from './ApprovedExerciseDetail';
 import { validExercise, type CollectionExercise } from './CardCollection';
 import { ProgressionTree, type RungState } from './ProgressionTree';
+import { ParentProgressionReview } from './ParentProgressionReview';
 
 /** Role-authorized projections only; browsing does not post or change any household state. */
-export function ProgressionLibrary({ fetchImpl = fetch, refresh = 0, held = false }: { fetchImpl?: typeof fetch; refresh?: number; held?: boolean }) {
+export function ProgressionLibrary({ fetchImpl = fetch, refresh = 0, held = false, parent = false }: { fetchImpl?: typeof fetch; refresh?: number; held?: boolean; parent?: boolean }) {
   const [cards, setCards] = useState<CollectionExercise[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -13,7 +14,7 @@ export function ProgressionLibrary({ fetchImpl = fetch, refresh = 0, held = fals
   const origin = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     let active = true;
-    setCards(null); setFailed(false); setReadiness('unknown');
+    setFailed(false); setReadiness('unknown');
     fetchImpl('/api/training/collection', { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
       .then(async (r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data: { exercises?: unknown }) => { if (!Array.isArray(data.exercises) || !data.exercises.every(validExercise)) throw new Error(); if (active) setCards(data.exercises); })
@@ -31,5 +32,5 @@ export function ProgressionLibrary({ fetchImpl = fetch, refresh = 0, held = fals
   if (failed) return <article className="card"><p>Progression cards could not be loaded.</p><button onClick={() => setAttempt((n) => n + 1)}>Try again</button></article>;
   if (!cards) return <p role="status">Loading progression cards…</p>;
   const selected = current ? cards.find((card) => card.id === current) : undefined;
-  return <><div hidden={!!current}><ProgressionTree cards={cards.map((card) => ({ id: card.id, figureUrl: card.figureUrl, headline: card.dossier?.headline }))} states={{ 'squat-to-box': held ? 'held' : readiness }} onOpen={open} /></div>{current && (selected ? <ApprovedExerciseDetail exercise={selected} onBack={back} /> : <article className="card"><p>This exercise is not available.</p><button onClick={back}>Back</button></article>)}</>;
+  return <><div hidden={!!current}><ProgressionTree cards={cards.map((card) => ({ id: card.id, figureUrl: card.figureUrl, headline: card.dossier?.headline }))} states={{ 'squat-to-box': held ? 'held' : readiness }} onOpen={open} />{parent && <ParentProgressionReview fetchImpl={fetchImpl} onChanged={() => setAttempt((n) => n + 1)} />}</div>{current && (selected ? <ApprovedExerciseDetail exercise={selected} onBack={back} /> : <article className="card"><p>This exercise is not available.</p><button onClick={back}>Back</button></article>)}</>;
 }

@@ -5,14 +5,15 @@ import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from 
 import type { SquatProofService, SquatProofStore } from './squatProof.js';
 import type { RoleStore } from './roles.js';
 import { ownerApprovedSquatVersions } from './ownerProgression.js';
-import type { Dossier, ExerciseCard } from './content.js';
+import type { ExerciseCard } from './content.js';
+import { dossierSnapshot, type ClientDossier } from './dossiers.js';
 import { cardSnapshot } from './training.js';
 import { prepareReviewedApproval, REQUEST_TTL_MS } from './approvals.js';
 import { deleteCollection } from './firestoreDb.js';
 import { GENERATION_HEADER, requestGeneration } from './generation.js';
 import type { ResetPainGate } from './householdReset.js';
 
-type ReviewCandidate = { itemId: string; version: string; title: string; dose: string; cues: string[]; card: ExerciseCard; approvalContent: { title: string; detail: string }; dossier?: Dossier; dossierVersion?: string };
+type ReviewCandidate = { itemId: string; version: string; title: string; dose: string; cues: string[]; card: ExerciseCard; approvalContent: { title: string; detail: string }; dossier?: ClientDossier; dossierVersion?: string };
 
 /** Isolated review prototype; never registered until the remaining safety boundaries pass review. */
 export class ProgressionReview {
@@ -24,7 +25,7 @@ export class ProgressionReview {
     if (!entry) throw new Error('Progression version has no owner decision');
     if (entry.rung !== 'squat-to-box-pause' || entry.predecessor !== 'squat-to-box') throw new Error('No readiness rule for progression version');
     const snapshot = cardSnapshot(entry.card);
-    return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues, card: entry.card.card, approvalContent: { title: snapshot.content.title, detail: snapshot.content.detail }, ...(entry.dossier && entry.dossierVersion ? { dossier: entry.dossier.dossier, dossierVersion: entry.dossierVersion } : {}) });
+    return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues, card: entry.card.card, approvalContent: { title: snapshot.content.title, detail: snapshot.content.detail }, ...(entry.dossier && entry.dossierVersion ? { dossier: dossierSnapshot(entry.dossier, entry.card.card.name).client, dossierVersion: entry.dossierVersion } : {}) });
   }
 
   async deleteAll(): Promise<void> {
@@ -44,7 +45,7 @@ export class ProgressionReview {
       const revision = await readEvidenceRevision(tx, evidenceRevisionRef(this.db));
       const proof = (await tx.get(proofRef)).get('proof');
       if (revision !== after.revision || JSON.stringify(proof) !== JSON.stringify(after)) return null;
-      tx.create(ref, { ...this.candidate, revision, proof: after, expiresAt });
+      tx.create(ref, { itemId: this.candidate.itemId, version: this.candidate.version, revision, proof: after, expiresAt });
       return { id, ...this.candidate };
     });
   }

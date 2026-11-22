@@ -91,9 +91,9 @@ export class SquatProofService {
   }
 
   /** The parent can confirm this server order; it cannot be supplied or rearranged by a keeper. */
-  async reviewWindow(): Promise<{ id: string; date: string }[] | null> {
+  async reviewWindow(): Promise<{ id: string; date: string; title: string }[] | null> {
     const window = await this.window();
-    return window?.ordered.map((record) => ({ id: record.id, date: record.date })) ?? null;
+    return window?.ordered.map((record) => ({ id: record.id, date: record.date, title: record.title })) ?? null;
   }
 
   async attest(input: SquatAttestation): Promise<boolean> {

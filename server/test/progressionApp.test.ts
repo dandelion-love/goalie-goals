@@ -37,7 +37,7 @@ it('uses normal authenticated Firestore routes for a synthetic parent review and
     expect((await post('/api/history/squat-attestation', attestation)).json().status).toBe('ready-for-parent');
     expect((await get('/api/history/squat-evidence', 'keeper@example.com')).json().status).toBe('ready-for-parent');
     const offer = await post('/api/progression/review-offer');
-    expect(offer.statusCode).toBe(200);
+    expect(offer.statusCode, offer.body).toBe(200);
     expect(JSON.stringify((await get('/api/training/collection', 'keeper@example.com')).json())).not.toContain('squat-to-box-pause');
     expect((await post(`/api/progression/review-offer/${offer.json().id}/approve`)).statusCode).toBe(200);
     expect(await store.approvedVersion('card-squat-to-box-pause', 'sha256:836073df2f6a8c3c94e99bf990df658d')).not.toBeNull();

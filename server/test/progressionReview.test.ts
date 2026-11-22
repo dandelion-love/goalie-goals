@@ -46,7 +46,7 @@ it('offers and records a parent review only for current synthetic evidence', asy
     expect(first.statusCode).toBe(200);
     expect(first.json()).toMatchObject({ itemId: 'squat-to-box-pause', dose: '2 x 10' });
     expect(first.json().card.id).toBe('squat-to-box-pause');
-    expect(first.json().dossier.id).toBe('squat-to-box-pause');
+    expect(first.json().dossier.cardId).toBe('squat-to-box-pause');
     expect(first.json().dossierVersion).toBe('sha256:8365e00c6b872dd5c864c9e672869701');
     const stale = first.json().id;
     const originalStatus = readiness.status.bind(readiness);
