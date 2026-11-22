@@ -13,6 +13,11 @@ it('invalidates a pending decision when a real set confirmation changes', async 
   const target = db.collection('decisions').doc('pending');
   expect(await guardedEvidenceMutation(db, revision, async (tx) => { tx.set(target, { approved: true }); })).toEqual({ applied: false });
   expect((await target.get()).exists).toBe(false);
+  const beforeLegacy = await db.runTransaction((tx) => readEvidenceRevision(tx, evidenceRevisionRef(db)));
+  const legacy = { ...(await history.list())[0], id: 'legacy-proof-10' };
+  delete legacy.instanceId;
+  expect(await history.add(legacy)).toBe(true);
+  expect(await guardedEvidenceMutation(db, beforeLegacy, async (tx) => { tx.set(target, { approved: true }); })).toEqual({ applied: false });
 });
 
 async function record(store: HistoryStore, n: number, late = false) {

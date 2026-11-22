@@ -176,7 +176,6 @@ export interface HistoryDocSnap {
 
 export const HISTORY_COLLECTION = 'sessionHistory';
 export const INSTANCE_COLLECTION = 'sessionInstances';
-const ALREADY_EXISTS = 6;
 const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 
 function sameInstance(a: SessionInstance, b: SessionInstance): boolean {
@@ -283,13 +282,16 @@ export class FirestoreHistoryStore implements HistoryStore {
 
   async add(record: HistoryRecord): Promise<boolean> {
     const { id, ...data } = structuredClone(record);
-    try {
-      await this.db.collection(this.collection).doc(id).create({ ...data, at: new Date(record.at) });
+    const db = this.db as unknown as FsDb;
+    const ref = db.collection(this.collection).doc(id);
+    return db.runTransaction(async (tx) => {
+      if ((await tx.get(ref)).exists) return false;
+      const revision = evidenceRevisionRef(db);
+      await readEvidenceRevision(tx, revision);
+      tx.create(ref, { ...data, at: new Date(record.at) });
+      bumpEvidenceRevision(tx, revision);
       return true;
-    } catch (e) {
-      if ((e as { code?: unknown } | null)?.code === ALREADY_EXISTS) return false;
-      throw e;
-    }
+    });
   }
 
   async startInstance(instance: SessionInstance, late = false): Promise<boolean> {
