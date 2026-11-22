@@ -22,6 +22,7 @@ it('uses normal authenticated Firestore routes for a synthetic parent review and
     const from = versions[n], to = versions[n + 1], afterSequence = (n + 1) * 2;
     const key = createHash('sha256').update(`${from}\0${to}`).digest('hex');
     await db.collection('squatDoseTransitions').doc(key).create({ from, to, afterSequence, decisionSequence: afterSequence, approvalId: `synthetic-dose-approved-${n + 1}` });
+    await db.collection('squatDoseOffers').doc(`synthetic-dose-approved-${n + 1}`).create({ from, to, afterSequence, expiresAt: now.getTime() + 86400000, proof: { target: { version: from, reps: [10, 12, 14][n] } } });
   }
   const history = new FirestoreHistoryStore(db), ids: string[] = [];
   for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
@@ -66,6 +67,6 @@ it('uses normal authenticated Firestore routes for a synthetic parent review and
     expect((await get('/api/history/squat-evidence', 'keeper@example.com')).json().status).toBe('held');
     expect(JSON.stringify((await get('/api/training/collection', 'keeper@example.com')).json())).not.toContain('squat-to-box-pause');
     expect((await post('/api/household/reset', { confirm: 'RESET', date })).statusCode).toBe(200);
-    expect(db.paths().some((path) => path.startsWith('progressionReviewOffers/') || path.startsWith('progressionReviewDecisions/') || path.startsWith('squatReadiness/') || path.startsWith('squatDoseTransitions/'))).toBe(false);
+    expect(db.paths().some((path) => path.startsWith('progressionReviewOffers/') || path.startsWith('progressionReviewDecisions/') || path.startsWith('squatReadiness/') || path.startsWith('squatDoseTransitions/') || path.startsWith('squatDoseOffers/'))).toBe(false);
   } finally { await app.close(); }
 });
