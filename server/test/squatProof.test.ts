@@ -63,8 +63,9 @@ it.each(['memory', 'firestore'])('%s proof is exact, revocable and invalidated b
   const saved = (await proofs.read())!;
   const first = await proofs.begin();
   const later = await proofs.begin();
-  expect(await proofs.finish(later, saved)).toBe(true);
-  expect(await proofs.finish(later, saved)).toBe(false);
+  const latestProof = { ...saved, revision: later.revision };
+  expect(await proofs.finish(later, latestProof)).toBe(true);
+  expect(await proofs.finish(later, latestProof)).toBe(false);
   expect(await proofs.finish(first, saved)).toBe(false);
   expect(await service.status()).toBe('ready-for-parent');
   expect(await service.attest({ ...attestation, allDevicesSynced: false })).toBe(false);

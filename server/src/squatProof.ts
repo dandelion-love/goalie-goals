@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { HistoryRecord, HistoryStore, SessionInstance } from './history.js';
 import type { FsDb } from './firestoreDb.js';
 import { evaluateSquatReadiness, type ReadinessFacts, type SquatReadiness } from './squatReadiness.js';
-import { evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
+import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
 
 /** No free text or client-provided eligibility. A parent confirms facts, not a promotion. */
 export type SquatAttestation = { orderedRecordIds: string[]; allDevicesSynced: boolean; growthClear: boolean; breakRestartClear: boolean; stepDownClear: boolean };
@@ -24,7 +24,9 @@ export class FirestoreSquatProofStore implements SquatProofStore {
   async begin(): Promise<ProofAttempt> {
     const ref = this.ref(), token = randomUUID();
     return this.db.runTransaction(async (tx) => {
-      const revision = await readEvidenceRevision(tx, evidenceRevisionRef(this.db));
+      const revisionRef = evidenceRevisionRef(this.db);
+      await readEvidenceRevision(tx, revisionRef);
+      const revision = bumpEvidenceRevision(tx, revisionRef);
       tx.set(ref, { token, proof: null });
       return { token, revision };
     });
