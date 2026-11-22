@@ -81,6 +81,8 @@ export interface HistoryStore {
   addBound(record: HistoryRecord, instanceId: string): Promise<boolean>;
   /** Verify the persisted instance binds this exact record and card versions. */
   isBound(record: HistoryRecord): Promise<boolean>;
+  /** All stored records and starts, or null if any stored entry cannot be interpreted. */
+  readinessSnapshot(): Promise<{ records: HistoryRecord[]; instances: SessionInstance[] } | null>;
   /** Every record, in no set order. */
   list(): Promise<HistoryRecord[]>;
   confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean>;
@@ -125,6 +127,10 @@ export class MemoryHistoryStore implements HistoryStore {
   async isBound(record: HistoryRecord): Promise<boolean> {
     const instance = record.instanceId ? this.#instances.get(record.instanceId) : undefined;
     return !!instance && instance.recordId === record.id && instanceMatches(instance, record);
+  }
+
+  async readinessSnapshot() {
+    return { records: await this.list(), instances: [...this.#instances.values()].map((instance) => structuredClone(instance)) };
   }
 
   async confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean> {
@@ -172,6 +178,14 @@ function sameInstance(a: SessionInstance, b: SessionInstance): boolean {
 function instanceMatches(i: SessionInstance, r: HistoryRecord): boolean {
   return i.itemId === r.itemId && i.itemVersion === r.itemVersion &&
     JSON.stringify(i.cards) === JSON.stringify(r.cards.map(({ cardId, itemVersion }) => ({ cardId, itemVersion })));
+}
+function readInstance(id: string, value: unknown): SessionInstance | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (!ID_RE.test(id) || v.id !== id || typeof v.itemId !== 'string' || typeof v.itemVersion !== 'string' ||
+      !(v.recordId === null || (typeof v.recordId === 'string' && ID_RE.test(v.recordId))) || !Array.isArray(v.cards) ||
+      !v.cards.every((card) => card && typeof card === 'object' && typeof card.cardId === 'string' && typeof card.itemVersion === 'string')) return null;
+  return { id, itemId: v.itemId, itemVersion: v.itemVersion, recordId: v.recordId as string | null, cards: v.cards.map((card) => ({ cardId: card.cardId, itemVersion: card.itemVersion })) };
 }
 function sameBoundRecord(old: HistoryRecord, next: HistoryRecord, instanceId: string): boolean {
   const comparable = (r: HistoryRecord) => ({ id: r.id, date: r.date, itemId: r.itemId, itemVersion: r.itemVersion,
@@ -312,6 +326,14 @@ export class FirestoreHistoryStore implements HistoryStore {
     const db = this.db as unknown as FsDb;
     const instance = (await db.collection(INSTANCE_COLLECTION).doc(record.instanceId).get()).data() as SessionInstance | undefined;
     return !!instance && instance.recordId === record.id && instanceMatches(instance, record);
+  }
+
+  async readinessSnapshot() {
+    const [history, starts] = await Promise.all([this.db.collection(this.collection).get(), this.db.collection(INSTANCE_COLLECTION).get()]);
+    const records = history.docs.map((doc) => readRecord(doc.id, doc.data()));
+    const instances = starts.docs.map((doc) => readInstance(doc.id, doc.data()));
+    if (records.some((r) => !r) || instances.some((i) => !i)) return null;
+    return { records: records as HistoryRecord[], instances: instances as SessionInstance[] };
   }
 
   async confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean> {
