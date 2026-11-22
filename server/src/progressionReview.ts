@@ -6,10 +6,13 @@ import type { SquatProofService, SquatProofStore } from './squatProof.js';
 import type { RoleStore } from './roles.js';
 import { ownerApprovedSquatVersions } from './ownerProgression.js';
 import type { Dossier, ExerciseCard } from './content.js';
+import { cardSnapshot } from './training.js';
+import { APPROVALS_COLLECTION, AUDIT_COLLECTION, REQUEST_TTL_MS } from './approvals.js';
+import { COUNTERS_COLLECTION } from './firestoreDb.js';
 
-type ReviewCandidate = { itemId: string; version: string; title: string; dose: string; cues: string[]; card: ExerciseCard; dossier?: Dossier; dossierVersion?: string };
+type ReviewCandidate = { itemId: string; version: string; title: string; dose: string; cues: string[]; card: ExerciseCard; approvalContent: { title: string; detail: string }; dossier?: Dossier; dossierVersion?: string };
 
-/** Isolated review prototype: this records no training approval or active progression. */
+/** Isolated review prototype; never registered until the remaining safety boundaries pass review. */
 export class ProgressionReview {
   private constructor(private readonly db: FsDb, private readonly readiness: SquatProofService,
     private readonly proofs: SquatProofStore, private readonly candidate: ReviewCandidate) {}
@@ -18,7 +21,8 @@ export class ProgressionReview {
     const entry = ownerApprovedSquatVersions(contentRoot).find((item) => item.itemVersion === version);
     if (!entry) throw new Error('Progression version has no owner decision');
     if (entry.rung !== 'squat-to-box-pause' || entry.predecessor !== 'squat-to-box') throw new Error('No readiness rule for progression version');
-    return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues, card: entry.card.card, ...(entry.dossier && entry.dossierVersion ? { dossier: entry.dossier.dossier, dossierVersion: entry.dossierVersion } : {}) });
+    const snapshot = cardSnapshot(entry.card);
+    return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues, card: entry.card.card, approvalContent: { title: snapshot.content.title, detail: snapshot.content.detail }, ...(entry.dossier && entry.dossierVersion ? { dossier: entry.dossier.dossier, dossierVersion: entry.dossierVersion } : {}) });
   }
 
   async offer(): Promise<({ id: string } & ReviewCandidate) | null> {
@@ -26,33 +30,46 @@ export class ProgressionReview {
     if (!before || await this.readiness.status() !== 'ready-for-parent') return null;
     const after = await this.proofs.read();
     if (!after || JSON.stringify(before) !== JSON.stringify(after) || !after.revision) return null;
-    const id = randomUUID();
+    const id = randomUUID(), expiresAt = Date.now() + REQUEST_TTL_MS;
     const ref = this.db.collection('progressionReviewOffers').doc(id);
     const proofRef = this.db.collection('squatReadiness').doc('parent-proof');
     return this.db.runTransaction(async (tx) => {
       const revision = await readEvidenceRevision(tx, evidenceRevisionRef(this.db));
       const proof = (await tx.get(proofRef)).get('proof');
       if (revision !== after.revision || JSON.stringify(proof) !== JSON.stringify(after)) return null;
-      tx.create(ref, { ...this.candidate, revision, proof: after });
+      tx.create(ref, { ...this.candidate, revision, proof: after, expiresAt });
       return { id, ...this.candidate };
     });
   }
 
-  async decide(id: string): Promise<boolean> {
+  async decide(id: string, actor: string): Promise<boolean> {
     if (!/^[0-9a-f-]{36}$/.test(id)) return false;
     const offerRef = this.db.collection('progressionReviewOffers').doc(id);
-    const previous = (await offerRef.get()).data() as { revision?: unknown; proof?: unknown; itemId?: unknown; version?: unknown } | undefined;
-    if (!previous || typeof previous.revision !== 'string' || previous.itemId !== this.candidate.itemId || previous.version !== this.candidate.version) return false;
+    const previous = (await offerRef.get()).data() as { revision?: unknown; proof?: unknown; itemId?: unknown; version?: unknown; expiresAt?: unknown } | undefined;
+    if (!previous || typeof previous.revision !== 'string' || typeof previous.expiresAt !== 'number' || previous.itemId !== this.candidate.itemId || previous.version !== this.candidate.version) return false;
     if (await this.readiness.status() !== 'ready-for-parent') return false;
     const proofRef = this.db.collection('squatReadiness').doc('parent-proof');
     const decisionRef = this.db.collection('progressionReviewDecisions').doc(id);
+    const approvalRef = this.db.collection(APPROVALS_COLLECTION).doc(id);
+    const auditRef = this.db.collection(AUDIT_COLLECTION).doc(id);
+    const approvalCounter = this.db.collection(COUNTERS_COLLECTION).doc(APPROVALS_COLLECTION);
+    const auditCounter = this.db.collection(COUNTERS_COLLECTION).doc(AUDIT_COLLECTION);
     return this.db.runTransaction(async (tx) => {
       const revisionRef = evidenceRevisionRef(this.db);
       const revision = await readEvidenceRevision(tx, revisionRef);
       const offer = (await tx.get(offerRef)).data();
       const proof = (await tx.get(proofRef)).get('proof');
       const decision = await tx.get(decisionRef);
-      if (revision !== previous.revision || JSON.stringify(offer) !== JSON.stringify(previous) || JSON.stringify(proof) !== JSON.stringify(previous.proof) || decision.exists) return false;
+      const approval = await tx.get(approvalRef), audit = await tx.get(auditRef);
+      const approvalCount = (await tx.get(approvalCounter)).get('next');
+      const auditCount = (await tx.get(auditCounter)).get('next');
+      if (Date.now() >= (previous.expiresAt as number) || revision !== previous.revision || JSON.stringify(offer) !== JSON.stringify(previous) || JSON.stringify(proof) !== JSON.stringify(previous.proof) || decision.exists || approval.exists || audit.exists) return false;
+      if ((approvalCount !== undefined && (!Number.isSafeInteger(approvalCount) || (approvalCount as number) < 0)) || (auditCount !== undefined && (!Number.isSafeInteger(auditCount) || (auditCount as number) < 0))) throw new Error('Invalid approval sequence');
+      const at = new Date(), itemId = `card-${this.candidate.itemId}`;
+      tx.create(approvalRef, { kind: 'exercise', itemId, itemVersion: this.candidate.version, content: this.candidate.approvalContent, state: 'approved', createdAt: at, decidedAt: at, decidedBy: actor, reason: null, seq: approvalCount ?? 0 });
+      tx.create(auditRef, { at, action: 'approved', actorRole: 'parent', actor, requestId: id, kind: 'exercise', itemId, itemVersion: this.candidate.version, title: this.candidate.title, reason: null, seq: auditCount ?? 0 });
+      tx.set(approvalCounter, { next: (approvalCount as number | undefined ?? 0) + 1 });
+      tx.set(auditCounter, { next: (auditCount as number | undefined ?? 0) + 1 });
       tx.create(decisionRef, { itemId: this.candidate.itemId, version: this.candidate.version, revision });
       bumpEvidenceRevision(tx, revisionRef);
       return true;
@@ -69,6 +86,6 @@ export function registerProgressionReviewRoutes(app: FastifyInstance, review: Pr
   });
   app.post<{ Params: { id: string } }>('/api/progression/review-offer/:id/approve', async (req, reply) => {
     if (await roles.roleFor(req.identity!.account) !== 'parent') return reply.code(403).send({ error: 'forbidden' });
-    return await review.decide(req.params.id) ? { ok: true } : reply.code(409).send({ error: 'unavailable' });
+    return await review.decide(req.params.id, req.identity!.account) ? { ok: true } : reply.code(409).send({ error: 'unavailable' });
   });
 }

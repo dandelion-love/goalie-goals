@@ -8,6 +8,7 @@ import { ProgressionReview, registerProgressionReviewRoutes } from '../src/progr
 import { MemoryRoleStore } from '../src/roles.js';
 import { FakeFirestore } from './fakeFirestore.js';
 import { defaultContentRoot } from '../src/content.js';
+import { FirestoreApprovalStore, FirestoreAuditLog } from '../src/approvals.js';
 
 it('offers and records a parent review only for current synthetic evidence', async () => {
   const db = new FakeFirestore(), history = new FirestoreHistoryStore(db), proofs = new FirestoreSquatProofStore(db);
@@ -47,14 +48,26 @@ it('offers and records a parent review only for current synthetic evidence', asy
     });
     expect((await post(`/api/progression/review-offer/${stale}/approve`)).statusCode).toBe(409);
     expect(db.paths().filter((p) => p.startsWith('progressionReviewDecisions/'))).toEqual([]);
+    expect(await new FirestoreApprovalStore(db).approvedVersion('card-squat-to-box-pause', 'sha256:836073df2f6a8c3c94e99bf990df658d')).toBeNull();
     expect(await history.confirmSquatSet(ids[1], 'card-v1', 0, { actualReps: 15, clean: true }, { actualReps: 14, clean: false, revision: 2 })).toBe(true);
     expect(await readiness.attest({ orderedRecordIds: ids, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true })).toBe(true);
     const current = (await post('/api/progression/review-offer')).json().id;
     const competing = (await post('/api/progression/review-offer')).json().id;
     expect((await post(`/api/progression/review-offer/${current}/approve`, 'keeper@example.com')).statusCode).toBe(403);
+    db.failWrites = true;
+    expect((await post(`/api/progression/review-offer/${current}/approve`)).statusCode).toBe(500);
+    db.failWrites = false;
+    expect(await new FirestoreApprovalStore(db).approvedVersion('card-squat-to-box-pause', 'sha256:836073df2f6a8c3c94e99bf990df658d')).toBeNull();
+    expect(await new FirestoreAuditLog(db).list()).toEqual([]);
     const results = await Promise.all([current, competing].map((id) => post(`/api/progression/review-offer/${id}/approve`)));
     expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
     expect(db.paths().filter((p) => p.startsWith('progressionReviewDecisions/'))).toHaveLength(1);
+    const approved = await new FirestoreApprovalStore(db).approvedVersion('card-squat-to-box-pause', 'sha256:836073df2f6a8c3c94e99bf990df658d');
+    expect(approved?.decidedBy).toBe('parent@example.com');
+    expect(await new FirestoreApprovalStore(db).approvedVersion('dossier-squat-to-box-pause', 'sha256:8365e00c6b872dd5c864c9e672869701')).toBeNull();
+    const audit = await new FirestoreAuditLog(db).list();
+    expect(audit).toHaveLength(1);
+    expect(audit[0]).toMatchObject({ action: 'approved', actorRole: 'parent', itemId: 'card-squat-to-box-pause' });
     expect((await post(`/api/progression/review-offer/${current}/approve`)).statusCode).toBe(409);
   } finally { await app.close(); }
 });
