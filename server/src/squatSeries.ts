@@ -4,8 +4,14 @@ export type SquatDoseVersion = { version: string; reps: number };
 
 /** Fail closed until every approved dose has two consecutive parent-confirmed sessions. */
 export async function hasCompletedSquatSeries(history: HistoryStore, steps: readonly SquatDoseVersion[], approved: (version: string) => Promise<boolean>, transition: (from: string, to: string, afterSequence: number, beforeSequence: number) => Promise<boolean>): Promise<boolean> {
+  return hasCompletedSquatPrefix(history, steps, 3, approved, transition);
+}
+
+/** The current source dose needs its own clean pair and all earlier guarded decisions. */
+export async function hasCompletedSquatPrefix(history: HistoryStore, steps: readonly SquatDoseVersion[], targetStage: number, approved: (version: string) => Promise<boolean>, transition: (from: string, to: string, afterSequence: number, beforeSequence: number) => Promise<boolean>): Promise<boolean> {
   if (steps.length !== 4 || steps.map((step) => step.reps).join(',') !== '10,12,14,15' || new Set(steps.map((step) => step.version)).size !== steps.length) return false;
-  if (!(await Promise.all(steps.map((step) => approved(step.version)))).every(Boolean)) return false;
+  if (!Number.isInteger(targetStage) || targetStage < 0 || targetStage >= steps.length) return false;
+  if (!(await Promise.all(steps.slice(0, targetStage + 1).map((step) => approved(step.version)))).every(Boolean)) return false;
   const snapshot = await history.readinessSnapshot();
   if (!snapshot) return false;
   const ordered = snapshot.instances.filter((instance) => instance.sequence !== undefined).sort((a, b) => a.sequence! - b.sequence!);
@@ -29,6 +35,7 @@ export async function hasCompletedSquatSeries(history: HistoryStore, steps: read
     if (!cards.length) continue;
     if (cards.length !== 1) return false;
     const card = cards[0], stepIndex = steps.findIndex((step) => step.version === card.itemVersion);
+    if (stepIndex > targetStage) return false;
     if (stepIndex < 0 || stepIndex > stage + 1) return false;
     if (stepIndex < stage) return false; // A lower-dose session may signal a step-down.
     if (stepIndex === stage + 1) {
@@ -42,5 +49,5 @@ export async function hasCompletedSquatSeries(history: HistoryStore, steps: read
     clean = Math.min(2, clean + 1);
     lastCleanSequence = instance.sequence!;
   }
-  return stage === steps.length - 1 && clean === 2;
+  return stage === targetStage && clean === 2;
 }

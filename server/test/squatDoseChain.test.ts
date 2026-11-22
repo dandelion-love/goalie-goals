@@ -34,7 +34,7 @@ it('advances each invented dose through its own guarded parent decision', async 
     if (stage < 3) {
       const review = SquatDoseReview.fromOwnerArchive(db, history, proof, proofs, root, step.version, steps[stage + 1].reps, async () => (await resolveSquatDoseStage(db, approvals, root))?.index === stage);
       const offer = await review.offer();
-      expect(offer?.dose).toBe(steps[stage + 1].reps);
+      expect(offer?.dose).toBe(`2 x ${steps[stage + 1].reps}`);
       expect(await approved(steps[stage + 1].version)).toBe(false);
       expect(await review.approve(offer!.id, 'parent@example.com')).toBe(true);
       expect((await resolveSquatDoseStage(db, approvals, root))?.index).toBe(stage + 1);

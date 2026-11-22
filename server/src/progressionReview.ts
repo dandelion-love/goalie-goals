@@ -79,7 +79,7 @@ export class ProgressionReview {
 }
 
 /** Not registered in the production app. Role and evidence stay server-side. */
-export function registerProgressionReviewRoutes(app: FastifyInstance, review: ProgressionReview, roles: RoleStore, gate: ResetPainGate, currentGeneration: () => number): void {
+export function registerProgressionReviewRoutes(app: FastifyInstance, review: { offer(): Promise<unknown>; decide(id: string, actor: string): Promise<boolean> }, roles: RoleStore, gate: ResetPainGate, currentGeneration: () => number): void {
   app.post('/api/progression/review-offer', async (req, reply) => {
     reply.header('cache-control', 'no-store');
     if (await roles.roleFor(req.identity!.account) !== 'parent') return reply.code(403).send({ error: 'forbidden' });

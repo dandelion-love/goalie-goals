@@ -27,7 +27,7 @@ export class SquatDoseReview {
     return new SquatDoseReview(db, history, proof, proofs, from, cardSnapshot(entry.card), priorTransitions);
   }
 
-  async offer(): Promise<{ id: string; title: string; dose: number } | null> {
+  async offer() {
     const before = await this.proofs.read();
     const expectedReps = this.target.source.card.dose.reps === 12 ? 10 : this.target.source.card.dose.reps === 14 ? 12 : 14;
     if (!before || before.target.version !== this.from || before.target.reps !== expectedReps || await this.proof.status() !== 'ready-for-parent' || !await this.priorTransitions()) return null;
@@ -46,7 +46,7 @@ export class SquatDoseReview {
       const saved = (await tx.get(proofRef)).get('proof');
       if (revision !== expected || JSON.stringify(saved) !== JSON.stringify(before)) return null;
       tx.create(ref, { from: this.from, to: this.target.itemVersion, afterSequence: instance.sequence, revision, proof: before, expiresAt: Date.now() + REQUEST_TTL_MS });
-      return { id, title: this.target.content.title, dose: this.target.source.card.dose.reps! };
+      return { id, title: this.target.content.title, dose: `2 x ${this.target.source.card.dose.reps!}`, cues: this.target.source.card.cues, card: this.target.source.card };
     });
   }
 

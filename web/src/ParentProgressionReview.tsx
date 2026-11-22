@@ -51,7 +51,8 @@ export function ParentProgressionReview({ fetchImpl = fetch, onChanged }: { fetc
     setBusy(true); setMessage('');
     try {
       await request(`/api/progression/review-offer/${encodeURIComponent(offer.id)}/approve`, { method: 'POST', body: '{}' });
-      setOffer(null); setSessions(null); setAnswers(['', '', '', '']); setMessage('Card approved. The dossier needs its own approval.'); onChanged();
+      const hasDossier = !!offer.dossier;
+      setOffer(null); setSessions(null); setAnswers(['', '', '', '']); setMessage(hasDossier ? 'Card approved. The dossier needs its own approval.' : 'Dose approved. A changed session still needs its own approval.'); onChanged();
     } catch { setOffer(null); setMessage('The evidence changed or this review expired. Check it again.'); onChanged(); }
     finally { setBusy(false); }
   }
@@ -62,7 +63,7 @@ export function ParentProgressionReview({ fetchImpl = fetch, onChanged }: { fetc
     <button type="button" onClick={checkSessions} disabled={busy}>Check recorded sessions</button>
     {sessions && <><ol>{sessions.map((s) => <li key={s.id}>{s.date}: {s.title}</li>)}</ol>{questions.map((question, index) => <label key={question}>{question}{' '}<select value={answers[index]} onChange={(event) => setAnswers((old) => old.map((answer, i) => i === index ? event.target.value : answer))}><option value="">Choose</option><option value="yes">Yes</option><option value="no">No</option></select></label>)}<button type="button" onClick={confirm} disabled={busy || answers.some((answer) => !answer)}>Confirm evidence</button></>}
     <button type="button" onClick={showOffer} disabled={busy}>Review next card</button>
-    {offer && <article><h3>{offer.title}</h3><p>{offer.dose}</p><h4>Steps</h4><ol>{offer.card.steps.map((step) => <li key={step}>{step}</li>)}</ol><h4>Cues</h4><ul>{offer.cues.map((cue) => <li key={cue}>{cue}</li>)}</ul><h4>Stop if</h4><ul>{offer.card.stop_if.map((stop) => <li key={stop}>{stop}</li>)}</ul>{offer.dossier && <details><summary>Read the dossier</summary><DossierView dossier={offer.dossier} level={4} /></details>}<p>The card and dossier need separate approvals. This decision approves the card only.</p><button type="button" onClick={approve} disabled={busy}>Approve this card</button><button type="button" onClick={() => setOffer(null)} disabled={busy}>Cancel</button></article>}
+    {offer && <article><h3>{offer.title}</h3><p>{offer.dose}</p><h4>Steps</h4><ol>{offer.card.steps.map((step) => <li key={step}>{step}</li>)}</ol><h4>Cues</h4><ul>{offer.cues.map((cue) => <li key={cue}>{cue}</li>)}</ul><h4>Stop if</h4><ul>{offer.card.stop_if.map((stop) => <li key={stop}>{stop}</li>)}</ul>{offer.dossier && <details><summary>Read the dossier</summary><DossierView dossier={offer.dossier} level={4} /></details>}<p>{offer.dossier ? 'The card and dossier need separate approvals. This decision approves the card only.' : 'A changed session needs its own approval.'}</p><button type="button" onClick={approve} disabled={busy}>{offer.dossier ? 'Approve this card' : 'Approve this dose'}</button><button type="button" onClick={() => setOffer(null)} disabled={busy}>Cancel</button></article>}
     <p role="status">{message}</p>
   </section>;
 }

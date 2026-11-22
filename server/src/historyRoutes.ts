@@ -15,7 +15,7 @@ export type SyntheticSquatProof = { orderedRecordIds: string[]; safety: Readines
 
 export function registerHistoryRoutes(
   app: FastifyInstance,
-  { history, roles, gate, isPaused, currentGeneration, syntheticSquatProof, cardApproved, readiness }: { history: HistoryService; roles: RoleStore; gate: ResetPainGate; isPaused: () => Promise<boolean>; currentGeneration: () => number; syntheticSquatProof?: () => Promise<SyntheticSquatProof | null>; cardApproved: (version: string) => Promise<boolean>; readiness?: SquatProofService },
+  { history, roles, gate, isPaused, currentGeneration, syntheticSquatProof, cardApproved, readiness }: { history: HistoryService; roles: RoleStore; gate: ResetPainGate; isPaused: () => Promise<boolean>; currentGeneration: () => number; syntheticSquatProof?: () => Promise<SyntheticSquatProof | null>; cardApproved: (version: string) => Promise<boolean>; readiness?: () => Promise<SquatProofService | null> },
 ): void {
   app.post<{ Body: unknown }>('/api/history/sessions', async (req, reply) => {
     reply.header('cache-control', 'no-store');
@@ -48,7 +48,7 @@ export function registerHistoryRoutes(
     try {
       if (await isPaused()) return { status: 'held' };
       if (readiness) {
-        const status = await readiness.status();
+        const status = await (await readiness())?.status() ?? 'unknown';
         return status === 'unknown' ? { status, detail: await history.squatEvidenceDetail() } : { status };
       }
       const proof = await syntheticSquatProof?.();

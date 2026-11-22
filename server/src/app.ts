@@ -419,14 +419,14 @@ export async function buildApp({
   });
   const review = readiness && proofStore && db ? ProgressionReview.fromOwnerArchive(db, readiness, proofStore, config.contentRoot || defaultContentRoot(), 'sha256:836073df2f6a8c3c94e99bf990df658d', seriesComplete) : undefined;
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused(), history: historyService, gate: resetPainGate, currentGeneration: () => currentGeneration });
-  registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration, syntheticSquatProof, cardApproved: (version) => approvalService.isApproved('card-squat-to-box', version), readiness });
+  registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration, syntheticSquatProof, cardApproved: (version) => approvalService.isApproved('card-squat-to-box', version), readiness: readiness ? async () => readiness : undefined });
   if (readiness && review) {
     const candidate = archive.find((entry) => entry.itemVersion === 'sha256:836073df2f6a8c3c94e99bf990df658d');
     if (!candidate) throw new ConfigError('Approved progression candidate missing');
     // Conservative until durable restart and transition state are available: no readiness,
     // no archived card projection. This does not add the card to a scheduled session.
     trainingService.registerArchivedCard(candidate.card, async () => await readiness.status() === 'ready-for-parent' && await seriesComplete());
-    registerSquatProofRoutes(app, readiness, roleStore, resetPainGate, () => currentGeneration);
+    registerSquatProofRoutes(app, async () => readiness, roleStore, resetPainGate, () => currentGeneration);
     registerProgressionReviewRoutes(app, review, roleStore, resetPainGate, () => currentGeneration);
   }
 

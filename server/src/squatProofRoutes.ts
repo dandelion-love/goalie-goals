@@ -4,11 +4,12 @@ import type { RoleStore } from './roles.js';
 import type { ResetPainGate } from './householdReset.js';
 import { GENERATION_HEADER, requestGeneration } from './generation.js';
 
-export function registerSquatProofRoutes(app: FastifyInstance, proof: SquatProofService, roles: RoleStore, gate: ResetPainGate, currentGeneration: () => number): void {
+export function registerSquatProofRoutes(app: FastifyInstance, getProof: () => Promise<SquatProofService | null>, roles: RoleStore, gate: ResetPainGate, currentGeneration: () => number): void {
   app.get('/api/history/squat-review-window', async (req, reply) => {
     reply.header('cache-control', 'no-store');
     if (await roles.roleFor(req.identity!.account) !== 'parent') return reply.code(403).send({ error: 'forbidden' });
-    return { sessions: await proof.reviewWindow() };
+    const proof = await getProof();
+    return { sessions: proof ? await proof.reviewWindow() : null };
   });
   app.post<{ Body: unknown }>('/api/history/squat-attestation', async (req, reply) => {
     reply.header('cache-control', 'no-store');
@@ -21,6 +22,8 @@ export function registerSquatProofRoutes(app: FastifyInstance, proof: SquatProof
     if (!gate.beginWrite()) return reply.code(409).send({ error: 'reset-in-progress' });
     try {
       if (requestGeneration(req.headers[GENERATION_HEADER]) !== currentGeneration()) return reply.code(409).send({ error: 'stale_generation' });
+      const proof = await getProof();
+      if (!proof) return reply.code(409).send({ error: 'unavailable', status: 'unknown' });
       return await proof.attest(input) ? { ok: true, status: await proof.status() } : reply.code(409).send({ error: 'unavailable', status: await proof.status() });
     } finally { gate.endWrite(); }
   });

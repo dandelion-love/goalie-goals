@@ -27,7 +27,7 @@ it('guards the exact 10 to 12 dose decision with parent-confirmed source evidenc
   const review = SquatDoseReview.fromOwnerArchive(db, history, proof, proofs, root, from, 12, async () => true);
   expect((await resolveSquatDoseStage(db, new FirestoreApprovalStore(db), root))?.index).toBe(0);
   const stale = await review.offer();
-  expect(stale?.dose).toBe(12);
+  expect(stale?.dose).toBe('2 x 12');
   await history.confirmSquatSet(ids[1], from, 0, { actualReps: 9, clean: false }, { actualReps: 10, clean: true, revision: 1 });
   expect(await review.approve(stale!.id, 'parent@example.com')).toBe(false);
   await history.confirmSquatSet(ids[1], from, 0, { actualReps: 10, clean: true }, { actualReps: 9, clean: false, revision: 2 });
