@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { EquipmentCatalog, equipmentIds, relationship, type EquipmentExercise } from './EquipmentCatalog';
 import { RoleShell, useDestination } from './RoleShell';
 
 const exercise: EquipmentExercise = { id: 'pass', name: 'Wall pass', why: 'Practise passing', setup: ['Find a wall'], cautions: ['Stop if sore'], needs: { all: ['other:goalkeeper-gloves', 'ball'], any: [['wall', 'partner']] }, dossier: null };
 const destinations = [{ id: 'equipment', label: 'Equipment' }, { id: 'plan', label: 'Plan' }] as const;
 const fetchImpl = vi.fn(async (url: string | URL | Request) => new Response(JSON.stringify(String(url).endsWith('/exercises') ? { exercises: [exercise] } : { gloves: 'unknown' }), { status: 200 })) as unknown as typeof fetch;
-function Example() {
+function Example({ fetcher = fetchImpl }: { fetcher?: typeof fetch }) {
   const { current, navigate, navigation, content } = useDestination(destinations, 'equipment');
-  return <RoleShell title="Parent home" destinations={destinations} current={current} navigate={navigate} navigation={navigation} content={content}>{current === 'equipment' && <EquipmentCatalog fetchImpl={fetchImpl} />}</RoleShell>;
+  return <RoleShell title="Parent home" destinations={destinations} current={current} navigate={navigate} navigation={navigation} content={content}>{current === 'equipment' && <EquipmentCatalog fetchImpl={fetcher} />}</RoleShell>;
 }
 afterEach(() => { cleanup(); window.history.replaceState(null, '', '/'); });
 
@@ -50,6 +50,19 @@ describe('equipment catalog', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Goalkeeper gloves' }));
     expect(screen.getByText('No known linked exercises.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Back to equipment' })).toBeTruthy();
+  });
+  it('returns focus to the summary link that opened an exercise', async () => {
+    window.history.replaceState(null, '', '/?view=equipment');
+    const withDossier = { ...exercise, dossier: { cardId: 'pass', itemVersion: 'v1', name: 'Wall pass', headline: 'Practice', why: [{ label: 'Why', text: 'A sourced claim.', sources: [1] }], expect: [], sources: [{ n: 1, title: 'Source', url: 'https://example.org/source' }] } };
+    const seeded = vi.fn(async (url: string | URL | Request) => new Response(JSON.stringify(String(url).endsWith('/exercises') ? { exercises: [withDossier] } : { gloves: 'unknown' }), { status: 200 })) as unknown as typeof fetch;
+    render(<Example fetcher={seeded} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Goalkeeper gloves' }));
+    const summary = screen.getByRole('region', { name: 'Exercise evidence summary' });
+    expect(screen.getByRole('heading', { name: 'Exercises using this item' }).compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const link = within(summary).getByRole('button', { name: 'Wall pass' });
+    fireEvent.click(link);
+    fireEvent.click(screen.getByRole('button', { name: 'Back to item' }));
+    await waitFor(() => expect(document.activeElement).toBe(within(screen.getByRole('region', { name: 'Exercise evidence summary' })).getByRole('button', { name: 'Wall pass' })));
   });
   it('offers a return path for a stale exercise link', async () => {
     window.history.replaceState(null, '', '/?view=equipment&equipment=ball&exercise=missing');

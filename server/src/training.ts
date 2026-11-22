@@ -393,7 +393,7 @@ export class TrainingService {
   async equipmentExercises() {
     const approved = await this.approvals.approvedItems();
     const pending = await this.approvals.pending();
-    const dossiers = await this.dossiers.approved();
+    const dossiers = await this.dossiers.approvedForEquipment();
     const visible = new Set([...approved, ...pending].filter((item) => item.kind === 'exercise').map((item) => versionKey(item.itemId, item.itemVersion)));
     return [...this.content.cards.values()].flatMap((source) => {
       const snapshot = cardSnapshot(source);

@@ -7,6 +7,7 @@ export interface DossierClaim {
   text: string;
   evidence?: string;
   detail?: string;
+  groupId?: string;
   sources: number[];
 }
 
@@ -25,6 +26,7 @@ export interface Dossier {
   headline: string;
   why: DossierClaim[];
   expect: DossierClaim[];
+  limits?: DossierClaim[];
   sources: DossierSource[];
 }
 

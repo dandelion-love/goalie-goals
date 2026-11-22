@@ -71,6 +71,8 @@ export interface DossierSourceRef {
 
 export interface DossierClaim {
   text: string;
+  /** Optional reviewed identity shared only by equivalent, qualified claims. */
+  groupId?: string;
   sources: string[];
   evidence: Evidence;
   detail?: string;
@@ -97,7 +99,7 @@ export interface Dossier {
   expect: { claims: DossierClaim[]; keep_up: DossierClaim };
   muscles: unknown;
   clips: unknown[];
-  science: unknown;
+  science: { claims: DossierClaim[]; limits: DossierClaim[] };
 }
 
 /** One dossier as read from disk. */
