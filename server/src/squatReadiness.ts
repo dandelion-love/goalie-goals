@@ -7,6 +7,12 @@ export type SquatReadiness = 'unknown' | 'held' | 'one-qualifying' | 'ready-for-
 
 /** Evaluate an authoritative oldest-first history. This never approves or promotes a rung. */
 export function evaluateSquatReadiness(records: readonly HistoryRecord[], facts: ReadinessFacts): SquatReadiness {
+  return evaluateSquatDoseReadiness(records, facts, { reps: 15 });
+}
+
+/** A dose transition must bind both the approved source version and its exact dose. */
+export function evaluateSquatDoseReadiness(records: readonly HistoryRecord[], facts: ReadinessFacts, target: { reps: number; version?: string }): SquatReadiness {
+  if (![10, 12, 14, 15].includes(target.reps) || (target.reps !== 15 && !target.version)) return 'unknown';
   const safety = [facts.safety.pain, facts.safety.growth, facts.safety.breakRestart, facts.safety.stepDown];
   if (safety.includes('held')) return 'held';
   if (safety.some((state) => state !== 'clear') || !facts.orderedHistoryComplete) return 'unknown';
@@ -27,7 +33,7 @@ export function evaluateSquatReadiness(records: readonly HistoryRecord[], facts:
     if (!facts.approvedCardVersions.has(card.itemVersion)) return 'unknown';
     if (record.outcome !== 'done' || card.setsDone !== card.setsPlanned || card.setsPlanned !== 2) { count = 0; continue; }
     if (card.dose.kind !== 'reps' || !Number.isInteger(card.dose.reps)) return 'unknown';
-    if (card.dose.reps !== 15) { count = 0; continue; }
+    if (card.dose.reps !== target.reps || (target.version && card.itemVersion !== target.version)) { count = 0; continue; }
     if (!card.squatSets || card.squatSets.length !== card.setsDone || card.squatSets.some((s) => !s)) return 'unknown';
     if (card.squatSets.some((s) => !Number.isInteger(s!.actualReps) || !Number.isInteger(s!.revision) || s!.revision! < 1)) return 'unknown';
     if (card.squatSets.some((s) => !s!.clean || s!.actualReps !== card.dose.reps)) { count = 0; continue; }

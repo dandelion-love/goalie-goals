@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import type { HistoryRecord } from '../src/history.js';
-import { evaluateSquatReadiness, type ReadinessFacts } from '../src/squatReadiness.js';
+import { evaluateSquatDoseReadiness, evaluateSquatReadiness, type ReadinessFacts } from '../src/squatReadiness.js';
 const facts: ReadinessFacts = { orderedHistoryComplete: true, safety: { pain: 'clear', growth: 'clear', breakRestart: 'clear', stepDown: 'clear' }, approvedCardVersions: new Set(['approved']) };
 function session(id: string, reps = 15, clean = true): HistoryRecord {
   return { id, instanceId: `instance-${id}`, date: '2026-01-01', itemId: 'session', itemVersion: 'session-v1', title: 'Session', outcome: 'done', at: new Date('2026-01-01T00:00:00Z'), cards: [{ cardId: 'squat-to-box', itemVersion: 'approved', name: 'Squat to box', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps, perSide: false }, cueIds: [], squatSets: [{ actualReps: reps, clean, revision: 1 }, { actualReps: reps, clean, revision: 1 }] }] };
 }
 describe('squat readiness from verified facts', () => {
+  it('checks the exact approved source dose for an individual step', () => {
+    const pair = [session('first', 10), session('second', 10)];
+    expect(evaluateSquatDoseReadiness(pair, facts, { reps: 10, version: 'approved' })).toBe('ready-for-parent');
+    expect(evaluateSquatDoseReadiness(pair, facts, { reps: 10 })).toBe('unknown');
+    expect(evaluateSquatDoseReadiness(pair, facts, { reps: 10, version: 'other' })).toBe('unknown');
+    expect(evaluateSquatDoseReadiness(pair, facts, { reps: 11, version: 'approved' })).toBe('unknown');
+  });
   it('counts two qualifying sessions, ignoring sessions without the exercise', () => {
     const other = { ...session('other'), cards: [] };
     expect(evaluateSquatReadiness([session('first'), other, session('second')], facts)).toBe('ready-for-parent');
