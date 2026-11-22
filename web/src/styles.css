@@ -1402,3 +1402,6 @@ button:active:not(:disabled) {
 .equipment-ownership .equipment-owned { box-shadow: 0 0 var(--space-2) var(--success-edge); }
 .equipment-ownership small { max-width: var(--tile-min); }
 .equipment-confirm { position: absolute; z-index: 2; top: 100%; right: 0; min-width: calc(var(--tile-min) * 1.5); display: flex; flex-direction: column; background: var(--surface); color: var(--text); padding: var(--space-2); border: var(--hairline) solid var(--card-line); box-shadow: var(--shadow-2); }
+.muscle-map-views { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.muscle-map-views figure { margin: 0; text-align: center; font-weight: var(--weight-bold); }
+.muscle-map-views svg { display: block; width: 100%; height: var(--figure-max-height); min-height: var(--tile-min); }
