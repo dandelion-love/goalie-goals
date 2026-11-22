@@ -26,7 +26,7 @@ it('cannot publish a proof collected across a concurrent history change', async 
   const proofs = new FirestoreSquatProofStore(db);
   const attempt = await proofs.begin();
   await record(history, 11);
-  const proof = { fingerprint: 'example', orderedRecordIds: [], pauseRevision: 'none', revision: attempt.revision, safety: { pain: 'clear' as const, growth: 'clear' as const, breakRestart: 'clear' as const, stepDown: 'clear' as const } };
+  const proof = { fingerprint: 'example', orderedRecordIds: [], pauseRevision: 'none', revision: attempt.revision, target: { reps: 15 }, safety: { pain: 'clear' as const, growth: 'clear' as const, breakRestart: 'clear' as const, stepDown: 'clear' as const } };
   expect(await proofs.finish(attempt, proof)).toBe(false);
   expect(await proofs.read()).toBeNull();
 });
@@ -35,7 +35,7 @@ it.each(['memory', 'firestore'])('%s cannot clear a newer hold with an older att
   const proofs: SquatProofStore = kind === 'memory' ? new MemorySquatProofStore() : new FirestoreSquatProofStore(new FakeFirestore());
   const older = await proofs.begin();
   const newer = await proofs.begin(true);
-  const clear = { fingerprint: 'example', orderedRecordIds: [], pauseRevision: 'none', revision: older.revision, safety: { pain: 'clear' as const, growth: 'clear' as const, breakRestart: 'clear' as const, stepDown: 'clear' as const } };
+  const clear = { fingerprint: 'example', orderedRecordIds: [], pauseRevision: 'none', revision: older.revision, target: { reps: 15 }, safety: { pain: 'clear' as const, growth: 'clear' as const, breakRestart: 'clear' as const, stepDown: 'clear' as const } };
   expect(await proofs.finish(older, clear)).toBe(false);
   expect(await proofs.held()).toBe(true);
   expect(await proofs.finish(newer, { ...clear, revision: newer.revision, safety: { ...clear.safety, growth: 'held' } })).toBe(true);
@@ -72,6 +72,8 @@ it.each(['memory', 'firestore'])('%s proof is exact, revocable and invalidated b
   expect(await service.attest({ ...attestation, orderedRecordIds: [...ids].reverse() })).toBe(false);
   expect(await service.attest(attestation)).toBe(true);
   expect(await service.status()).toBe('ready-for-parent');
+  const otherDose = new SquatProofService(history, proofs, async () => ({ revision: pauseRevision, anyPain }), async () => approved, () => now, { reps: 10, version: 'card-v1' });
+  expect(await otherDose.status()).toBe('unknown');
   const saved = (await proofs.read())!;
   const first = await proofs.begin();
   const later = await proofs.begin();

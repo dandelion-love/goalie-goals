@@ -1,12 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { HistoryRecord, HistoryStore, SessionInstance } from './history.js';
 import type { FsDb } from './firestoreDb.js';
-import { evaluateSquatReadiness, type ReadinessFacts, type SquatReadiness } from './squatReadiness.js';
+import { evaluateSquatDoseReadiness, type ReadinessFacts, type SquatReadiness } from './squatReadiness.js';
 import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
 
 /** No free text or client-provided eligibility. A parent confirms facts, not a promotion. */
 export type SquatAttestation = { orderedRecordIds: string[]; allDevicesSynced: boolean; growthClear: boolean; breakRestartClear: boolean; stepDownClear: boolean };
-type StoredProof = { fingerprint: string; orderedRecordIds: string[]; safety: ReadinessFacts['safety']; pauseRevision: string; revision: string | null };
+type StoredProof = { fingerprint: string; orderedRecordIds: string[]; safety: ReadinessFacts['safety']; pauseRevision: string; revision: string | null; target: { reps: number; version?: string } };
 type ProofAttempt = { token: string; revision: string | null };
 export interface SquatProofStore { read(): Promise<StoredProof | null>; held(): Promise<boolean>; begin(hold?: boolean): Promise<ProofAttempt>; finish(attempt: ProofAttempt, proof: StoredProof): Promise<boolean>; deleteAll(): Promise<void> }
 export class MemorySquatProofStore implements SquatProofStore {
@@ -67,7 +67,7 @@ const digest = (snapshot: Snapshot) => createHash('sha256').update(JSON.stringif
 export class SquatProofService {
   constructor(private readonly history: HistoryStore, private readonly proofs: SquatProofStore,
     private readonly painHistory: () => Promise<{ revision: string; anyPain: boolean }>, private readonly cardApproved: (version: string) => Promise<boolean>,
-    private readonly clock: () => Date = () => new Date()) {}
+    private readonly clock: () => Date = () => new Date(), private readonly target: { reps: number; version?: string } = { reps: 15 }) {}
 
   private async window(): Promise<{ snapshot: Snapshot; ordered: HistoryRecord[] } | null> {
     const snapshot = await this.history.readinessSnapshot();
@@ -108,7 +108,7 @@ export class SquatProofService {
     const state = (clear: boolean) => clear ? 'clear' as const : 'held' as const;
     const latestPain = await this.painHistory();
     if (latestPain.revision !== pauseRevision || latestPain.anyPain !== pain.anyPain || pain.anyPain) return false;
-    const proof: StoredProof = { fingerprint: digest(window.snapshot), orderedRecordIds: [...input.orderedRecordIds], pauseRevision, revision: token.revision, safety: { pain: 'clear', growth: state(input.growthClear), breakRestart: state(input.breakRestartClear), stepDown: state(input.stepDownClear) } };
+    const proof: StoredProof = { fingerprint: digest(window.snapshot), orderedRecordIds: [...input.orderedRecordIds], pauseRevision, revision: token.revision, target: { ...this.target }, safety: { pain: 'clear', growth: state(input.growthClear), breakRestart: state(input.breakRestartClear), stepDown: state(input.stepDownClear) } };
     return this.proofs.finish(token, proof);
   }
 
@@ -118,7 +118,7 @@ export class SquatProofService {
     if (await this.proofs.held()) return 'held';
     const proof = await this.proofs.read();
     const window = await this.window();
-    if (!proof || !proof.safety || !window || proof.fingerprint !== digest(window.snapshot) || proof.pauseRevision !== pain.revision) return 'unknown';
+    if (!proof || !proof.safety || JSON.stringify(proof.target) !== JSON.stringify(this.target) || !window || proof.fingerprint !== digest(window.snapshot) || proof.pauseRevision !== pain.revision) return 'unknown';
     if (JSON.stringify(proof.orderedRecordIds) !== JSON.stringify(window.ordered.map((r) => r.id))) return 'unknown';
     if (Object.values(proof.safety).includes('held')) return 'held';
     const ordered = window.ordered;
@@ -132,7 +132,7 @@ export class SquatProofService {
     if (!Number.isFinite(days) || days < -1 || days >= 6) return 'unknown';
     const versions = [...new Set(ordered.flatMap((record) => record.cards.filter((card) => card.cardId === 'squat-to-box').map((card) => card.itemVersion)))];
     const approved = await Promise.all(versions.map((version) => this.cardApproved(version)));
-    const status = evaluateSquatReadiness(ordered, { orderedHistoryComplete: true, safety: proof.safety, approvedCardVersions: new Set(versions.filter((_, i) => approved[i])) });
+    const status = evaluateSquatDoseReadiness(ordered, { orderedHistoryComplete: true, safety: proof.safety, approvedCardVersions: new Set(versions.filter((_, i) => approved[i])) }, this.target);
     const latestWindow = await this.window();
     const latestPain = await this.painHistory();
     if (latestPain.anyPain) return 'held';
