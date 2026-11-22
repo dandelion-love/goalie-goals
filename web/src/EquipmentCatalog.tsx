@@ -2,16 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Button from '@mui/material/Button';
-import List from '@mui/material/List';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemText from '@mui/material/ListItemText';
 import { Equipment } from './Equipment';
 import { TradingCard } from './CardTile';
 import { collectionArtwork } from './collectionArtwork';
 import { DossierView } from './DossierScreens';
 import { isDossier } from './dossier';
 import { EquipmentSummary } from './EquipmentSummary';
-import { cardRequirements, equipmentAlsoNeeds, equipmentEnables, equipmentIds, equipmentName, relationship, type EquipmentExercise } from './equipmentModel';
+import { equipmentAlsoNeeds, equipmentEnables, equipmentIds, equipmentName, relationship, type EquipmentExercise } from './equipmentModel';
 export { equipmentIds, relationship, type EquipmentExercise } from './equipmentModel';
 
 type Load = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; exercises: EquipmentExercise[] };
@@ -106,22 +103,26 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
   if (place.item && !item) return <Card component="article" className="card"><CardContent><h2>Equipment unavailable</h2><p>This item could not be found.</p><Button onClick={() => back({ item: null, exercise: null })}>Back to equipment</Button></CardContent></Card>;
   if (item && place.exercise && !exercise) return <Card component="article" className="card"><CardContent><h2>Exercise unavailable</h2><p>This link is no longer available.</p><Button onClick={() => back({ item, exercise: null })}>Back to item</Button></CardContent></Card>;
   if (exercise && item) return <Card component="article" className="card equipment-catalog-detail"><CardContent>
-    <h2>{exercise.name}</h2><Button onClick={() => back({ item, exercise: null })}>Back to item</Button>
-    <h3>Equipment</h3><List>{equipmentIds([exercise]).filter((id) => relationship(exercise, id)).map((id) => <ListItemButton component="button" key={id} ref={(node) => { if (node) exerciseItemButtons.current.set(id, node); else exerciseItemButtons.current.delete(id); }} onClick={() => go({ item: id, exercise: null })}><ListItemText primary={`${equipmentName(id)} (${relationship(exercise, id)})`} /></ListItemButton>)}</List>
-    <div className="trading-card-hero equipment-catalog-hero"><TradingCard kind="Exercise" name={exercise.name} state="Approval needs checking" summary={exercise.dossier?.headline ?? 'Benefits not available'} requirements={cardRequirements(exercise)} artwork={collectionArtwork[exercise.id]} /></div><p>{exercise.why}</p>
-    {exercise.setup.length ? <><h3>Setup</h3><ul>{exercise.setup.map((s, i) => <li key={i}>{s}</li>)}</ul></> : <p>Setup is not recorded.</p>}
-    {exercise.cautions.length ? <><h3>Cautions</h3><ul>{exercise.cautions.map((s, i) => <li key={i}>{s}</li>)}</ul></> : <p>Cautions are not recorded.</p>}
-    {exercise.needs ? <><p>All required: {requirements(exercise.needs.all)}.</p>{exercise.needs.any.map((group, i) => <p key={i}>One of: {group.map(equipmentName).join(' or ')}.</p>)}<p>Availability, approval and readiness may still need checking.</p></> : <p>Requirements are not recorded.</p>}
-    {exercise.dossier ? <details><summary>Dossier and sources</summary><p>This approved dossier is versioned separately from the exercise.</p><DossierView dossier={exercise.dossier} level={3} /></details> : <p>An approved dossier is not available.</p>}
+    <div className="trading-card-hero equipment-catalog-hero"><TradingCard kind="Exercise" name={exercise.name} state="Approval needs checking" summary={exercise.dossier?.headline ?? 'Benefits not available'} artwork={collectionArtwork[exercise.id]} headerAction={<Button aria-label="Back to item" onClick={() => back({ item, exercise: null })}>Back</Button>}>
+      <p><strong>Equipment:</strong> {equipmentIds([exercise]).filter((id) => relationship(exercise, id)).map((id) => <Button key={id} ref={(node) => { if (node) exerciseItemButtons.current.set(id, node); else exerciseItemButtons.current.delete(id); }} onClick={() => go({ item: id, exercise: null })}>{equipmentName(id)} ({relationship(exercise, id)})</Button>)}</p>
+      <details><summary>Setup, cautions and sources</summary><p>{exercise.why}</p>
+        {exercise.setup.length ? <><h3>Setup</h3><ul>{exercise.setup.map((s, i) => <li key={i}>{s}</li>)}</ul></> : <p>Setup is not recorded.</p>}
+        {exercise.cautions.length ? <><h3>Cautions</h3><ul>{exercise.cautions.map((s, i) => <li key={i}>{s}</li>)}</ul></> : <p>Cautions are not recorded.</p>}
+        {exercise.needs ? <><p>All required: {requirements(exercise.needs.all)}.</p>{exercise.needs.any.map((group, i) => <p key={i}>One of: {group.map(equipmentName).join(' or ')}.</p>)}<p>Availability, approval and readiness may still need checking.</p></> : <p>Requirements are not recorded.</p>}
+        {exercise.dossier ? <><p>This approved dossier is versioned separately from the exercise.</p><DossierView dossier={exercise.dossier} level={3} /></> : <p>An approved dossier is not available.</p>}
+      </details>
+    </TradingCard></div>
   </CardContent></Card>;
   if (item) {
     const linked = state.exercises.filter((e) => relationship(e, item));
     const related = equipmentIds(linked).filter((id) => id !== item && linked.some((e) => relationship(e, id)));
+    const names = new Map(related.map((id) => [equipmentName(id), id]));
+    const pattern = related.length ? new RegExp(`(${[...names.keys()].sort((a, b) => b.length - a.length).map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'g') : null;
+    const needs = equipmentAlsoNeeds(item, state.exercises);
     return <Card component="article" className="card equipment-catalog-detail"><CardContent>
       <div className="trading-card-hero equipment-catalog-hero"><TradingCard kind="Equipment" name={equipmentName(item)} artwork={collectionArtwork[item]} headerAction={<Button aria-label="Back to equipment" onClick={() => back({ item: null, exercise: null })}>Back</Button>} badge={item === 'other:goalkeeper-gloves' ? <Equipment fetchImpl={fetchImpl} onChange={onChange} /> : undefined}>
         <p><strong>Enables:</strong> {linked.length ? linked.map((e) => <Button key={e.id} ref={(node) => { if (node) exerciseButtons.current.set(e.id, node); else exerciseButtons.current.delete(e.id); }} onClick={() => { summaryOrigin.current = null; go({ item, exercise: e.id }); }}>{e.name}</Button>) : 'No known linked exercises.'}</p>
-        <p><strong>Also needs:</strong> {equipmentAlsoNeeds(item, state.exercises)}</p>
-        {related.length > 0 && <p>Equipment: {related.map((id) => <Button key={id} ref={(node) => { if (node) relatedItemButtons.current.set(id, node); else relatedItemButtons.current.delete(id); }} onClick={() => go({ item: id, exercise: null })}>{equipmentName(id)}</Button>)}</p>}
+        <p><strong>Also needs:</strong> {needs.split(/(\([^)]*\))/g).map((segment, group) => group % 2 || !pattern ? segment : segment.split(pattern).map((part, index) => { const id = names.get(part); return id ? <Button key={`${group}:${index}`} ref={(node) => { if (node) relatedItemButtons.current.set(id, node); else relatedItemButtons.current.delete(id); }} onClick={() => go({ item: id, exercise: null })}>{part}</Button> : part; }))}</p>
         <details open={summaryOrigin.current?.item === item || undefined}><summary>Exercise evidence and requirements</summary><EquipmentSummary item={item} exercises={linked} open={(id, token) => { summaryOrigin.current = { item, exercise: id, token }; go({ item, exercise: id }); }} /></details>
       </TradingCard></div>
     </CardContent></Card>;
