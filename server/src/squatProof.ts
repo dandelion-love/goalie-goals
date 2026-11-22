@@ -8,26 +8,31 @@ import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from 
 export type SquatAttestation = { orderedRecordIds: string[]; allDevicesSynced: boolean; growthClear: boolean; breakRestartClear: boolean; stepDownClear: boolean };
 type StoredProof = { fingerprint: string; orderedRecordIds: string[]; safety: ReadinessFacts['safety']; pauseRevision: string; revision: string | null };
 type ProofAttempt = { token: string; revision: string | null };
-export interface SquatProofStore { read(): Promise<StoredProof | null>; begin(): Promise<ProofAttempt>; finish(attempt: ProofAttempt, proof: StoredProof): Promise<boolean>; deleteAll(): Promise<void> }
+export interface SquatProofStore { read(): Promise<StoredProof | null>; held(): Promise<boolean>; begin(hold?: boolean): Promise<ProofAttempt>; finish(attempt: ProofAttempt, proof: StoredProof): Promise<boolean>; deleteAll(): Promise<void> }
 export class MemorySquatProofStore implements SquatProofStore {
   private proof: StoredProof | null = null;
   private token: string | null = null;
+  private hold = false;
   async read() { return this.proof && structuredClone(this.proof); }
-  async begin() { this.token = randomUUID(); this.proof = null; return { token: this.token, revision: null }; }
-  async finish(attempt: ProofAttempt, proof: StoredProof) { if (this.token !== attempt.token || this.proof !== null || proof.revision !== attempt.revision) return false; this.proof = structuredClone(proof); return true; }
-  async deleteAll() { this.token = null; this.proof = null; }
+  async held() { return this.hold; }
+  async begin(hold = false) { this.token = randomUUID(); this.proof = null; this.hold ||= hold; return { token: this.token, revision: null }; }
+  async finish(attempt: ProofAttempt, proof: StoredProof) { if (this.token !== attempt.token || this.proof !== null || proof.revision !== attempt.revision) return false; this.proof = structuredClone(proof); this.hold = Object.values(proof.safety).includes('held'); return true; }
+  async deleteAll() { this.token = null; this.proof = null; this.hold = false; }
 }
 export class FirestoreSquatProofStore implements SquatProofStore {
   constructor(private readonly db: FsDb) {}
   private ref() { return this.db.collection('squatReadiness').doc('parent-proof'); }
   async read() { const data = (await this.ref().get()).data() as { proof?: StoredProof | null } | undefined; return data?.proof ?? null; }
-  async begin(): Promise<ProofAttempt> {
+  async held() { const snap = await this.ref().get(); const hold = snap.get('hold'); if (hold !== undefined && typeof hold !== 'boolean') throw new Error('Invalid readiness hold'); return hold === true; }
+  async begin(newHold = false): Promise<ProofAttempt> {
     const ref = this.ref(), token = randomUUID();
     return this.db.runTransaction(async (tx) => {
       const revisionRef = evidenceRevisionRef(this.db);
       await readEvidenceRevision(tx, revisionRef);
+      const hold = (await tx.get(ref)).get('hold');
+      if (hold !== undefined && typeof hold !== 'boolean') throw new Error('Invalid readiness hold');
       const revision = bumpEvidenceRevision(tx, revisionRef);
-      tx.set(ref, { token, proof: null });
+      tx.set(ref, { token, proof: null, hold: hold === true || newHold });
       return { token, revision };
     });
   }
@@ -37,7 +42,7 @@ export class FirestoreSquatProofStore implements SquatProofStore {
       const current = await tx.get(ref);
       const revision = await readEvidenceRevision(tx, evidenceRevisionRef(this.db));
       if (current.get('token') !== attempt.token || current.get('proof') !== null || revision !== attempt.revision || proof.revision !== attempt.revision) return false;
-      tx.set(ref, { token: attempt.token, proof });
+      tx.set(ref, { token: attempt.token, proof, hold: Object.values(proof.safety).includes('held') });
       return true;
     });
   }
@@ -83,7 +88,7 @@ export class SquatProofService {
 
   async attest(input: SquatAttestation): Promise<boolean> {
     // An attempted re-attestation supersedes the prior one even when it cannot be accepted.
-    const token = await this.proofs.begin();
+    const token = await this.proofs.begin(input.growthClear === false || input.breakRestartClear === false || input.stepDownClear === false);
     if (!input.allDevicesSynced || !Array.isArray(input.orderedRecordIds) || !input.orderedRecordIds.every((id) => typeof id === 'string') ||
         typeof input.growthClear !== 'boolean' || typeof input.breakRestartClear !== 'boolean' || typeof input.stepDownClear !== 'boolean') return false;
     const pauseRevision = await this.pauseRevision();
@@ -96,6 +101,7 @@ export class SquatProofService {
   }
 
   async status(): Promise<SquatReadiness> {
+    if (await this.proofs.held()) return 'held';
     const proof = await this.proofs.read();
     const window = await this.window();
     if (!proof || !proof.safety || !window || proof.fingerprint !== digest(window.snapshot) || proof.pauseRevision !== await this.pauseRevision()) return 'unknown';

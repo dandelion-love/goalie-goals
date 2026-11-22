@@ -78,6 +78,11 @@ it.each(['memory', 'firestore'])('%s proof is exact, revocable and invalidated b
   expect(await service.status()).toBe('unknown');
   expect(await service.attest({ ...attestation, growthClear: false })).toBe(true);
   expect(await service.status()).toBe('held');
+  expect(await service.attest({ ...attestation, allDevicesSynced: false })).toBe(false);
+  expect(await service.status()).toBe('held');
+  expect(await service.attest(attestation)).toBe(true);
+  expect(await service.attest({ ...attestation, allDevicesSynced: false, stepDownClear: false })).toBe(false);
+  expect(await service.status()).toBe('held');
   expect(await service.attest(attestation)).toBe(true);
   now = new Date('2026-01-11T00:00:00Z');
   expect(await service.status()).toBe('unknown');
