@@ -15,9 +15,13 @@ export function focusCandidate(source: DossierSource, name: string): FocusCandid
   return { cardId, itemId: `focus-${cardId}`, itemVersion: itemVersion(content), content, preview };
 }
 
+export function validFocusCandidate(candidate: FocusCandidate): boolean {
+  const digest = createHash('sha256').update(JSON.stringify(candidate.preview)).digest('hex');
+  return candidate.itemId === `focus-${candidate.cardId}` && candidate.itemVersion === itemVersion(candidate.content) && !!candidate.content.binding?.startsWith(`focus-v1 ${candidate.cardId} `) && candidate.content.binding.endsWith(` ${digest}`);
+}
+
 /** A projection is possible only for matching independent approvals of this exact preview. */
 export function reviewedFocus(candidate: FocusCandidate, ownerApprovedVersions: ReadonlySet<string>, request: ApprovalRequest | null): FocusDraft | null {
-  const digest = createHash('sha256').update(JSON.stringify(candidate.preview)).digest('hex');
-  if (candidate.itemId !== `focus-${candidate.cardId}` || candidate.itemVersion !== itemVersion(candidate.content) || !candidate.content.binding?.startsWith(`focus-v1 ${candidate.cardId} `) || !candidate.content.binding.endsWith(` ${digest}`) || !ownerApprovedVersions.has(candidate.itemVersion) || !request || request.kind !== 'dossier' || request.state !== 'approved' || request.itemId !== candidate.itemId || request.itemVersion !== candidate.itemVersion) return null;
+  if (!validFocusCandidate(candidate) || !ownerApprovedVersions.has(candidate.itemVersion) || !request || request.kind !== 'dossier' || request.state !== 'approved' || request.itemId !== candidate.itemId || request.itemVersion !== candidate.itemVersion) return null;
   return candidate.preview;
 }
