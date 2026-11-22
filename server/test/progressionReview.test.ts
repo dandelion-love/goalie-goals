@@ -26,9 +26,9 @@ it('offers and records a parent review only for current synthetic evidence', asy
   expect(await readiness.attest({ orderedRecordIds: ids, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true })).toBe(true);
   const signer = new TestSigner(), audience = '/test/review';
   const app = await buildApp({ config: { audience, devMockIdentity: false, devMockAccount: '', roleSeed: 'parent@example.com=parent;keeper@example.com=keeper', roleStore: 'memory', port: 0, webRoot: '', production: false }, verifier: new ProxyJwtVerifier(audience, signer.keys) });
-  const review = ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'sha256:836073df2f6a8c3c94e99bf990df658d');
-  expect(() => ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'unknown')).toThrow('no owner decision');
-  expect(() => ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'sha256:ebe9725306de0c55f06f059ca1952118')).toThrow('No readiness rule');
+  const review = ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'sha256:836073df2f6a8c3c94e99bf990df658d', async () => true);
+  expect(() => ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'unknown', async () => true)).toThrow('no owner decision');
+  expect(() => ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'sha256:ebe9725306de0c55f06f059ca1952118', async () => true)).toThrow('No readiness rule');
   const gate = new ResetPainGate();
   registerProgressionReviewRoutes(app, review, MemoryRoleStore.fromSeed('parent@example.com=parent;keeper@example.com=keeper'), gate, () => 0);
   const headers = (account: string) => ({ [IDENTITY_HEADER]: signer.sign({ account, audience }) });

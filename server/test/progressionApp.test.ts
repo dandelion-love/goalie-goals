@@ -5,17 +5,24 @@ import { FirestoreHistoryStore, type HistoryRecord } from '../src/history.js';
 import { TestSigner } from '../src/devIdentity.js';
 import { IDENTITY_HEADER, ProxyJwtVerifier } from '../src/identity.js';
 import { FakeFirestore } from './fakeFirestore.js';
+import { cardSnapshot } from '../src/training.js';
+import { loadContent, defaultContentRoot } from '../src/content.js';
+import { ownerApprovedSquatVersions } from '../src/ownerProgression.js';
+import { hasCompletedSquatSeries } from '../src/squatSeries.js';
 
 it('uses normal authenticated Firestore routes for a synthetic parent review and reset', async () => {
   const db = new FakeFirestore(), signer = new TestSigner(), audience = '/test/real-review';
   const now = new Date(), date = now.toISOString().slice(0, 10);
   const store = new FirestoreApprovalStore(db);
-  await store.create({ id: 'synthetic-top-approved', kind: 'exercise', itemId: 'card-squat-to-box', itemVersion: 'synthetic-top-v1', content: { title: 'Example', detail: 'Example' }, state: 'approved', createdAt: now, decidedAt: now, decidedBy: 'parent@example.com', reason: null });
+  const archive = ownerApprovedSquatVersions(defaultContentRoot());
+  const versions = [cardSnapshot(loadContent().cards.get('squat-to-box')!).itemVersion, ...[12, 14, 15].map((reps) => archive.find((entry) => entry.rung === 'squat-to-box' && entry.dose === `2 x ${reps}`)!.itemVersion)];
+  for (let n = 0; n < versions.length; n++) await store.create({ id: `synthetic-dose-approved-${n}`, kind: 'exercise', itemId: 'card-squat-to-box', itemVersion: versions[n], content: { title: 'Example', detail: 'Example' }, state: 'approved', createdAt: now, decidedAt: now, decidedBy: 'parent@example.com', reason: null });
   const history = new FirestoreHistoryStore(db), ids: string[] = [];
-  for (const n of [1, 2]) {
+  for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
     const id = `normal-record-${n}`, instanceId = `normal-instance-${n}`;
-    const row: HistoryRecord = { id, instanceId, date, itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: now, cards: [{ cardId: 'squat-to-box', itemVersion: 'synthetic-top-v1', name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 15, perSide: false }, cueIds: [] }] };
-    expect(await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, cards: [{ cardId: 'squat-to-box', itemVersion: 'synthetic-top-v1' }] })).toBe(true);
+    const step = Math.floor((n - 1) / 2), reps = [10, 12, 14, 15][step], version = versions[step];
+    const row: HistoryRecord = { id, instanceId, date, itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: now, cards: [{ cardId: 'squat-to-box', itemVersion: version, name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps, perSide: false }, cueIds: [] }] };
+    expect(await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, cards: [{ cardId: 'squat-to-box', itemVersion: version }] })).toBe(true);
     expect(await history.addBound(row, instanceId)).toBe(true);
     ids.push(id);
   }
@@ -27,12 +34,16 @@ it('uses normal authenticated Firestore routes for a synthetic parent review and
   try {
     expect((await get('/api/history/squat-evidence', 'keeper@example.com')).json().status).toBe('unknown');
     expect((await get('/api/history/squat-review-window', 'keeper@example.com')).statusCode).toBe(403);
-    for (const id of ids) for (const set of [0, 1]) {
-      const answer = await app.inject({ method: 'PUT', url: '/api/history/squat-set', headers: headers('parent@example.com'), payload: { id, version: 'synthetic-top-v1', set, actualReps: 15, clean: true, previous: null } });
+    for (let n = 0; n < ids.length; n++) for (const set of [0, 1]) {
+      const step = Math.floor(n / 2);
+      const answer = await app.inject({ method: 'PUT', url: '/api/history/squat-set', headers: headers('parent@example.com'), payload: { id: ids[n], version: versions[step], set, actualReps: [10, 12, 14, 15][step], clean: true, previous: null } });
       expect(answer.statusCode).toBe(200);
     }
-    expect((await get('/api/history/squat-review-window')).json().sessions.map((s: { id: string }) => s.id)).toEqual(ids);
-    const attestation = { orderedRecordIds: ids, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true };
+    const steps = versions.map((version, index) => ({ version, reps: [10, 12, 14, 15][index] }));
+    expect(await hasCompletedSquatSeries(history, steps, async () => true)).toBe(true);
+    expect(await hasCompletedSquatSeries(history, steps, async (version) => version !== versions[1])).toBe(false);
+    expect((await get('/api/history/squat-review-window')).json().sessions.map((s: { id: string }) => s.id)).toEqual(ids.slice(-2));
+    const attestation = { orderedRecordIds: ids.slice(-2), allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true };
     expect((await post('/api/history/squat-attestation', attestation, 'keeper@example.com')).statusCode).toBe(403);
     expect((await post('/api/history/squat-attestation', attestation)).json().status).toBe('ready-for-parent');
     expect((await get('/api/history/squat-evidence', 'keeper@example.com')).json().status).toBe('ready-for-parent');

@@ -18,14 +18,14 @@ type ReviewCandidate = { itemId: string; version: string; title: string; dose: s
 /** Isolated review prototype; never registered until the remaining safety boundaries pass review. */
 export class ProgressionReview {
   private constructor(private readonly db: FsDb, private readonly readiness: SquatProofService,
-    private readonly proofs: SquatProofStore, private readonly candidate: ReviewCandidate) {}
+    private readonly proofs: SquatProofStore, private readonly candidate: ReviewCandidate, private readonly seriesComplete: () => Promise<boolean>) {}
 
-  static fromOwnerArchive(db: FsDb, readiness: SquatProofService, proofs: SquatProofStore, contentRoot: string, version: string): ProgressionReview {
+  static fromOwnerArchive(db: FsDb, readiness: SquatProofService, proofs: SquatProofStore, contentRoot: string, version: string, seriesComplete: () => Promise<boolean>): ProgressionReview {
     const entry = ownerApprovedSquatVersions(contentRoot).find((item) => item.itemVersion === version);
     if (!entry) throw new Error('Progression version has no owner decision');
     if (entry.rung !== 'squat-to-box-pause' || entry.predecessor !== 'squat-to-box') throw new Error('No readiness rule for progression version');
     const snapshot = cardSnapshot(entry.card);
-    return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues, card: entry.card.card, approvalContent: { title: snapshot.content.title, detail: snapshot.content.detail }, ...(entry.dossier && entry.dossierVersion ? { dossier: dossierSnapshot(entry.dossier, entry.card.card.name).client, dossierVersion: entry.dossierVersion } : {}) });
+    return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues, card: entry.card.card, approvalContent: { title: snapshot.content.title, detail: snapshot.content.detail }, ...(entry.dossier && entry.dossierVersion ? { dossier: dossierSnapshot(entry.dossier, entry.card.card.name).client, dossierVersion: entry.dossierVersion } : {}) }, seriesComplete);
   }
 
   async deleteAll(): Promise<void> {
@@ -35,7 +35,7 @@ export class ProgressionReview {
 
   async offer(): Promise<({ id: string } & ReviewCandidate) | null> {
     const before = await this.proofs.read();
-    if (!before || await this.readiness.status() !== 'ready-for-parent') return null;
+    if (!before || await this.readiness.status() !== 'ready-for-parent' || !await this.seriesComplete()) return null;
     const after = await this.proofs.read();
     if (!after || JSON.stringify(before) !== JSON.stringify(after) || !after.revision) return null;
     const id = randomUUID(), expiresAt = Date.now() + REQUEST_TTL_MS;
@@ -55,7 +55,7 @@ export class ProgressionReview {
     const offerRef = this.db.collection('progressionReviewOffers').doc(id);
     const previous = (await offerRef.get()).data() as { revision?: unknown; proof?: unknown; itemId?: unknown; version?: unknown; expiresAt?: unknown } | undefined;
     if (!previous || typeof previous.revision !== 'string' || typeof previous.expiresAt !== 'number' || previous.itemId !== this.candidate.itemId || previous.version !== this.candidate.version) return false;
-    if (await this.readiness.status() !== 'ready-for-parent') return false;
+    if (await this.readiness.status() !== 'ready-for-parent' || !await this.seriesComplete()) return false;
     const proofRef = this.db.collection('squatReadiness').doc('parent-proof');
     const decisionRef = this.db.collection('progressionReviewDecisions').doc(id);
     return this.db.runTransaction(async (tx) => {

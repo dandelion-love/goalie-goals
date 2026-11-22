@@ -32,7 +32,7 @@ import {
   type DemoTarget,
 } from './demo.js';
 import { defaultContentRoot, loadContent } from './content.js';
-import { FirestoreStartedStore, TrainingService, utcDate } from './training.js';
+import { cardSnapshot, FirestoreStartedStore, TrainingService, utcDate } from './training.js';
 import { registerTrainingRoutes } from './trainingRoutes.js';
 import { registerDossierRoutes } from './dossierRoutes.js';
 import { InAppNotifier } from './notifier.js';
@@ -61,6 +61,7 @@ import { painEvidenceSource } from './painEvidence.js';
 import { ProgressionReview, registerProgressionReviewRoutes } from './progressionReview.js';
 import { registerSquatProofRoutes } from './squatProofRoutes.js';
 import { ownerApprovedSquatVersions } from './ownerProgression.js';
+import { hasCompletedSquatSeries } from './squatSeries.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -404,15 +405,19 @@ export async function buildApp({
   // Custom or in-memory services remain unknown instead of asserting complete evidence.
   const proofStore = db && ownPain instanceof FirestorePainStore && own?.store instanceof FirestoreApprovalStore && historyService.store instanceof FirestoreHistoryStore && !syntheticSquatProof ? new FirestoreSquatProofStore(db) : undefined;
   const readiness = proofStore && ownPain ? new SquatProofService(historyService.store, proofStore, painEvidenceSource(ownPain), (version) => approvalService.isApproved('card-squat-to-box', version)) : undefined;
-  const review = readiness && proofStore && db ? ProgressionReview.fromOwnerArchive(db, readiness, proofStore, config.contentRoot || defaultContentRoot(), 'sha256:836073df2f6a8c3c94e99bf990df658d') : undefined;
+  const archive = readiness ? ownerApprovedSquatVersions(config.contentRoot || defaultContentRoot()) : [];
+  const firstSquat = trainingService.library.cards.get('squat-to-box');
+  const series = firstSquat ? [{ version: cardSnapshot(firstSquat).itemVersion, reps: 10 }, ...[12, 14, 15].map((reps) => ({ version: archive.find((entry) => entry.rung === 'squat-to-box' && entry.dose === `2 x ${reps}`)?.itemVersion ?? '', reps }))] : [];
+  const seriesComplete = () => hasCompletedSquatSeries(historyService.store, series, (version) => approvalService.isApproved('card-squat-to-box', version));
+  const review = readiness && proofStore && db ? ProgressionReview.fromOwnerArchive(db, readiness, proofStore, config.contentRoot || defaultContentRoot(), 'sha256:836073df2f6a8c3c94e99bf990df658d', seriesComplete) : undefined;
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused(), history: historyService, gate: resetPainGate, currentGeneration: () => currentGeneration });
   registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration, syntheticSquatProof, cardApproved: (version) => approvalService.isApproved('card-squat-to-box', version), readiness });
   if (readiness && review) {
-    const candidate = ownerApprovedSquatVersions(config.contentRoot || defaultContentRoot()).find((entry) => entry.itemVersion === 'sha256:836073df2f6a8c3c94e99bf990df658d');
+    const candidate = archive.find((entry) => entry.itemVersion === 'sha256:836073df2f6a8c3c94e99bf990df658d');
     if (!candidate) throw new ConfigError('Approved progression candidate missing');
     // Conservative until durable restart and transition state are available: no readiness,
     // no archived card projection. This does not add the card to a scheduled session.
-    trainingService.registerArchivedCard(candidate.card, async () => await readiness.status() === 'ready-for-parent');
+    trainingService.registerArchivedCard(candidate.card, async () => await readiness.status() === 'ready-for-parent' && await seriesComplete());
     registerSquatProofRoutes(app, readiness, roleStore, resetPainGate, () => currentGeneration);
     registerProgressionReviewRoutes(app, review, roleStore, resetPainGate, () => currentGeneration);
   }
