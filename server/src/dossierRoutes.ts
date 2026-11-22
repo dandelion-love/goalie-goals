@@ -5,10 +5,11 @@ import type { FastifyInstance } from 'fastify';
 import type { ApprovalService } from './approvals.js';
 import type { DossierService } from './dossiers.js';
 import type { RoleStore } from './roles.js';
+import type { TrainingService } from './training.js';
 
 export function registerDossierRoutes(
   app: FastifyInstance,
-  { dossiers, approvals, roles }: { dossiers: DossierService; approvals: ApprovalService; roles: RoleStore },
+  { dossiers, approvals, roles, training }: { dossiers: DossierService; approvals: ApprovalService; roles: RoleStore; training: TrainingService },
 ): void {
   // The approved dossiers, one per card: "Your training" opens them from each exercise.
   app.get('/api/training/dossiers', async (req, reply) => {
@@ -27,5 +28,15 @@ export function registerDossierRoutes(
     const dossier = await dossiers.forRequest(await approvals.store.get(req.params.id));
     if (!dossier) return reply.code(404).send({ error: 'not found' });
     return { dossier };
+  });
+
+  app.get<{ Params: { id: string } }>('/api/approvals/:id/decision-evidence', async (req, reply) => {
+    reply.header('cache-control', 'no-store');
+    if (await roles.roleFor(req.identity!.account) !== 'parent') return reply.code(403).send({ error: 'forbidden' });
+    await approvals.expireDue();
+    const request = await approvals.store.get(req.params.id);
+    if (!request || request.state !== 'pending') return reply.code(404).send({ error: 'not found' });
+    if (request.kind === 'dossier') return { itemVersion: request.itemVersion, dossier: await dossiers.forRequest(request), cards: null };
+    return { itemVersion: request.itemVersion, dossier: null, cards: training.decisionEvidence(request) };
   });
 }

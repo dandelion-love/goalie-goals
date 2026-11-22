@@ -75,6 +75,19 @@ function fakeServer(role: 'keeper' | 'parent') {
 afterEach(cleanup);
 
 describe('parent inbox', () => {
+  it('waits for evidence or its unavailable state before showing decision controls', async () => {
+    const server = fakeServer('parent');
+    let resolveEvidence!: (response: Response) => void;
+    const waiting = new Promise<Response>((resolve) => { resolveEvidence = resolve; });
+    const fetchImpl = ((input: RequestInfo | URL, init?: RequestInit) => String(input).endsWith('/decision-evidence') ? waiting : server.fetchImpl(input, init)) as typeof fetch;
+    render(<ParentInbox layout="compact" fetchImpl={fetchImpl} />);
+    const plan = await screen.findByRole('listitem', { name: 'Starter plan' });
+    fireEvent.click(within(plan).getByRole('button', { name: 'Review Starter plan' }));
+    expect(within(plan).queryByRole('button', { name: 'Approve' })).toBeNull();
+    resolveEvidence(new Response(null, { status: 404 }));
+    expect(await within(plan).findByText(/Evidence could not be verified/)).toBeTruthy();
+    expect(await within(plan).findByRole('button', { name: 'Approve' })).toBeTruthy();
+  });
   it('shows focused detail on a compact screen and returns focus to the queue item', async () => {
     const server = fakeServer('parent');
     render(<ParentInbox layout="compact" fetchImpl={server.fetchImpl} />);
@@ -98,8 +111,7 @@ describe('parent inbox', () => {
     expect(await screen.findByRole('listitem', { name: 'Low pogo hops, a step harder' })).toBeTruthy();
     fireEvent.click(within(plan).getByRole('button', { name: 'Review Starter plan' }));
     server.pending.splice(0, 1);
-    if (within(plan).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(plan).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(plan).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(await within(plan).findByRole('button', { name: 'Approve' }));
     expect((await screen.findByRole('alert')).textContent).toContain("That answer didn't go through");
     expect(server.approved).toEqual([]);
     await waitFor(() => expect(screen.queryByRole('listitem', { name: 'Starter plan' })).toBeNull());
@@ -133,7 +145,7 @@ describe('parent inbox', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const plan = await screen.findByRole('listitem', { name: 'Starter plan' });
     if (within(plan).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(plan).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(plan).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(await within(plan).findByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(screen.queryByRole('listitem', { name: 'Starter plan' })).toBeNull());
     expect(server.posts).toEqual(['approve:r1']);
     expect(screen.getByLabelText('1 waiting').textContent).toBe('1');
@@ -149,7 +161,7 @@ describe('parent inbox', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const harder = await screen.findByRole('listitem', { name: 'Low pogo hops, a step harder' });
     if (within(harder).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(harder).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(harder).getByRole('button', { name: 'Decline' }));
+    fireEvent.click(await within(harder).findByRole('button', { name: 'Decline' }));
     await waitFor(() => expect(server.posts).toEqual(['decline:r2']));
     expect(server.approved).toEqual([]);
   });

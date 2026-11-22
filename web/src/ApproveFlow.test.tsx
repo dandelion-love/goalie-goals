@@ -110,7 +110,7 @@ describe('a slow server shows a pending state and never sends twice (AC2)', () =
     render(<ParentInbox fetchImpl={server.fetchImpl} />);
     const item = await screen.findByRole('listitem', { name: 'Starter plan' });
     if (within(item).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(item).findByRole('button', { name: /^Review/ }));
-    const button = within(item).getByRole('button', { name: label });
+    const button = await within(item).findByRole('button', { name: label });
     fireEvent.click(button);
     expectSaving(button);
     tapAgain(button);
@@ -131,7 +131,7 @@ describe('a slow server shows a pending state and never sends twice (AC2)', () =
     render(<ParentInbox fetchImpl={server.fetchImpl} />);
     const item = await screen.findByRole('listitem', { name: 'Starter plan' });
     if (within(item).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(item).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(item).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(await within(item).findByRole('button', { name: 'Approve' }));
     await act(() => vi.advanceTimersByTimeAsync(SLOW_MS));
     const toast = (await screen.findByText('Approved: Starter plan')).parentElement!;
     const undo = within(toast).getByRole('button', { name: 'Undo' });
@@ -217,7 +217,7 @@ describe('the Undo toast keeps its distance and moves nothing (AC1, and story #9
     expect(emptyHeight).toMatch(/var\(--/);
 
     if (within(item).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(item).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(item).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(await within(item).findByRole('button', { name: 'Approve' }));
     await act(() => vi.advanceTimersByTimeAsync(SLOW_MS));
     const toast = (await screen.findByText('Approved: Starter plan')).parentElement!;
     expect(toast.className).toBe('toast');

@@ -178,7 +178,7 @@ function fakeServer({ dossiers = [DOSSIER], failDossiers = false } = {}) {
     if (url === '/api/approvals/pending') return json({ requests: pending });
     if (url === '/api/notifications/badge') return json({ unread: pending.length });
     if (url === '/api/pain/status') return json({ paused: false });
-    if (url === '/api/approvals/d1/dossier') return json({ dossier: DOSSIER });
+    if (url === '/api/approvals/d1/decision-evidence') return json({ itemVersion: DOSSIER.itemVersion, dossier: DOSSIER, cards: null });
     if (url === '/api/approvals/d1/approve') {
       pending.splice(0, 1);
       return json({ request: { id: 'd1', state: 'approved' }, undoForMs: 30000 });
@@ -226,15 +226,16 @@ describe("the parent's request (AC3)", () => {
     const row = await screen.findByRole('listitem', { name: 'Front plank: why it matters' });
     expect(within(row).getByText('About an exercise')).toBeTruthy();
     // Fetched only when the parent opens it.
-    expect(calls).not.toContain('GET /api/approvals/d1/dossier');
+    expect(calls).not.toContain('GET /api/approvals/d1/decision-evidence');
     if (within(row).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(row).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(row).getByRole('button', { name: 'Read it' }));
-    await within(row).findByText(DOSSIER.headline);
-    expect(calls).toContain('GET /api/approvals/d1/dossier');
-    expectDossier(row);
+    await within(row).findAllByText(DOSSIER.headline);
+    expect(calls).toContain('GET /api/approvals/d1/decision-evidence');
+    fireEvent.click(within(row).getByText('Dossier and sources'));
+    const full = row.querySelector('details')!;
+    expectDossier(full);
     checkCopy(row, 20);
     if (within(row).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(row).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(row).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(await within(row).findByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(calls).toContain('POST /api/approvals/d1/approve'));
   });
 });

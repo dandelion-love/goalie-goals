@@ -286,8 +286,9 @@ async function renderedLooks(): Promise<Map<string, Set<string>>> {
   fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
   fireEvent.click(screen.getByRole('button', { name: /^Inbox/ }));
   if (within(item).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(item).findByRole('button', { name: /^Review/ }));
+  const approve = await within(item).findByRole('button', { name: 'Approve' });
   await act(async () => {
-    fireEvent.click(within(item).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(approve);
   });
   await screen.findByRole('button', { name: /Undo/ });
   take();

@@ -360,6 +360,35 @@ export class TrainingService {
     return this.content;
   }
 
+  /** Parent-only context from the exact request snapshots; dossiers are separately versioned. */
+  decisionEvidence(request: ApprovalRequest) {
+    let cards: CardSnapshot[] | null = null;
+    if (request.kind === 'exercise') {
+      const card = this.snapshots.cards.get(request.itemVersion);
+      if (card?.itemId === request.itemId) cards = [card];
+    } else if (request.kind === 'plan') {
+      const session = this.snapshots.sessions.get(request.itemVersion);
+      if (session?.itemId === request.itemId) cards = session.cards;
+    }
+    if (!cards) return null;
+    return cards.map((snap) => {
+      const card = snap.source.card;
+      // A current dossier is independently versioned. Do not attach it to an older card
+      // snapshot when the current card no longer matches that request.
+      const current = this.content.cards.get(card.id);
+      const dossier = current?.contentHash === snap.source.contentHash ? this.dossiers.currentForCard(card.id) : null;
+      return {
+        name: card.name,
+        itemVersion: snap.itemVersion,
+        why: card.why,
+        cautions: card.stop_if,
+        setup: Object.values(card.setup),
+        needs: card.needs ?? null,
+        dossier,
+      };
+    });
+  }
+
   /** Swap in new content (an edit on disk, or a test); approvals of old versions stay with them. */
   setContent(content: ContentLibrary): void {
     this.content = content;

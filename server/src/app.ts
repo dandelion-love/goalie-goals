@@ -361,7 +361,7 @@ export async function buildApp({
   registerPainRoutes(app, { pain: painService, roles: roleStore, gate: resetPainGate, currentGeneration: () => currentGeneration });
 
   registerEquipmentRoutes(app, equipment, roleStore);
-  registerDossierRoutes(app, { dossiers: trainingService.dossiers, approvals: approvalService, roles: roleStore });
+  registerDossierRoutes(app, { dossiers: trainingService.dossiers, approvals: approvalService, roles: roleStore, training: trainingService });
   if (scheduleService) registerScheduleRoutes(app, { schedule: scheduleService, roles: roleStore });
 
   const ownProgress: ProgressStore | undefined = progress
