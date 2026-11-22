@@ -80,7 +80,7 @@
     "reps": 10,
     "per_side": false,
     "rest_s": 60,
-    "tempo": "down slow for three, stand up smoothly"
+    "tempo": "down slow for three, pause two seconds, stand up smoothly"
   },
   "timer": "reps",
   "substitutes": [

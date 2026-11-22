@@ -2,10 +2,10 @@
 
 These files are review candidates only. They live outside `content/exercises`, so the app does not load, schedule or propose them. Their `approved` fields are false. They do not represent owner or parent approval.
 
-- `squat-to-box-target.json` changes only the current card's repetitions from 10 to 15. It is the documented destination, not authorization for a direct increase. Each intermediate version, its clean-session evidence and approvals are separate; the owner has chosen a capped final step from 14 to 15, subject to the same conditions.
-- `squat-to-box-12.json` and `squat-to-box-14.json` are the corresponding unapproved intermediate versions. Each changes the current card's repetition count only.
+- `squat-to-box-target.json` proposes the 2 × 15 destination and points to its matching `squat-to-box-15.spec.md`. It is not authorization for a direct increase. Each intermediate version, its clean-session evidence and approvals are separate; the owner has chosen a capped final step from 14 to 15, subject to the same conditions.
+- `squat-to-box-12.json` and `squat-to-box-14.json` are the corresponding unapproved intermediate versions, each with its matching spec. Relative to the current card, each changes the repetition count and spec path.
 - `squat-to-box-pause.json` is an exact proposed new card at the ladder's starting dose. Its final spec and figure paths name intended future content locations; neither is installed in the app by this draft.
-- `paused-box-squat-dossier.md` contains proposed source-qualified text and explicit evidence gaps. It is not a runtime dossier and needs source and content review before conversion.
+- `paused-box-squat-dossier.md` describes the source-qualified draft and limitations. `squat-to-box-pause.dossier.json` is an exact proposed machine-readable dossier, with unavailable states instead of invented claims. The current checker and app cannot yet accept those unavailable states; this candidate must not enter runtime until that support is implemented and reviewed.
 - `squat-to-box-pause.svg` is an original, non-instructional equipment placeholder for review. It intentionally depicts no movement or pause; text carries the technique. Its intended future content path is in the candidate card. It is not the rejected generated illustration.
 
 The candidate files and any future exact app versions need independent review and owner content approval. The in-app parent approval remains separate. Nothing here changes readiness, scheduling or a current prescription.
