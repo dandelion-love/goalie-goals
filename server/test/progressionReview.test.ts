@@ -12,7 +12,7 @@ import { FirestoreApprovalStore, FirestoreAuditLog } from '../src/approvals.js';
 
 it('offers and records a parent review only for current synthetic evidence', async () => {
   const db = new FakeFirestore(), history = new FirestoreHistoryStore(db), proofs = new FirestoreSquatProofStore(db);
-  const readiness = new SquatProofService(history, proofs, async () => 'clear', async () => true, () => new Date('2026-01-05T12:00:00Z'));
+  const readiness = new SquatProofService(history, proofs, async () => ({ revision: 'clear', anyPain: false }), async () => true, () => new Date('2026-01-05T12:00:00Z'));
   const ids: string[] = [];
   for (const n of [1, 2]) {
     const id = `review-record-${n}`, instanceId = `review-instance-${n}`;

@@ -57,9 +57,10 @@ it.each(['memory', 'firestore'])('%s proof is exact, revocable and invalidated b
   const history: HistoryStore = kind === 'memory' ? new MemoryHistoryStore() : new FirestoreHistoryStore(db);
   const proofs: SquatProofStore = kind === 'memory' ? new MemorySquatProofStore() : new FirestoreSquatProofStore(db);
   let pauseRevision = 'none';
+  let anyPain = false;
   let approved = true;
   let now = new Date('2026-01-05T12:00:00Z');
-  const service = new SquatProofService(history, proofs, async () => pauseRevision, async () => approved, () => now);
+  const service = new SquatProofService(history, proofs, async () => ({ revision: pauseRevision, anyPain }), async () => approved, () => now);
   const ids = [await record(history, 1), await record(history, 2)];
   const legacy = { ...(await history.list())[0], id: 'legacy-record-1', date: '2025-12-01' };
   delete legacy.instanceId;
@@ -110,12 +111,17 @@ it.each(['memory', 'firestore'])('%s proof is exact, revocable and invalidated b
   expect(await service.status()).toBe('unknown');
   await proofs.deleteAll();
   expect(await service.status()).toBe('unknown');
+  anyPain = true;
+  expect(await service.status()).toBe('held');
+  expect(await service.attest(attestation)).toBe(false);
+  anyPain = false;
+  expect(await service.status()).toBe('held');
 });
 
 it('does not infer occurrence order from a queued late start', async () => {
   const history = new MemoryHistoryStore();
   const proofs = new MemorySquatProofStore();
-  const service = new SquatProofService(history, proofs, async () => 'none', async () => true, () => new Date('2026-01-05T12:00:00Z'));
+  const service = new SquatProofService(history, proofs, async () => ({ revision: 'none', anyPain: false }), async () => true, () => new Date('2026-01-05T12:00:00Z'));
   const ids = [await record(history, 1), await record(history, 2, true)];
   expect(await service.attest({ orderedRecordIds: ids, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true })).toBe(false);
   expect(await service.status()).toBe('unknown');

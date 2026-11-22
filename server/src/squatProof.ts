@@ -66,7 +66,7 @@ const digest = (snapshot: Snapshot) => createHash('sha256').update(JSON.stringif
  */
 export class SquatProofService {
   constructor(private readonly history: HistoryStore, private readonly proofs: SquatProofStore,
-    private readonly pauseRevision: () => Promise<string>, private readonly cardApproved: (version: string) => Promise<boolean>,
+    private readonly painHistory: () => Promise<{ revision: string; anyPain: boolean }>, private readonly cardApproved: (version: string) => Promise<boolean>,
     private readonly clock: () => Date = () => new Date()) {}
 
   private async window(): Promise<{ snapshot: Snapshot; ordered: HistoryRecord[] } | null> {
@@ -91,24 +91,28 @@ export class SquatProofService {
   }
 
   async attest(input: SquatAttestation): Promise<boolean> {
+    const pain = await this.painHistory();
     // An attempted re-attestation supersedes the prior one even when it cannot be accepted.
-    const token = await this.proofs.begin(input.growthClear === false || input.breakRestartClear === false || input.stepDownClear === false);
+    const token = await this.proofs.begin(pain.anyPain || input.growthClear === false || input.breakRestartClear === false || input.stepDownClear === false);
     if (!input.allDevicesSynced || !Array.isArray(input.orderedRecordIds) || !input.orderedRecordIds.every((id) => typeof id === 'string') ||
         typeof input.growthClear !== 'boolean' || typeof input.breakRestartClear !== 'boolean' || typeof input.stepDownClear !== 'boolean') return false;
-    const pauseRevision = await this.pauseRevision();
+    const pauseRevision = pain.revision;
     const window = await this.window();
     if (!window || JSON.stringify(input.orderedRecordIds) !== JSON.stringify(window.ordered.map((r) => r.id))) return false;
     const state = (clear: boolean) => clear ? 'clear' as const : 'held' as const;
-    if (await this.pauseRevision() !== pauseRevision) return false;
+    const latestPain = await this.painHistory();
+    if (latestPain.revision !== pauseRevision || latestPain.anyPain !== pain.anyPain || pain.anyPain) return false;
     const proof: StoredProof = { fingerprint: digest(window.snapshot), orderedRecordIds: [...input.orderedRecordIds], pauseRevision, revision: token.revision, safety: { pain: 'clear', growth: state(input.growthClear), breakRestart: state(input.breakRestartClear), stepDown: state(input.stepDownClear) } };
     return this.proofs.finish(token, proof);
   }
 
   async status(): Promise<SquatReadiness> {
+    const pain = await this.painHistory();
+    if (pain.anyPain) return 'held';
     if (await this.proofs.held()) return 'held';
     const proof = await this.proofs.read();
     const window = await this.window();
-    if (!proof || !proof.safety || !window || proof.fingerprint !== digest(window.snapshot) || proof.pauseRevision !== await this.pauseRevision()) return 'unknown';
+    if (!proof || !proof.safety || !window || proof.fingerprint !== digest(window.snapshot) || proof.pauseRevision !== pain.revision) return 'unknown';
     if (JSON.stringify(proof.orderedRecordIds) !== JSON.stringify(window.ordered.map((r) => r.id))) return 'unknown';
     if (Object.values(proof.safety).includes('held')) return 'held';
     const ordered = window.ordered;
@@ -124,7 +128,9 @@ export class SquatProofService {
     const approved = await Promise.all(versions.map((version) => this.cardApproved(version)));
     const status = evaluateSquatReadiness(ordered, { orderedHistoryComplete: true, safety: proof.safety, approvedCardVersions: new Set(versions.filter((_, i) => approved[i])) });
     const latestWindow = await this.window();
-    if (!latestWindow || digest(latestWindow.snapshot) !== proof.fingerprint || await this.pauseRevision() !== proof.pauseRevision) return 'unknown';
+    const latestPain = await this.painHistory();
+    if (latestPain.anyPain) return 'held';
+    if (!latestWindow || digest(latestWindow.snapshot) !== proof.fingerprint || latestPain.revision !== proof.pauseRevision) return 'unknown';
     return status;
   }
 }
