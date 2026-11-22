@@ -92,8 +92,13 @@ it.each(['memory', 'firestore'])('%s proof is exact, revocable and invalidated b
   expect(await service.attest({ ...attestation, allDevicesSynced: false })).toBe(false);
   expect(await service.status()).toBe('held');
   expect(await service.attest(attestation)).toBe(true);
+  expect(await service.status()).toBe('held');
+  // Reset deletes the household data; it is not a progression restart.
+  await proofs.deleteAll();
+  expect(await service.attest(attestation)).toBe(true);
   expect(await service.attest({ ...attestation, allDevicesSynced: false, stepDownClear: false })).toBe(false);
   expect(await service.status()).toBe('held');
+  await proofs.deleteAll();
   expect(await service.attest(attestation)).toBe(true);
   now = new Date('2026-01-11T00:00:00Z');
   expect(await service.status()).toBe('unknown');

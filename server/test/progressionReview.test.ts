@@ -33,6 +33,10 @@ it('offers and records a parent review only for current synthetic evidence', asy
   const post = (url: string, account = 'parent@example.com') => app.inject({ method: 'POST', url, headers: headers(account) });
   try {
     expect((await post('/api/progression/review-offer', 'keeper@example.com')).statusCode).toBe(403);
+    const expired = (await post('/api/progression/review-offer')).json().id;
+    const expiredRef = db.collection('progressionReviewOffers').doc(expired);
+    await db.runTransaction(async (tx) => { const snap = await tx.get(expiredRef); tx.set(expiredRef, { ...(snap.data() as object), expiresAt: Date.now() - 1 }); });
+    expect((await post(`/api/progression/review-offer/${expired}/approve`)).statusCode).toBe(409);
     const first = await post('/api/progression/review-offer');
     expect(first.statusCode).toBe(200);
     expect(first.json()).toMatchObject({ itemId: 'squat-to-box-pause', dose: '2 x 10' });

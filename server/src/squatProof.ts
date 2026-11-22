@@ -16,7 +16,7 @@ export class MemorySquatProofStore implements SquatProofStore {
   async read() { return this.proof && structuredClone(this.proof); }
   async held() { return this.hold; }
   async begin(hold = false) { this.token = randomUUID(); this.proof = null; this.hold ||= hold; return { token: this.token, revision: null }; }
-  async finish(attempt: ProofAttempt, proof: StoredProof) { if (this.token !== attempt.token || this.proof !== null || proof.revision !== attempt.revision) return false; this.proof = structuredClone(proof); this.hold = Object.values(proof.safety).includes('held'); return true; }
+  async finish(attempt: ProofAttempt, proof: StoredProof) { if (this.token !== attempt.token || this.proof !== null || proof.revision !== attempt.revision) return false; this.proof = structuredClone(proof); this.hold ||= Object.values(proof.safety).includes('held'); return true; }
   async deleteAll() { this.token = null; this.proof = null; this.hold = false; }
 }
 export class FirestoreSquatProofStore implements SquatProofStore {
@@ -42,7 +42,11 @@ export class FirestoreSquatProofStore implements SquatProofStore {
       const current = await tx.get(ref);
       const revision = await readEvidenceRevision(tx, evidenceRevisionRef(this.db));
       if (current.get('token') !== attempt.token || current.get('proof') !== null || revision !== attempt.revision || proof.revision !== attempt.revision) return false;
-      tx.set(ref, { token: attempt.token, proof, hold: Object.values(proof.safety).includes('held') });
+      const hold = current.get('hold');
+      if (typeof hold !== 'boolean') throw new Error('Invalid readiness hold');
+      // Clearing a warning alone does not establish the required step-down and restart.
+      // No verified restart is implemented yet, so a hold remains closed to promotion.
+      tx.set(ref, { token: attempt.token, proof, hold: hold || Object.values(proof.safety).includes('held') });
       return true;
     });
   }
