@@ -359,6 +359,34 @@ button:active:not(:disabled) {
   gap: var(--space-4);
 }
 
+/* The shared role shell stays in the viewport; its destination pane scrolls independently. */
+.app:has(.role-shell) {
+  height: var(--viewport-height);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-main:has(.role-shell) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.role-shell {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.role-content {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
 .keeper-nav {
   display: flex;
   flex-wrap: wrap;

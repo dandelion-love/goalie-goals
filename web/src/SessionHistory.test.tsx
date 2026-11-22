@@ -200,7 +200,7 @@ describe('approvals keep their own list (AC4)', () => {
       render(<ParentHome layout="compact" fetchImpl={parentApi()} />);
     }
     const { panel } = await lines();
-    if (who === 'keeper') fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+    if (who === 'keeper') fireEvent.click(screen.getByRole('button', { name: 'Training' }));
     const approvals = await screen.findByRole('article', { name: 'History' });
     await within(approvals).findByText(/Session: Strong middle/);
     expect(within(panel).queryByText(/approved/)).toBeNull();

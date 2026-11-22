@@ -149,6 +149,7 @@ describe('keeper home', () => {
       approvedAt: '2026-01-04T09:00:00Z',
     });
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Training' }));
     const training = (await screen.findByRole('heading', { name: 'Your training' })).closest('article')!;
     expect(await within(training).findByText('Lateral shuffle')).toBeTruthy();
     expect(within(training).queryByText('Starter plan')).toBeNull();
@@ -162,6 +163,7 @@ describe('keeper home', () => {
   it('shows the same history the parent sees', async () => {
     const server = fakeServer('keeper');
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Training' }));
     const history = (await screen.findByRole('heading', { name: 'History' })).closest('article')!;
     expect(await within(history).findByText(/App asked for Starter plan/)).toBeTruthy();
   });

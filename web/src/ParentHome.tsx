@@ -9,6 +9,9 @@ import { StartFresh } from './StartFresh';
 import { Reveal } from './Loading';
 import { useMoment } from './motion';
 import { Equipment } from './Equipment';
+import { RoleShell, useDestination } from './RoleShell';
+
+const PARENT_DESTINATIONS = [{ id: 'inbox', label: 'Inbox' }, { id: 'plan', label: 'Plan' }, { id: 'progress', label: 'Progress' }, { id: 'settings', label: 'Settings' }] as const;
 
 // The parent's home, in its own chunk (story 101 AC2): the keeper's device never loads it.
 
@@ -22,7 +25,7 @@ const SessionHistory = memo(SessionHistoryPanel);
 const WeekPanel = memo(WeekPanelBody);
 
 export function ParentHome({ fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl?: typeof fetch; epoch?: number }) {
-  const [destination, setDestination] = useState<'inbox' | 'plan' | 'progress' | 'settings'>('progress');
+  const { current: destination, navigate, navigation, content } = useDestination(PARENT_DESTINATIONS, 'progress');
   const [inboxSummary, setInboxSummary] = useState({ badge: 0, urgent: false });
   const onInboxSummary = useCallback((badge: number, urgent: boolean) => setInboxSummary((old) => old.badge === badge && old.urgent === urgent ? old : { badge, urgent }), []);
   // Answering a request, or undoing an approval, adds to the history and changes the inbox,
@@ -53,13 +56,7 @@ export function ParentHome({ fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl
   const inboxOpen = daysOpen && settled.days;
   const historyOpen = inboxOpen && settled.inbox;
   return (
-    <section className="home" aria-labelledby="home-title">
-      <h1 id="home-title">Parent home</h1>
-      <nav className="keeper-nav" aria-label="Parent navigation">
-        {([['inbox', `Inbox${inboxSummary.badge ? ` (${inboxSummary.badge})` : ''}${inboxSummary.urgent ? ' — urgent' : ''}`], ['plan', 'Plan'], ['progress', 'Progress'], ['settings', 'Settings']] as const).map(([id, label]) => (
-          <button key={id} type="button" className="secondary" aria-current={destination === id ? 'page' : undefined} onClick={() => setDestination(id)}>{label}</button>
-        ))}
-      </nav>
+    <RoleShell title="Parent home" destinations={PARENT_DESTINATIONS.map((item) => item.id === 'inbox' ? { ...item, label: `Inbox${inboxSummary.badge ? ` (${inboxSummary.badge})` : ''}${inboxSummary.urgent ? ' — urgent' : ''}` } : item)} current={destination} navigate={navigate} navigation={navigation} content={content}>
       <div hidden={destination !== 'progress'}>
       <ProgressPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onProgress} />
       </div>
@@ -97,6 +94,6 @@ export function ParentHome({ fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl
         <StartFresh fetchImpl={fetchImpl} onDone={changed} />
       </Reveal>
       </div>
-    </section>
+    </RoleShell>
   );
 }
