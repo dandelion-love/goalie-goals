@@ -81,6 +81,7 @@ describe('AC2: the same minutes wherever a session is offered', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: /^Inbox/ }));
     const request = await screen.findByRole('listitem', { name: 'Session: Spring legs' });
+    fireEvent.click(within(request).getByRole('button', { name: 'Review Session: Spring legs' }));
     expect(within(request).getByText(/^About 15 minutes\./)).toBeTruthy();
     // The week's next line: Wednesday's Spring legs, the same 15.
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));

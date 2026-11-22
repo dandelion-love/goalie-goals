@@ -3,7 +3,6 @@ import {
   answerRequest,
   fetchApproved,
   fetchAudit,
-  fetchBadge,
   fetchPending,
   KIND_LABEL,
   undoApproval,
@@ -22,6 +21,7 @@ import { SquatEvidenceStatus } from './SessionHistory';
 import { DossierToggle } from './DossierScreens';
 import { EmptyState, StatusLabel } from './Interface';
 import { fetchDossiers, fetchRequestDossier, type Dossier } from './dossier';
+import type { Layout } from './layout';
 
 type Load<T> = { kind: 'loading' } | { kind: 'ready'; data: T } | { kind: 'error' };
 
@@ -86,6 +86,8 @@ export function ParentInbox({
   refresh = 0,
   onSettled,
   onSummary,
+  onGoPlan,
+  layout = 'expanded',
 }: {
   fetchImpl?: typeof fetch;
   onChange?: () => void;
@@ -93,6 +95,8 @@ export function ParentInbox({
   refresh?: number;
   onSettled?: () => void;
   onSummary?: (badge: number, urgent: boolean) => void;
+  onGoPlan?: () => void;
+  layout?: Layout;
 }) {
   const [state, setState] = useState<Load<{ rows: Row[]; badge: number; pause: PauseStatus | null }>>({
     kind: 'loading',
@@ -102,13 +106,23 @@ export function ParentInbox({
   const [toast, setToast] = useState<{ toast: Toast; ms: number } | null>(null);
   const once = useOneAtATime();
   const [selected, setSelected] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const inboxHeading = useRef<HTMLHeadingElement>(null);
+  const queuePosition = useRef(0);
+  const contentPane = useRef<HTMLElement | null>(null);
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
+  const rowHeadings = useRef(new Map<string, HTMLHeadingElement>());
+  useEffect(() => { if (selected) requestAnimationFrame(() => rowHeadings.current.get(selected)?.focus()); }, [selected]);
   useSettled(state.kind !== 'loading', onSettled);
   useEffect(() => {
     if (state.kind === 'ready') onSummary?.(state.data.badge, !!state.data.pause?.paused);
   }, [state, onSummary]);
   useEffect(() => {
-    if (selected && state.kind === 'ready' && !state.data.rows.some((row) => row.request.id === selected)) setSelected(null);
+    if (selected && state.kind === 'ready' && !state.data.rows.some((row) => row.request.id === selected)) {
+      setSelected(null);
+      setUnavailable(true);
+      requestAnimationFrame(() => inboxHeading.current?.focus());
+    }
   }, [selected, state]);
 
   /** Changes the rows of a loaded inbox (at a tap, or as an answer lands). */
@@ -118,16 +132,15 @@ export function ParentInbox({
   const load = useCallback(async () => {
     try {
       // The pause item loads with the requests, so it never appears above them later.
-      const [requests, badge, pause] = await Promise.all([
+      const [requests, pause] = await Promise.all([
         fetchPending(fetchImpl),
-        fetchBadge(fetchImpl),
         fetchPauseStatus(fetchImpl).catch(() => null),
       ]);
       // A transition (story 101): the list renders in slices, never as one long task.
       startTransition(() => {
         setState((s) => ({
           kind: 'ready',
-          data: { rows: mergeRows(s.kind === 'ready' ? s.data.rows : [], requests), badge, pause },
+          data: { rows: mergeRows(s.kind === 'ready' ? s.data.rows : [], requests), badge: requests.length, pause },
         }));
         // Undone elsewhere (the History): the request is back, so its Undo toast goes.
         setToast((t) => {
@@ -163,6 +176,7 @@ export function ParentInbox({
         const { undoForMs } = await answerRequest(r.id, verb, fetchImpl);
         const soon = Date.now() - tapped <= CLOSE_UP_MS;
         startTransition(() => {
+          if (soon) setSelected(null);
           if (verb === 'approve' && undoForMs > 0) setToast({ toast: { kind: 'undo', id: r.id, title: r.title }, ms: undoForMs });
           editRows((rows) =>
             soon ? rows.filter((x) => x.request.id !== r.id) : rows.map((x) => (x.request.id === r.id ? { ...x, answered: verb } : x)),
@@ -203,7 +217,7 @@ export function ParentInbox({
 
   return (
     <article className="card" aria-labelledby="inbox-title" aria-busy={state.kind === 'loading'}>
-      <h2 id="inbox-title" className="with-badge">
+      <h2 id="inbox-title" className="with-badge" ref={inboxHeading} tabIndex={-1}>
         Inbox
         {badge > 0 && (
           <span className="badge" aria-label={`${badge} waiting`}>
@@ -228,21 +242,24 @@ export function ParentInbox({
           }}
         />
       )}
-      {state.kind === 'ready' && state.data.rows.length === 0 && <EmptyState>Nothing to approve.</EmptyState>}
+      {unavailable && <p role="alert">That request is no longer waiting. Choose another request from the inbox.</p>}
+      {state.kind === 'ready' && state.data.rows.length === 0 && <><EmptyState>Nothing to approve.</EmptyState>{onGoPlan && <button type="button" className="secondary" onClick={onGoPlan}>View the plan</button>}</>}
       {state.kind === 'ready' && state.data.rows.length > 0 && (
         <ul className="requests">
           {state.data.rows.map(({ request: r, answered }) => (
-            <li key={r.id} className="request" aria-label={r.title} hidden={selected !== null && selected !== r.id}>
+            <li key={r.id} className="request" aria-label={r.title} hidden={layout === 'compact' && selected !== null && selected !== r.id}>
               <span className="kind"><StatusLabel>{KIND_LABEL[r.kind] ?? r.kind}</StatusLabel></span>
-              <h3>{r.title}</h3>
+              <h3 tabIndex={-1} ref={(element) => { if (element) rowHeadings.current.set(r.id, element); else rowHeadings.current.delete(r.id); }}>{r.title}</h3>
+              {answered && <StatusLabel>Answered</StatusLabel>}
               {selected === r.id ? (
                 <button type="button" className="secondary" disabled={busy !== null} onClick={() => {
                   setSelected(null);
-                  requestAnimationFrame(() => rowButtons.current.get(r.id)?.focus());
+                  requestAnimationFrame(() => { if (contentPane.current) contentPane.current.scrollTop = queuePosition.current; rowButtons.current.get(r.id)?.focus(); });
                 }}>Back to inbox</button>
               ) : (
-                <button type="button" className="secondary" aria-label={`Review ${r.title}`} disabled={busy !== null} ref={(element) => { if (element) rowButtons.current.set(r.id, element); else rowButtons.current.delete(r.id); }} onClick={() => setSelected(r.id)}>Review</button>
+                <button type="button" className="secondary" aria-label={`Review ${r.title}`} disabled={busy !== null} ref={(element) => { if (element) rowButtons.current.set(r.id, element); else rowButtons.current.delete(r.id); }} onClick={(event) => { contentPane.current = event.currentTarget.closest('.role-content'); queuePosition.current = contentPane.current?.scrollTop ?? 0; setUnavailable(false); setSelected(r.id); }}>Review</button>
               )}
+              {selected === r.id && <>
               <p>{r.detail}</p>
               {/* Story 115: the parent reads the whole dossier before answering. */}
               {r.kind === 'dossier' && (
@@ -269,6 +286,7 @@ export function ParentInbox({
                   />
                 </div>
               )}
+              </>}
             </li>
           ))}
         </ul>

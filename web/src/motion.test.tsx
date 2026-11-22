@@ -377,6 +377,7 @@ describe('AC2: motion at the key moments, in the same commit as the cue', () => 
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const plan = await screen.findByRole('listitem', { name: 'Starter plan' });
     take();
+    if (within(plan).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(plan).findByRole('button', { name: /^Review/ }));
     fireEvent.click(within(plan).getByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(moments()).toContain('approval-left'));
     const c = calls.find((x) => x.opts.id === 'moment:approval-left')!;
