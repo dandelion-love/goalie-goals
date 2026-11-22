@@ -45,7 +45,7 @@ import { WeeklyPlan } from './weeklyPlan.js';
 import { FirestoreScheduleStore, MemoryScheduleStore, ScheduleService, type ScheduleStore } from './schedule.js';
 import { registerScheduleRoutes } from './scheduleRoutes.js';
 import { FirestoreHistoryStore, HistoryService, MemoryHistoryStore, type HistoryStore } from './history.js';
-import { registerHistoryRoutes } from './historyRoutes.js';
+import { registerHistoryRoutes, type SyntheticSquatProof } from './historyRoutes.js';
 import type { FsDb } from './firestoreDb.js';
 import {
   FirestoreGenerationStore,
@@ -124,6 +124,8 @@ export interface AppDeps {
   history?: HistoryService;
   /** The store for the session history when no `history` is given (tests pass a fake). */
   historyStore?: HistoryStore;
+  /** Synthetic proof fixture; forbidden in production and never supplied by HTTP clients. */
+  syntheticSquatProof?: () => Promise<SyntheticSquatProof | null>;
   /**
    * The household's Firestore database when `config.scheduleStore` is `firestore` (story 118):
    * approvals, the audit log, progress, pain pauses and the started marker live there, beside
@@ -180,6 +182,7 @@ export async function buildApp({
   scheduleStore,
   history,
   historyStore,
+  syntheticSquatProof,
   firestore,
   generation,
   logger = false,
@@ -188,6 +191,7 @@ export async function buildApp({
   if (config.devMockIdentity && config.production) {
     throw new ConfigError(`${DEV_MOCK_FLAG} is refused in production.`);
   }
+  if (syntheticSquatProof && config.production) throw new ConfigError('Synthetic squat proof is refused in production.');
   if (config.demoSeed && (config.production || !config.devMockIdentity)) {
     throw new ConfigError(`${DEMO_SEED_FLAG} needs ${DEV_MOCK_FLAG}=1 and is refused in production.`);
   }
@@ -392,7 +396,7 @@ export async function buildApp({
       training: trainingService,
     });
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused(), history: historyService, gate: resetPainGate, currentGeneration: () => currentGeneration });
-  registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration });
+  registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration, syntheticSquatProof, cardApproved: (version) => approvalService.isApproved('card-squat-to-box', version) });
 
   // Every store the app made or was given that can delete its part of the household.
   const parts: HouseholdPart[] = [];

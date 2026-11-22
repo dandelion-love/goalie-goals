@@ -79,6 +79,8 @@ export interface HistoryStore {
   add(record: HistoryRecord): Promise<boolean>;
   startInstance(instance: SessionInstance): Promise<boolean>;
   addBound(record: HistoryRecord, instanceId: string): Promise<boolean>;
+  /** Verify the persisted instance binds this exact record and card versions. */
+  isBound(record: HistoryRecord): Promise<boolean>;
   /** Every record, in no set order. */
   list(): Promise<HistoryRecord[]>;
   confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean>;
@@ -118,6 +120,11 @@ export class MemoryHistoryStore implements HistoryStore {
 
   async list(): Promise<HistoryRecord[]> {
     return [...this.#records.values()].map(copy);
+  }
+
+  async isBound(record: HistoryRecord): Promise<boolean> {
+    const instance = record.instanceId ? this.#instances.get(record.instanceId) : undefined;
+    return !!instance && instance.recordId === record.id && instanceMatches(instance, record);
   }
 
   async confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean> {
@@ -298,6 +305,13 @@ export class FirestoreHistoryStore implements HistoryStore {
   async list(): Promise<HistoryRecord[]> {
     const snap = await this.db.collection(this.collection).get();
     return snap.docs.map((d) => readRecord(d.id, d.data())).filter((r): r is HistoryRecord => r !== null);
+  }
+
+  async isBound(record: HistoryRecord): Promise<boolean> {
+    if (!record.instanceId) return false;
+    const db = this.db as unknown as FsDb;
+    const instance = (await db.collection(INSTANCE_COLLECTION).doc(record.instanceId).get()).data() as SessionInstance | undefined;
+    return !!instance && instance.recordId === record.id && instanceMatches(instance, record);
   }
 
   async confirmSquatSet(id: string, version: string, set: number, evidence: SquatSet, previous: SquatSet | null): Promise<boolean> {

@@ -534,6 +534,10 @@ describe('session occurrence binding', () => {
     expect(await store.startInstance({ id, itemId: record.itemId, itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null })).toBe(true);
     expect(await store.startInstance({ id, itemId: 'session-other', itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null })).toBe(false);
     expect(await store.addBound(record, id)).toBe(true);
+    const bound = (await store.list())[0];
+    expect(await store.isBound(bound)).toBe(true);
+    expect(await store.isBound({ ...bound, instanceId: 'instance-missing' })).toBe(false);
+    expect(await store.isBound({ ...bound, itemVersion: 'wrong-session' })).toBe(false);
     expect(await store.confirmSquatSet(record.id, 'wrong-version', 0, { actualReps: 10, clean: true }, null)).toBe(false);
     expect(await store.confirmSquatSet(record.id, 'card-version', 1, { actualReps: 10, clean: true }, null)).toBe(false);
     expect(await store.confirmSquatSet(record.id, 'card-version', 0, { actualReps: 10, clean: true }, null)).toBe(true);
