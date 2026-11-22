@@ -20,8 +20,9 @@ import { nextStep } from './ladders';
 import { SquatEvidenceStatus } from './SessionHistory';
 import { DossierToggle } from './DossierScreens';
 import { EmptyState, StatusLabel } from './Interface';
-import { fetchDossiers, fetchRequestDossier, type Dossier } from './dossier';
+import { fetchDossiers, type Dossier } from './dossier';
 import type { Layout } from './layout';
+import { DecisionSupport } from './DecisionSupport';
 
 type Load<T> = { kind: 'loading' } | { kind: 'ready'; data: T } | { kind: 'error' };
 
@@ -106,6 +107,7 @@ export function ParentInbox({
   const [toast, setToast] = useState<{ toast: Toast; ms: number } | null>(null);
   const once = useOneAtATime();
   const [selected, setSelected] = useState<string | null>(null);
+  const [evidenceReady, setEvidenceReady] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const inboxHeading = useRef<HTMLHeadingElement>(null);
   const queuePosition = useRef(0);
@@ -257,20 +259,17 @@ export function ParentInbox({
                   requestAnimationFrame(() => { if (contentPane.current) contentPane.current.scrollTop = queuePosition.current; rowButtons.current.get(r.id)?.focus(); });
                 }}>Back to inbox</button>
               ) : (
-                <button type="button" className="secondary" aria-label={`Review ${r.title}`} disabled={busy !== null} ref={(element) => { if (element) rowButtons.current.set(r.id, element); else rowButtons.current.delete(r.id); }} onClick={(event) => { contentPane.current = event.currentTarget.closest('.role-content'); queuePosition.current = contentPane.current?.scrollTop ?? 0; setUnavailable(false); setSelected(r.id); }}>Review</button>
+                <button type="button" className="secondary" aria-label={`Review ${r.title}`} disabled={busy !== null} ref={(element) => { if (element) rowButtons.current.set(r.id, element); else rowButtons.current.delete(r.id); }} onClick={(event) => { contentPane.current = event.currentTarget.closest('.role-content'); queuePosition.current = contentPane.current?.scrollTop ?? 0; setUnavailable(false); setEvidenceReady(null); setSelected(r.id); }}>Review</button>
               )}
               {selected === r.id && <>
               <p>{r.detail}</p>
-              {/* Story 115: the parent reads the whole dossier before answering. */}
-              {r.kind === 'dossier' && (
-                <DossierToggle label="Read it" level={4} load={() => fetchRequestDossier(r.id, fetchImpl)} />
-              )}
+              {!answered && <DecisionSupport request={r} fetchImpl={fetchImpl} disabled={busy !== null} onSettled={setEvidenceReady} />}
               {/* One text node, so no reader or audit script puts a space before the semicolon. */}
               <p className="meta">{`Lapses unanswered on ${formatDate(r.expiresAt)}; silence never approves.`}</p>
               {answered ? (
                 // The outcome takes the buttons' place at their height, so the list keeps its shape.
                 <div className="actions outcome">{answered === 'approve' ? 'Approved' : 'Declined'}</div>
-              ) : (
+              ) : evidenceReady === r.id ? (
                 <div className="actions">
                   <button
                     type="button"
@@ -285,7 +284,7 @@ export function ParentInbox({
                     onClick={() => void answer(r, 'decline')}
                   />
                 </div>
-              )}
+              ) : null}
               </>}
             </li>
           ))}

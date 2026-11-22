@@ -5,6 +5,8 @@
 export interface DossierClaim {
   label: string;
   text: string;
+  evidence?: string;
+  detail?: string;
   sources: number[];
 }
 

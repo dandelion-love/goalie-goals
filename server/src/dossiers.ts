@@ -16,6 +16,8 @@ export const dossierItemId = (cardId: string) => `dossier-${cardId}`;
 export interface ClientClaim {
   label: string;
   text: string;
+  evidence?: string;
+  detail?: string;
   /** Numbers into `sources` (1-based), in the order the claim cites them. */
   sources: number[];
 }
@@ -79,15 +81,19 @@ function toClient(source: DossierSource, name: string, version: string): ClientD
   const why = dossier.why.claims.map((c) => ({
     label: c.action ? ACTION_LABEL[c.action] : 'Why',
     text: c.text,
+    evidence: c.evidence,
+    detail: c.detail,
     sources: cite(c),
   }));
   const expect = [
     ...dossier.expect.claims.map((c) => ({
       label: c.outcome ? weeksLabel(c.outcome.weeks) : 'With practice',
       text: c.text,
+      evidence: c.evidence,
+      detail: c.detail,
       sources: cite(c),
     })),
-    { label: 'Keep it up', text: dossier.expect.keep_up.text, sources: cite(dossier.expect.keep_up) },
+    { label: 'Keep it up', text: dossier.expect.keep_up.text, evidence: dossier.expect.keep_up.evidence, detail: dossier.expect.keep_up.detail, sources: cite(dossier.expect.keep_up) },
   ];
   const sources = [...numbers].map(([id, n]) => {
     const s = byId.get(id)!;
@@ -171,5 +177,10 @@ export class DossierService {
     this.current();
     const snap = this.versions.get(request.itemVersion);
     return snap && snap.itemId === request.itemId ? snap.client : null;
+  }
+
+  /** A separately versioned current dossier, for parent-only decision context. */
+  currentForCard(cardId: string): ClientDossier | null {
+    return this.current().find((snap) => snap.cardId === cardId)?.client ?? null;
   }
 }

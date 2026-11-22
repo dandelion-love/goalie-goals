@@ -210,6 +210,44 @@ describe('dossier routes', () => {
 
   const get = (a: FastifyInstance, url: string, account: string) => a.inject({ method: 'GET', url, headers: as(account) });
 
+  it('returns parent-only decision evidence for exact request snapshots and refuses stale requests', async () => {
+    await training.proposeFor(DATE);
+    await training.dossiers.propose();
+    app = await buildApp({ config: config(), verifier: new ProxyJwtVerifier(AUDIENCE, signer.keys), approvals, training });
+    const requests = await approvals.pending();
+    const exercise = requests.find((r) => r.kind === 'exercise' && r.itemId === 'card-plank')!;
+    const plan = requests.find((r) => r.kind === 'plan')!;
+    const dossier = await dossierRequest();
+    for (const request of [exercise, plan, dossier]) {
+      const url = `/api/approvals/${request.id}/decision-evidence`;
+      expect((await get(app, url, KAI)).statusCode).toBe(403);
+      const response = await get(app, url, SAM);
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json().itemVersion).toBe(request.itemVersion);
+    }
+    const exerciseEvidence = (await get(app, `/api/approvals/${exercise.id}/decision-evidence`, SAM)).json();
+    expect(exerciseEvidence.cards[0]).toMatchObject({ name: 'Front plank', itemVersion: exercise.itemVersion, why: CONTENT.cards.get('plank')!.card.why });
+    expect(exerciseEvidence.cards[0].cautions).toEqual(CONTENT.cards.get('plank')!.card.stop_if);
+    expect(exerciseEvidence.cards[0].dossier.cardId).toBe('plank');
+    expect((await get(app, `/api/approvals/${plan.id}/decision-evidence`, SAM)).json().cards).toHaveLength(STARTER_SESSION.cardIds.length);
+    expect((await get(app, `/api/approvals/${dossier.id}/decision-evidence`, SAM)).json().dossier.itemVersion).toBe(dossier.itemVersion);
+    await approvals.decline(exercise.id, PARENT, null);
+    expect((await get(app, `/api/approvals/${exercise.id}/decision-evidence`, SAM)).statusCode).toBe(404);
+  });
+
+  it('does not attach a current dossier to an older exercise snapshot', async () => {
+    await training.proposeFor(DATE);
+    const request = (await approvals.pending()).find((r) => r.itemId === 'card-plank')!;
+    const cards = new Map(CONTENT.cards);
+    const current = cards.get('plank')!;
+    cards.set('plank', { ...current, contentHash: `changed-${current.contentHash}` });
+    training.setContent({ ...CONTENT, cards });
+    const evidence = training.decisionEvidence(request)!;
+    expect(evidence[0].itemVersion).toBe(request.itemVersion);
+    expect(evidence[0].dossier).toBeNull();
+  });
+
   it('lets the parent read a request before approving it, and never the keeper', async () => {
     await cardsApproved();
     app = await buildApp({ config: config(), verifier: new ProxyJwtVerifier(AUDIENCE, signer.keys), approvals, training });

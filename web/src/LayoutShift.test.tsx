@@ -158,7 +158,7 @@ describe('an answer collapses its item in place (AC3)', () => {
     render(<ParentInbox fetchImpl={server.fetchImpl} />);
     const item = await screen.findByRole('listitem', { name: 'Squat to box' });
     if (within(item).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(item).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(item).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(await within(item).findByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(rows()).toEqual(['Lateral shuffle', 'Low pogo hops']));
   });
 
@@ -170,11 +170,12 @@ describe('an answer collapses its item in place (AC3)', () => {
     const list = item.parentElement!;
     const toastSlot = list.nextElementSibling!;
     fireEvent.click(within(item).getByRole('button', { name: /^Review/ }));
+    await within(item).findByRole('button', { name: 'Decline' });
     const actions = item.querySelector('.actions')!;
     const actionsShape = { 'min-height': cascaded(rules, actions, 'min-height'), margin: cascaded(rules, actions, 'margin-top') };
 
     if (within(item).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(item).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(item).getByRole('button', { name: 'Decline' }));
+    fireEvent.click(await within(item).findByRole('button', { name: 'Decline' }));
     const outcome = await within(item).findByText('Declined');
     // Nothing moved: the same item, in the same place, every row still there.
     expect(item.isConnected).toBe(true);
@@ -190,7 +191,7 @@ describe('an answer collapses its item in place (AC3)', () => {
     // The next answer is the tap that closes the list up, at once, before its own answer lands.
     const next = screen.getByRole('listitem', { name: 'Lateral shuffle' });
     if (within(next).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(next).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(next).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(await within(next).findByRole('button', { name: 'Approve' }));
     expect(rows()).toEqual(['Lateral shuffle', 'Low pogo hops']);
     expect(within(next).getByRole('button', { name: 'Saving…' })).toBeTruthy();
     await within(next).findByText('Approved');
@@ -202,7 +203,7 @@ describe('an answer collapses its item in place (AC3)', () => {
     render(<ParentInbox fetchImpl={server.fetchImpl} />);
     const item = await screen.findByRole('listitem', { name: 'Squat to box' });
     if (within(item).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(item).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(item).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(await within(item).findByRole('button', { name: 'Approve' }));
     const toast = (await screen.findByText('Approved: Squat to box')).parentElement!;
     fireEvent.click(within(toast).getByRole('button', { name: 'Undo' }));
     expect(await screen.findByText("Approval undone. It's back in the inbox.")).toBeTruthy();
@@ -219,7 +220,7 @@ describe('an answer collapses its item in place (AC3)', () => {
     const card = item.closest('article')!;
     const before = [...card.children].map((c) => c.className);
     if (within(item).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(item).findByRole('button', { name: /^Review/ }));
-    fireEvent.click(within(item).getByRole('button', { name: 'Approve' }));
+    fireEvent.click(await within(item).findByRole('button', { name: 'Approve' }));
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toBe("That answer didn't go through. Check the inbox and try again.");
     expect(alert.parentElement!.className).toBe('toast-slot');
