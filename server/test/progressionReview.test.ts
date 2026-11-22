@@ -9,6 +9,7 @@ import { MemoryRoleStore } from '../src/roles.js';
 import { FakeFirestore } from './fakeFirestore.js';
 import { defaultContentRoot } from '../src/content.js';
 import { FirestoreApprovalStore, FirestoreAuditLog } from '../src/approvals.js';
+import { ResetPainGate } from '../src/householdReset.js';
 
 it('offers and records a parent review only for current synthetic evidence', async () => {
   const db = new FakeFirestore(), history = new FirestoreHistoryStore(db), proofs = new FirestoreSquatProofStore(db);
@@ -28,11 +29,15 @@ it('offers and records a parent review only for current synthetic evidence', asy
   const review = ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'sha256:836073df2f6a8c3c94e99bf990df658d');
   expect(() => ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'unknown')).toThrow('no owner decision');
   expect(() => ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'sha256:ebe9725306de0c55f06f059ca1952118')).toThrow('No readiness rule');
-  registerProgressionReviewRoutes(app, review, MemoryRoleStore.fromSeed('parent@example.com=parent;keeper@example.com=keeper'));
+  const gate = new ResetPainGate();
+  registerProgressionReviewRoutes(app, review, MemoryRoleStore.fromSeed('parent@example.com=parent;keeper@example.com=keeper'), gate, () => 0);
   const headers = (account: string) => ({ [IDENTITY_HEADER]: signer.sign({ account, audience }) });
   const post = (url: string, account = 'parent@example.com') => app.inject({ method: 'POST', url, headers: headers(account) });
   try {
     expect((await post('/api/progression/review-offer', 'keeper@example.com')).statusCode).toBe(403);
+    expect(gate.beginReset()).toBe(true);
+    expect((await post('/api/progression/review-offer')).statusCode).toBe(409);
+    gate.endReset();
     const expired = (await post('/api/progression/review-offer')).json().id;
     const expiredRef = db.collection('progressionReviewOffers').doc(expired);
     await db.runTransaction(async (tx) => { const snap = await tx.get(expiredRef); tx.set(expiredRef, { ...(snap.data() as object), expiresAt: Date.now() - 1 }); });

@@ -8,13 +8,14 @@ import type { HistoryService } from './history.js';
 import type { ResetPainGate } from './householdReset.js';
 import { GENERATION_HEADER, requestGeneration } from './generation.js';
 import { evaluateSquatReadiness, type ReadinessFacts } from './squatReadiness.js';
+import type { SquatProofService } from './squatProof.js';
 
 /** Test fixture only: a live authority for complete occurrence order does not yet exist. */
 export type SyntheticSquatProof = { orderedRecordIds: string[]; safety: ReadinessFacts['safety'] };
 
 export function registerHistoryRoutes(
   app: FastifyInstance,
-  { history, roles, gate, isPaused, currentGeneration, syntheticSquatProof, cardApproved }: { history: HistoryService; roles: RoleStore; gate: ResetPainGate; isPaused: () => Promise<boolean>; currentGeneration: () => number; syntheticSquatProof?: () => Promise<SyntheticSquatProof | null>; cardApproved: (version: string) => Promise<boolean> },
+  { history, roles, gate, isPaused, currentGeneration, syntheticSquatProof, cardApproved, readiness }: { history: HistoryService; roles: RoleStore; gate: ResetPainGate; isPaused: () => Promise<boolean>; currentGeneration: () => number; syntheticSquatProof?: () => Promise<SyntheticSquatProof | null>; cardApproved: (version: string) => Promise<boolean>; readiness?: SquatProofService },
 ): void {
   app.post<{ Body: unknown }>('/api/history/sessions', async (req, reply) => {
     reply.header('cache-control', 'no-store');
@@ -46,6 +47,10 @@ export function registerHistoryRoutes(
     // such authority and remains unknown; receipt order and client claims are not proof.
     try {
       if (await isPaused()) return { status: 'held' };
+      if (readiness) {
+        const status = await readiness.status();
+        return status === 'unknown' ? { status, detail: await history.squatEvidenceDetail() } : { status };
+      }
       const proof = await syntheticSquatProof?.();
       if (proof) {
         if (Object.values(proof.safety).includes('held')) return { status: 'held' };

@@ -90,6 +90,12 @@ export class SquatProofService {
     return { snapshot, ordered };
   }
 
+  /** The parent can confirm this server order; it cannot be supplied or rearranged by a keeper. */
+  async reviewWindow(): Promise<{ id: string; date: string }[] | null> {
+    const window = await this.window();
+    return window?.ordered.map((record) => ({ id: record.id, date: record.date })) ?? null;
+  }
+
   async attest(input: SquatAttestation): Promise<boolean> {
     const pain = await this.painHistory();
     // An attempted re-attestation supersedes the prior one even when it cannot be accepted.

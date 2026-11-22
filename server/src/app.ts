@@ -31,7 +31,7 @@ import {
   seedDemoHousehold,
   type DemoTarget,
 } from './demo.js';
-import { loadContent } from './content.js';
+import { defaultContentRoot, loadContent } from './content.js';
 import { FirestoreStartedStore, TrainingService, utcDate } from './training.js';
 import { registerTrainingRoutes } from './trainingRoutes.js';
 import { registerDossierRoutes } from './dossierRoutes.js';
@@ -56,6 +56,11 @@ import {
 } from './generation.js';
 import { HouseholdReset, ResetPainGate, registerHouseholdRoutes } from './householdReset.js';
 import { FirestoreEquipmentStore, MemoryEquipmentStore, registerEquipmentRoutes } from './equipment.js';
+import { FirestoreSquatProofStore, SquatProofService } from './squatProof.js';
+import { painEvidenceSource } from './painEvidence.js';
+import { ProgressionReview, registerProgressionReviewRoutes } from './progressionReview.js';
+import { registerSquatProofRoutes } from './squatProofRoutes.js';
+import { ownerApprovedSquatVersions } from './ownerProgression.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -395,12 +400,26 @@ export async function buildApp({
       store: historyStore ?? (db ? new FirestoreHistoryStore(db) : new MemoryHistoryStore()),
       training: trainingService,
     });
+  // The revision guard requires every participant to use the same Firestore household.
+  // Custom or in-memory services remain unknown instead of asserting complete evidence.
+  const proofStore = db && ownPain instanceof FirestorePainStore && own?.store instanceof FirestoreApprovalStore && historyService.store instanceof FirestoreHistoryStore && !syntheticSquatProof ? new FirestoreSquatProofStore(db) : undefined;
+  const readiness = proofStore && ownPain ? new SquatProofService(historyService.store, proofStore, painEvidenceSource(ownPain), (version) => approvalService.isApproved('card-squat-to-box', version)) : undefined;
+  const review = readiness && proofStore && db ? ProgressionReview.fromOwnerArchive(db, readiness, proofStore, config.contentRoot || defaultContentRoot(), 'sha256:836073df2f6a8c3c94e99bf990df658d') : undefined;
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused(), history: historyService, gate: resetPainGate, currentGeneration: () => currentGeneration });
-  registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration, syntheticSquatProof, cardApproved: (version) => approvalService.isApproved('card-squat-to-box', version) });
+  registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration, syntheticSquatProof, cardApproved: (version) => approvalService.isApproved('card-squat-to-box', version), readiness });
+  if (readiness && review) {
+    const candidate = ownerApprovedSquatVersions(config.contentRoot || defaultContentRoot()).find((entry) => entry.itemVersion === 'sha256:836073df2f6a8c3c94e99bf990df658d');
+    if (!candidate) throw new ConfigError('Approved progression candidate missing');
+    // Conservative until durable restart and transition state are available: no readiness,
+    // no archived card projection. This does not add the card to a scheduled session.
+    trainingService.registerArchivedCard(candidate.card, async () => await readiness.status() === 'ready-for-parent');
+    registerSquatProofRoutes(app, readiness, roleStore, resetPainGate, () => currentGeneration);
+    registerProgressionReviewRoutes(app, review, roleStore, resetPainGate, () => currentGeneration);
+  }
 
   // Every store the app made or was given that can delete its part of the household.
   const parts: HouseholdPart[] = [];
-  for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store, equipment]) {
+  for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store, equipment, proofStore, review]) {
     if (isPart(p)) parts.push(p);
   }
   // Starting fresh keeps the parent's training days (story 121).

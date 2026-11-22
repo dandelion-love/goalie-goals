@@ -320,6 +320,7 @@ export class TrainingService {
   private content: ContentLibrary;
   readonly plan: TrainingPlan;
   private readonly snapshots: MemorySnapshotStore;
+  private readonly archivedGates = new Map<string, () => Promise<boolean>>();
   private readonly startedStore: StartedStore | undefined;
   readonly equipment: EquipmentStore;
   /** Exercise dossiers (story 115), approved like the cards they explain. */
@@ -358,6 +359,19 @@ export class TrainingService {
   /** The exercise cards the sessions are built from. */
   get library(): ContentLibrary {
     return this.content;
+  }
+
+  /** Restore a verified archived card snapshot without scheduling or approving it. */
+  registerArchivedCard(source: CardSource, available: () => Promise<boolean>): void {
+    const snap = cardSnapshot(source);
+    this.snapshots.cards.set(snap.itemVersion, snap);
+    this.archivedGates.set(snap.itemVersion, available);
+  }
+
+  private async mayShowCard(version: string): Promise<boolean> {
+    const gate = this.archivedGates.get(version);
+    if (!gate) return true;
+    try { return await gate(); } catch { return false; }
   }
 
   /** Parent-only context from the exact request snapshots; dossiers are separately versioned. */
@@ -619,7 +633,7 @@ export class TrainingService {
     const cards: ClientCard[] = [];
     for (const i of items) {
       const snap = this.snapshots.cards.get(i.itemVersion);
-      if (snap && snap.itemId === i.itemId) cards.push(this.cardToClient(snap));
+      if (snap && snap.itemId === i.itemId && await this.mayShowCard(i.itemVersion)) cards.push(this.cardToClient(snap));
     }
     return cards.sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -628,7 +642,9 @@ export class TrainingService {
   async collectionExercises() {
     const items = await this.approvals.approvedItems();
     const dossiers = await this.dossiers.approved();
-    return items.flatMap((item) => {
+    const visible = await Promise.all(items.map(async (item) => ({ item, allowed: await this.mayShowCard(item.itemVersion) })));
+    return visible.flatMap(({ item, allowed }) => {
+      if (!allowed) return [];
       if (item.kind !== 'exercise') return [];
       const snap = this.snapshots.cards.get(item.itemVersion);
       if (!snap || snap.itemId !== item.itemId) return [];
@@ -644,6 +660,7 @@ export class TrainingService {
     const snap = this.snapshots.cards.get(version);
     if (!snap || snap.itemId !== cardItemId(cardId)) return null;
     if (!(await this.approvals.isApproved(snap.itemId, snap.itemVersion))) return null;
+    if (!(await this.mayShowCard(version))) return null;
     return snap.source.figureSvg;
   }
 

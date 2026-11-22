@@ -8,6 +8,9 @@ import { ownerApprovedSquatVersions } from './ownerProgression.js';
 import type { Dossier, ExerciseCard } from './content.js';
 import { cardSnapshot } from './training.js';
 import { prepareReviewedApproval, REQUEST_TTL_MS } from './approvals.js';
+import { deleteCollection } from './firestoreDb.js';
+import { GENERATION_HEADER, requestGeneration } from './generation.js';
+import type { ResetPainGate } from './householdReset.js';
 
 type ReviewCandidate = { itemId: string; version: string; title: string; dose: string; cues: string[]; card: ExerciseCard; approvalContent: { title: string; detail: string }; dossier?: Dossier; dossierVersion?: string };
 
@@ -22,6 +25,11 @@ export class ProgressionReview {
     if (entry.rung !== 'squat-to-box-pause' || entry.predecessor !== 'squat-to-box') throw new Error('No readiness rule for progression version');
     const snapshot = cardSnapshot(entry.card);
     return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues, card: entry.card.card, approvalContent: { title: snapshot.content.title, detail: snapshot.content.detail }, ...(entry.dossier && entry.dossierVersion ? { dossier: entry.dossier.dossier, dossierVersion: entry.dossierVersion } : {}) });
+  }
+
+  async deleteAll(): Promise<void> {
+    await deleteCollection(this.db, 'progressionReviewOffers');
+    await deleteCollection(this.db, 'progressionReviewDecisions');
   }
 
   async offer(): Promise<({ id: string } & ReviewCandidate) | null> {
@@ -70,14 +78,24 @@ export class ProgressionReview {
 }
 
 /** Not registered in the production app. Role and evidence stay server-side. */
-export function registerProgressionReviewRoutes(app: FastifyInstance, review: ProgressionReview, roles: RoleStore): void {
+export function registerProgressionReviewRoutes(app: FastifyInstance, review: ProgressionReview, roles: RoleStore, gate: ResetPainGate, currentGeneration: () => number): void {
   app.post('/api/progression/review-offer', async (req, reply) => {
+    reply.header('cache-control', 'no-store');
     if (await roles.roleFor(req.identity!.account) !== 'parent') return reply.code(403).send({ error: 'forbidden' });
-    const offer = await review.offer();
-    return offer ?? reply.code(409).send({ error: 'unavailable' });
+    if (!gate.beginWrite()) return reply.code(409).send({ error: 'reset-in-progress' });
+    try {
+      if (requestGeneration(req.headers[GENERATION_HEADER]) !== currentGeneration()) return reply.code(409).send({ error: 'stale_generation' });
+      const offer = await review.offer();
+      return offer ?? reply.code(409).send({ error: 'unavailable' });
+    } finally { gate.endWrite(); }
   });
   app.post<{ Params: { id: string } }>('/api/progression/review-offer/:id/approve', async (req, reply) => {
+    reply.header('cache-control', 'no-store');
     if (await roles.roleFor(req.identity!.account) !== 'parent') return reply.code(403).send({ error: 'forbidden' });
-    return await review.decide(req.params.id, req.identity!.account) ? { ok: true } : reply.code(409).send({ error: 'unavailable' });
+    if (!gate.beginWrite()) return reply.code(409).send({ error: 'reset-in-progress' });
+    try {
+      if (requestGeneration(req.headers[GENERATION_HEADER]) !== currentGeneration()) return reply.code(409).send({ error: 'stale_generation' });
+      return await review.decide(req.params.id, req.identity!.account) ? { ok: true } : reply.code(409).send({ error: 'unavailable' });
+    } finally { gate.endWrite(); }
   });
 }
