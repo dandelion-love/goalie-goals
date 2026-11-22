@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { TradingCard } from './CardTile';
 import { collectionArtwork } from './collectionArtwork';
 import { RUNGS, type Rung } from './ladders';
@@ -14,9 +14,10 @@ type AvailableCard = { id: string; figureUrl?: string; headline?: string };
 export type RungState = 'unknown' | 'held' | 'one-qualifying' | 'ready-for-parent';
 
 /** Read-only tree. Only the caller's role-authorized card projection can open a rung. */
-export function ProgressionTree({ cards, states = {}, onOpen }: { cards: readonly AvailableCard[]; states?: Readonly<Record<string, RungState>>; onOpen: (id: string) => void }) {
+export function ProgressionTree({ cards, states = {}, onOpen }: { cards: readonly AvailableCard[]; states?: Readonly<Record<string, RungState>>; onOpen: (id: string, origin: HTMLButtonElement | null) => void }) {
   const [family, setFamily] = useState<string | null>(null);
   const [ladder, setLadder] = useState<string | null>(null);
+  const buttons = useRef(new Map<string, HTMLButtonElement>());
   const selected = families.find((entry) => entry.name === family);
   const openRung = (rung: Rung) => { const next = families.find((entry) => (entry.ladders as readonly string[]).includes(rung.ladder)); if (next) { setFamily(next.name); setLadder(rung.ladder); } };
   return <section aria-label="Progression library"><h2>Progression library</h2>
@@ -25,7 +26,7 @@ export function ProgressionTree({ cards, states = {}, onOpen }: { cards: readonl
       const status = states[rung.id];
       const state = !card ? 'Unavailable' : status === 'held' ? 'On hold' : status === 'ready-for-parent' ? 'Ready for parent consideration' : status === 'one-qualifying' ? 'One qualifying session' : 'Approved; readiness unknown';
       const rank = rankForRung(rung.rung)?.name ?? `Rung ${rung.rung}`;
-      return <div key={rung.id}><TradingCard kind="Exercise" name={rung.name} level={rung.rung} series={rung.ladder} footer={`${rung.ladder} · ${rank}`} state={state} locked={!card} summary={card?.headline} artwork={collectionArtwork[rung.id]} fallbackArtwork={card?.figureUrl} onOpen={card ? () => onOpen(rung.id) : undefined} />{rung.needs.length > 0 && <p>Prerequisites: {rung.needs.map((id) => { const prerequisite = RUNGS.find((entry) => entry.id === id); return prerequisite ? <button type="button" className="secondary" key={id} onClick={() => openRung(prerequisite)}>{prerequisite.name}</button> : <span key={id}>{id} (unavailable)</span>; })}</p>}</div>;
+      return <div key={rung.id}><TradingCard kind="Exercise" name={rung.name} level={rung.rung} series={rung.ladder} footer={`${rung.ladder} · ${rank}`} state={state} locked={!card} summary={card?.headline} artwork={collectionArtwork[rung.id]} fallbackArtwork={card?.figureUrl} buttonRef={(node) => { if (node) buttons.current.set(rung.id, node); else buttons.current.delete(rung.id); }} onOpen={card ? () => onOpen(rung.id, buttons.current.get(rung.id) ?? null) : undefined} />{rung.needs.length > 0 && <p>Prerequisites: {rung.needs.map((id) => { const prerequisite = RUNGS.find((entry) => entry.id === id); return prerequisite ? <button type="button" className="secondary" key={id} onClick={() => openRung(prerequisite)}>{prerequisite.name}</button> : <span key={id}>{id} (unavailable)</span>; })}</p>}</div>;
     })}</div></>}
   </section>;
 }

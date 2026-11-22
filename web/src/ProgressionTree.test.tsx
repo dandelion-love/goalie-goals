@@ -10,7 +10,7 @@ it('focuses one family and ladder, opens only authorized cards, and follows prer
   fireEvent.click(screen.getByRole('button', { name: 'Squat' }));
   expect(screen.getAllByText('Unavailable')).toHaveLength(3);
   fireEvent.click(screen.getByRole('button', { name: /Exercise: Squat to box/ }));
-  expect(open).toHaveBeenCalledWith('squat-to-box');
+  expect(open).toHaveBeenCalledWith('squat-to-box', expect.any(HTMLButtonElement));
   fireEvent.click(screen.getByRole('button', { name: 'Back to Strength' }));
   fireEvent.click(screen.getByRole('button', { name: 'Back to families' }));
   fireEvent.click(screen.getByRole('button', { name: 'Movement and jumps' }));

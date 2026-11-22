@@ -2,6 +2,7 @@ import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useStat
 import type { Layout } from './layout';
 import { ApprovedTraining as ApprovedTrainingPanel, History as HistoryPanel } from './ApprovalScreens';
 import { CardCollection } from './CardCollection';
+import { ProgressionLibrary } from './ProgressionLibrary';
 import { TodayPanel as TodayPanelBody } from './LessonPath';
 import { sound, useWarmCues } from './sound';
 import { ProgressPanel as ProgressPanelBody } from './ProgressPanel';
@@ -39,7 +40,7 @@ import { afterPaint } from './defer';
 import { warmPainReport } from './warmPain';
 import { RoleShell, useDestination } from './RoleShell';
 
-const KEEPER_DESTINATIONS = [{ id: 'today', label: 'Today' }, { id: 'week', label: 'Week' }, { id: 'history', label: 'History' }, { id: 'library', label: 'Training' }] as const;
+const KEEPER_DESTINATIONS = [{ id: 'today', label: 'Today' }, { id: 'week', label: 'Week' }, { id: 'history', label: 'History' }, { id: 'library', label: 'Training' }, { id: 'tree', label: 'Progression' }] as const;
 
 // The keeper's home, in its own chunk (story 101 AC2): the parent's device never loads it.
 
@@ -521,6 +522,7 @@ export function KeeperHome({
         </div>
       </Reveal>
       </div>
+      {destination === 'tree' && !pause && <ProgressionLibrary fetchImpl={fetchImpl} refresh={changed + epoch} />}
     </RoleShell>
   );
 }
