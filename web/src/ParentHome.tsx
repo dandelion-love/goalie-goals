@@ -11,7 +11,7 @@ import { useMoment } from './motion';
 import { Equipment } from './Equipment';
 import { RoleShell, useDestination } from './RoleShell';
 
-const PARENT_DESTINATIONS = [{ id: 'inbox', label: 'Inbox' }, { id: 'plan', label: 'Plan' }, { id: 'progress', label: 'Progress' }, { id: 'settings', label: 'Settings' }] as const;
+const PARENT_DESTINATIONS = [{ id: 'inbox', label: 'Inbox' }, { id: 'plan', label: 'Plan' }, { id: 'progress', label: 'Progress' }, { id: 'settings', label: 'Reset' }] as const;
 
 // The parent's home, in its own chunk (story 101 AC2): the keeper's device never loads it.
 
@@ -56,7 +56,7 @@ export function ParentHome({ fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl
   const inboxOpen = daysOpen && settled.days;
   const historyOpen = inboxOpen && settled.inbox;
   return (
-    <RoleShell title="Parent home" destinations={PARENT_DESTINATIONS.map((item) => item.id === 'inbox' ? { ...item, label: `Inbox${inboxSummary.badge ? ` (${inboxSummary.badge})` : ''}${inboxSummary.urgent ? ' urgent' : ''}` } : item)} current={destination} navigate={navigate} navigation={navigation} content={content}>
+    <RoleShell title="Parent home" destinations={PARENT_DESTINATIONS.map((item) => item.id === 'inbox' ? { ...item, title: 'Inbox', label: `Inbox${inboxSummary.badge ? ` (${inboxSummary.badge})` : ''}${inboxSummary.urgent ? ' urgent' : ''}` } : item)} current={destination} navigate={navigate} navigation={navigation} content={content}>
       <div hidden={destination !== 'progress'}>
       <ProgressPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onProgress} />
       </div>

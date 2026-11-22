@@ -118,7 +118,7 @@ describe('training days on Parent home', () => {
   it('is hidden for the keeper', async () => {
     const server = fakeServer('keeper');
     render(<App fetchImpl={server.fetchImpl} />);
-    expect(await screen.findByRole('heading', { name: 'Keeper home' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Today', level: 1 })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Training days' })).toBeNull();
     expect(server.fetchImpl).not.toHaveBeenCalledWith(expect.stringMatching(/^\/api\/training\/days/), expect.anything());
   });

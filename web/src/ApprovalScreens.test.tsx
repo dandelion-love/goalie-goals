@@ -94,7 +94,7 @@ describe('parent inbox', () => {
     const server = fakeServer('parent');
     render(<App fetchImpl={server.fetchImpl} />);
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
-    const inbox = (await screen.findByRole('heading', { name: /Inbox/ })).closest('article')!;
+    const inbox = (await screen.findByRole('heading', { name: /Inbox/, level: 2 })).closest('article')!;
     expect(await within(inbox).findByText('Starter plan')).toBeTruthy();
     expect(within(inbox).getByText('Low pogo hops, a step harder')).toBeTruthy();
     expect(within(inbox).getByText('Plan')).toBeTruthy();
@@ -156,7 +156,7 @@ describe('keeper home', () => {
     expect(within(training).queryByText('Low pogo hops, a step harder')).toBeNull();
     expect(within(training).getByText('2 changes are waiting for your parent.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
-    expect(screen.queryByRole('heading', { name: /Inbox/ })).toBeNull();
+    expect(screen.queryByRole('heading', { name: /Inbox/, level: 2 })).toBeNull();
     expect(server.fetchImpl).not.toHaveBeenCalledWith('/api/approvals/pending', expect.anything());
   });
 

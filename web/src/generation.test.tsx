@@ -236,7 +236,7 @@ describe('the keeper device after the parent started fresh', () => {
       />,
     );
     expect(await screen.findByText('Training data was cleared. Starting fresh.')).toBeTruthy();
-    await screen.findByRole('heading', { name: 'Keeper home' });
+    await screen.findByRole('heading', { name: 'Today', level: 1 });
     await new Promise((r) => setTimeout(r, 50));
     expect(c.pause.value).toBeNull();
     expect(c.outbox.events).toEqual([]);

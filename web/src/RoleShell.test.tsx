@@ -13,7 +13,9 @@ describe('role destinations', () => {
   it('restores the selected view on Back and returns focus to its navigation control', async () => {
     window.history.replaceState(null, '', '/?view=today');
     render(<Example />);
+    expect(screen.getByRole('heading', { name: 'Today', level: 1 })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Week' }));
+    expect(screen.getByRole('heading', { name: 'Week', level: 1 })).toBeTruthy();
     expect(new URL(window.location.href).searchParams.get('view')).toBe('week');
     window.history.back();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Today' }).getAttribute('aria-current')).toBe('page'));

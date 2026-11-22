@@ -176,7 +176,7 @@ describe.each(SIZES)('session player on $name', ({ width, height, layout, panes 
 
     click('Done for today');
     expect(await screen.findByText("Today's session is done. See you next time.")).toBeTruthy();
-    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Keeper home' })));
+    await vi.waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Today', level: 1 })));
     expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull();
   });
 

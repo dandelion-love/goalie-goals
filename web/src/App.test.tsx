@@ -13,12 +13,12 @@ afterEach(cleanup);
 describe('App', () => {
   it('shows Keeper home for the keeper', async () => {
     render(<App fetchImpl={respond(200, { role: 'keeper' })} />);
-    expect(await screen.findByRole('heading', { name: 'Keeper home' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Today', level: 1 })).toBeTruthy();
   });
 
   it('shows Parent home for the parent', async () => {
     render(<App fetchImpl={respond(200, { role: 'parent' })} />);
-    expect(await screen.findByRole('heading', { name: 'Parent home' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Progress', level: 1 })).toBeTruthy();
   });
 
   it('shows "not set up" and no home data for an account with no role', async () => {

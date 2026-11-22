@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { LoadSpace, useSettled } from './Loading';
 import { shortDate } from './dates';
 import { ENDING_TEXT, fetchHistory, setsLine, type HistoryCard, type HistorySession } from './history';
+import { EmptyState } from './Interface';
 
 // Recent sessions on both homes (story 113), in a panel of their own so approvals never bury
 // them (the approvals History stays its own list). Newest first; opening a session shows each
@@ -144,7 +145,7 @@ export function SessionHistory({
           }}
         />
       )}
-      {state.kind === 'ready' && state.data.length === 0 && <p>No sessions yet.</p>}
+      {state.kind === 'ready' && state.data.length === 0 && <EmptyState>No sessions yet.</EmptyState>}
       {state.kind === 'ready' && state.data.length > 0 && (
         <ol className="session-list">
           {state.data.map((s) => (

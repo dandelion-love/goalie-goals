@@ -70,7 +70,7 @@ function parentServer({ paused = true, failReset = false } = {}) {
 }
 
 async function openStartFresh() {
-  const settings = await screen.findByRole('button', { name: 'Settings' });
+  const settings = await screen.findByRole('button', { name: 'Reset' });
   if (!settings.hasAttribute('aria-current')) fireEvent.click(settings);
   const card = (await screen.findByRole('heading', { name: 'Start fresh' })).closest('article')!;
   fireEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Start fresh' }));
@@ -86,7 +86,7 @@ configure({ asyncUtilTimeout: 5000 });
 describe('Start fresh (AC1)', () => {
   it('keeps reset in Settings, separate from approvals and history', async () => {
     render(<App fetchImpl={parentServer().fetchImpl} wakeLock={wake} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset' }));
     const fresh = await screen.findByRole('heading', { name: 'Start fresh' });
     expect(fresh).toBeTruthy();
     expect(screen.queryByRole('button', { name: /^Approve/ })).toBeNull();

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Button, DestinationHeader } from './Interface';
 
-export type Destination = { id: string; label: string };
+export type Destination = { id: string; label: string; title?: string };
 
 /** Keep the role's destinations in browser history, with a safe role-specific fallback. */
 export function useDestination(destinations: readonly Destination[], fallback: string) {
@@ -45,11 +46,12 @@ export function RoleShell({ title, destinations, current, navigate, navigation, 
   navigation: RefObject<HTMLElement | null>; content: RefObject<HTMLDivElement | null>;
   heading?: RefObject<HTMLHeadingElement | null>; action?: ReactNode; children: ReactNode;
 }) {
-  const label = destinations.find((item) => item.id === current)?.label ?? title;
-  return <section className="home role-shell" aria-labelledby="home-title">
-    <div className="home-bar"><h1 id="home-title" ref={heading} tabIndex={-1}>{title}</h1>{action}</div>
+  const destination = destinations.find((item) => item.id === current);
+  const label = destination?.title ?? destination?.label ?? title;
+  return <section className="home role-shell" aria-label={title}>
+    <DestinationHeader title={label} heading={heading} action={action} />
     <nav ref={navigation} className="keeper-nav" aria-label={title === 'Keeper home' ? 'Keeper navigation' : 'Parent navigation'}>
-      {destinations.map((item) => <button key={item.id} type="button" className="secondary" aria-current={current === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>{item.label}</button>)}
+      {destinations.map((item) => <Button key={item.id} aria-current={current === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}>{item.label}</Button>)}
     </nav>
     <div className="role-content" ref={content} aria-label={`${label} content`}>
       {children}

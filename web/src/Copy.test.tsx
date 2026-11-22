@@ -191,7 +191,7 @@ describe('the words on both homes (AC1)', () => {
 
   it("parent home: Start fresh's confirm step (story 121)", async () => {
     render(<App fetchImpl={parentServer()} wakeLock={wake} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset' }));
     const card = (await screen.findByRole('heading', { name: 'Start fresh' }, { timeout: 5000 })).closest('article') as HTMLElement;
     fireEvent.click(within(card).getByRole('button', { name: 'Start fresh' }));
     await within(card).findByText('Training is paused now. This also clears the pause.');

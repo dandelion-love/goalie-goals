@@ -4,6 +4,7 @@ import { LoadError, Skeleton, useSettled } from './Loading';
 import type { OfflineStore } from './offline';
 import { precacheFigures } from './figures';
 import { nextText, type NextSession } from './week';
+import { Button, StatusLabel } from './Interface';
 
 type Load = { kind: 'loading' } | { kind: 'ready'; data: Today; saved?: boolean } | { kind: 'error' };
 
@@ -125,7 +126,7 @@ export function TodayPanel({
       {state.kind === 'ready' && (
         <>
           <TodayBody today={state.data} doneToday={doneToday} next={next} resting={resting} onRest={() => setResting(true)} onStart={onStart} />
-          {state.saved && <p className="meta">Saved on this device.</p>}
+          {state.saved && <p className="meta"><StatusLabel>Saved on this device.</StatusLabel></p>}
         </>
       )}
     </article>
@@ -166,9 +167,9 @@ function TodayBody({
     const session = today.today;
     return (
       <>
-        <button type="button" className="primary session-control wide" disabled={disabled} onClick={() => onStart(session)}>
+        <Button variant="primary" className="session-control wide" disabled={disabled} onClick={() => onStart(session)}>
           Start session
-        </button>
+        </Button>
         <LessonPath session={session} label="Today's session" />
       </>
     );

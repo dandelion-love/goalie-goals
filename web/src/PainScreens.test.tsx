@@ -262,7 +262,7 @@ describe('while paused (AC4)', () => {
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} pauseStore={store} />);
     expect(await screen.findByRole('heading', { name: 'Training is paused' })).toBeTruthy();
     await new Promise((r) => setTimeout(r, 20));
-    expect(screen.queryByRole('heading', { name: 'Today' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Today', level: 2 })).toBeNull();
     expect(screen.queryByRole('button', { name: /Start session|Do last version|Rest today/ })).toBeNull();
     expect(store.value).not.toBeNull();
   });

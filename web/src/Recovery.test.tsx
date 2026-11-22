@@ -64,12 +64,12 @@ describe('offline (AC2)', () => {
     state.online = false;
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} now={NOW} offlineStore={store} pauseStore={new MemoryPauseStore()} />);
     expect(await screen.findByText(/You're offline\. Today's session and the pause still work on this device\./)).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Keeper home' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Today', level: 1 })).toBeTruthy();
     expect(await screen.findByText('Saved on this device.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
     // The player runs from the device; the start mark simply waits for the network.
     expect(await screen.findByRole('button', { name: 'Something hurts' })).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: 'Keeper home' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Today', level: 1 })).toBeNull();
   });
 
   it('shows the pause from the device offline, and nothing to start', async () => {
@@ -93,7 +93,7 @@ describe('offline (AC2)', () => {
     const server = keeper({ online: false });
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} now={NOW} offlineStore={new MemoryOfflineStore('parent')} />);
     expect(await screen.findByText("You're offline. Approvals need a connection.")).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Parent home' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Progress', level: 1 })).toBeTruthy();
   });
 
   it('without a saved role, offline is the plain error with Retry', async () => {
@@ -134,7 +134,7 @@ describe('a refused start (AC4)', () => {
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} now={NOW} pauseStore={new MemoryPauseStore()} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Start session' }));
     expect(await screen.findByText("Today's session changed. Check it again.")).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Keeper home' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Today', level: 1 })).toBeTruthy();
     expect(server.urls).toContain('POST /api/training/started');
   });
 });

@@ -237,7 +237,7 @@ describe('a failed load keeps the skeleton\'s space (AC4)', () => {
     const server = parentServer({ failInbox: true });
     server.hold('/api/approvals/pending');
     render(<ParentInbox fetchImpl={server.fetchImpl} />);
-    const card = screen.getByRole('heading', { name: 'Inbox' }).closest('article')!;
+    const card = screen.getByRole('heading', { name: 'Inbox', level: 2 }).closest('article')!;
     const space = card.querySelector('.load-space')!;
     expect(within(space as HTMLElement).getByRole('status', { name: 'Loading' })).toBeTruthy();
     const box = { classes: space.className, minHeight: cascaded(rules, space, 'min-height'), next: space.nextElementSibling };

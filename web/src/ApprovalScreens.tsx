@@ -20,6 +20,7 @@ import { shortDate } from './dates';
 import { nextStep } from './ladders';
 import { SquatEvidenceStatus } from './SessionHistory';
 import { DossierToggle } from './DossierScreens';
+import { EmptyState, StatusLabel } from './Interface';
 import { fetchDossiers, fetchRequestDossier, type Dossier } from './dossier';
 
 type Load<T> = { kind: 'loading' } | { kind: 'ready'; data: T } | { kind: 'error' };
@@ -227,12 +228,12 @@ export function ParentInbox({
           }}
         />
       )}
-      {state.kind === 'ready' && state.data.rows.length === 0 && <p>Nothing to approve.</p>}
+      {state.kind === 'ready' && state.data.rows.length === 0 && <EmptyState>Nothing to approve.</EmptyState>}
       {state.kind === 'ready' && state.data.rows.length > 0 && (
         <ul className="requests">
           {state.data.rows.map(({ request: r, answered }) => (
             <li key={r.id} className="request" aria-label={r.title} hidden={selected !== null && selected !== r.id}>
-              <span className="kind">{KIND_LABEL[r.kind] ?? r.kind}</span>
+              <span className="kind"><StatusLabel>{KIND_LABEL[r.kind] ?? r.kind}</StatusLabel></span>
               <h3>{r.title}</h3>
               {selected === r.id ? (
                 <button type="button" className="secondary" disabled={busy !== null} onClick={() => {
