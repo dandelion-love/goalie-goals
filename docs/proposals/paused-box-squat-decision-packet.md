@@ -43,6 +43,23 @@ or present the changed bytes for a new decision.
 | `squat-to-box-pause.dossier.json` | `844a61d7002b02723f8eb3576243b875d8e1a9e38934987f679fb6bd738f92a0` |
 | `squat-to-box-pause.svg` | `3b3077d6a88ada20ab03588e7981c28a2ecc625b0f554c8b426f7acb3cae5243` |
 
+The three prior-card versions use the existing `content/figures/squat-to-box.svg`,
+SHA-256 `3e0e0ca7becff11061dd4ea25039a423424e00190cf22181113fbfb0a22e7360`.
+Using these exact card and figure bytes and the current app's version algorithm,
+`npx tsx tools/candidate_versions.ts` yields:
+
+| Candidate | Effective app approval version |
+| --- | --- |
+| 2 × 12 prior card | `sha256:ebe9725306de0c55f06f059ca1952118` |
+| 2 × 14 prior card | `sha256:445e7246d4e46e6d070a28e8be435506` |
+| 2 × 15 prior card | `sha256:681d68b9e6dfd2f334ba5aa7c4f81d2a` |
+| Paused card | `sha256:836073df2f6a8c3c94e99bf990df658d` |
+| Paused dossier | `sha256:8365e00c6b872dd5c864c9e672869701` |
+
+These identifiers name versions; they do not record owner content approval or a parent
+decision. The app's card version binds its card and figure, while the separately hashed
+specs above must also be part of the content decision.
+
 ## Evidence and safety boundary
 
 The existing progression rules call for two consecutive sessions at the exact prior-rung target, with every repetition confirmed clean by the parent. Rest days and sessions without the card do not break the pair. A zero-completed-set record is unknown unless authoritative occurrence data proves the exercise did not start. Incomplete records, unverified order, missing confirmation and unverified holds cannot establish readiness. Pain, growth, break/restart and step-down conditions remain separate checks.
