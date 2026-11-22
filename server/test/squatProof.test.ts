@@ -31,6 +31,17 @@ it('cannot publish a proof collected across a concurrent history change', async 
   expect(await proofs.read()).toBeNull();
 });
 
+it.each(['memory', 'firestore'])('%s cannot clear a newer hold with an older attempt', async (kind) => {
+  const proofs: SquatProofStore = kind === 'memory' ? new MemorySquatProofStore() : new FirestoreSquatProofStore(new FakeFirestore());
+  const older = await proofs.begin();
+  const newer = await proofs.begin(true);
+  const clear = { fingerprint: 'example', orderedRecordIds: [], pauseRevision: 'none', revision: older.revision, safety: { pain: 'clear' as const, growth: 'clear' as const, breakRestart: 'clear' as const, stepDown: 'clear' as const } };
+  expect(await proofs.finish(older, clear)).toBe(false);
+  expect(await proofs.held()).toBe(true);
+  expect(await proofs.finish(newer, { ...clear, revision: newer.revision, safety: { ...clear.safety, growth: 'held' } })).toBe(true);
+  expect(await proofs.held()).toBe(true);
+});
+
 async function record(store: HistoryStore, n: number, late = false) {
   const id = `record-proof-${n}`;
   const instanceId = `instance-proof-${n}`;
