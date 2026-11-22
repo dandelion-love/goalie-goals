@@ -432,7 +432,7 @@ export async function buildApp({
 
   // Every store the app made or was given that can delete its part of the household.
   const parts: HouseholdPart[] = [];
-  const doseTransitions = review && db ? { deleteAll: () => deleteCollection(db, 'squatDoseTransitions') } : undefined;
+  const doseTransitions = review && db ? { deleteAll: async () => { await deleteCollection(db, 'squatDoseTransitions'); await deleteCollection(db, 'squatDoseOffers'); } } : undefined;
   for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store, equipment, proofStore, review, doseTransitions]) {
     if (isPart(p)) parts.push(p);
   }

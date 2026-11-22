@@ -6,6 +6,7 @@ import { FirestoreApprovalStore, FirestoreAuditLog } from '../src/approvals.js';
 import { defaultContentRoot, loadContent } from '../src/content.js';
 import { cardSnapshot } from '../src/training.js';
 import { FakeFirestore } from './fakeFirestore.js';
+import { resolveSquatDoseStage } from '../src/squatDoseStage.js';
 
 it('guards the exact 10 to 12 dose decision with parent-confirmed source evidence', async () => {
   const db = new FakeFirestore(), history = new FirestoreHistoryStore(db), proofs = new FirestoreSquatProofStore(db);
@@ -24,6 +25,7 @@ it('guards the exact 10 to 12 dose decision with parent-confirmed source evidenc
   expect(await proof.attest(input)).toBe(true);
   expect(() => SquatDoseReview.fromOwnerArchive(db, history, proof, proofs, root, 'wrong', 12, async () => true)).toThrow('predecessor');
   const review = SquatDoseReview.fromOwnerArchive(db, history, proof, proofs, root, from, 12, async () => true);
+  expect((await resolveSquatDoseStage(db, new FirestoreApprovalStore(db), root))?.index).toBe(0);
   const stale = await review.offer();
   expect(stale?.dose).toBe(12);
   await history.confirmSquatSet(ids[1], from, 0, { actualReps: 9, clean: false }, { actualReps: 10, clean: true, revision: 1 });
@@ -36,4 +38,7 @@ it('guards the exact 10 to 12 dose decision with parent-confirmed source evidenc
   expect(await new FirestoreApprovalStore(db).approvedVersion('card-squat-to-box', 'sha256:ebe9725306de0c55f06f059ca1952118')).not.toBeNull();
   expect((await new FirestoreAuditLog(db).list()).map((event) => event.action)).toEqual(['approved']);
   expect(db.paths().filter((path) => path.startsWith('squatDoseTransitions/'))).toHaveLength(1);
+  expect((await resolveSquatDoseStage(db, new FirestoreApprovalStore(db), root))?.index).toBe(1);
+  await new FirestoreApprovalStore(db).reopen(offer!.id);
+  expect(await resolveSquatDoseStage(db, new FirestoreApprovalStore(db), root)).toBeNull();
 });
