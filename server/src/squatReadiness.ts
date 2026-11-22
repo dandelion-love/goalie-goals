@@ -17,6 +17,8 @@ export function evaluateSquatDoseReadiness(records: readonly HistoryRecord[], fa
   if (safety.includes('held')) return 'held';
   if (safety.some((state) => state !== 'clear') || !facts.orderedHistoryComplete) return 'unknown';
   let count = 0;
+  let previousDay: number | null = null;
+  const weeks = new Map<number, number>();
   const seen = new Set<string>();
   const instances = new Set<string>();
   for (const record of records) {
@@ -25,6 +27,14 @@ export function evaluateSquatDoseReadiness(records: readonly HistoryRecord[], fa
     const matches = record.cards.filter((card) => card.cardId === 'squat-to-box');
     if (matches.length > 1) return 'unknown';
     if (!matches.length) continue;
+    const day = Date.parse(`${record.date}T00:00:00Z`);
+    if (!Number.isFinite(day) || (previousDay !== null && (day - previousDay) / 86400000 < 2)) return 'unknown';
+    previousDay = day;
+    const weekday = new Date(day).getUTCDay();
+    const monday = day - ((weekday + 6) % 7) * 86400000;
+    const inWeek = (weeks.get(monday) ?? 0) + 1;
+    if (inWeek > 3) return 'unknown';
+    weeks.set(monday, inWeek);
     const card = matches[0];
     // Zero completed sets does not prove the exercise was never started.
     if (card.setsDone === 0) return 'unknown';

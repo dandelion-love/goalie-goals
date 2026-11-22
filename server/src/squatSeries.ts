@@ -25,6 +25,8 @@ export async function hasCompletedSquatPrefix(history: HistoryStore, steps: read
   if (snapshot.records.some((record) => !bound.has(record.id) && record.date >= firstDate && record.cards.some((card) => card.cardId === 'squat-to-box'))) return false;
   if (snapshot.instances.some((instance) => instance.sequence === undefined && instance.cards.some((card) => card.cardId === 'squat-to-box') && (!instance.recordId || !records.has(instance.recordId) || records.get(instance.recordId)!.date >= firstDate))) return false;
   let stage = 0, clean = 0, lastCleanSequence = 0;
+  let previousDay: number | null = null;
+  const weeks = new Map<number, number>();
   for (const instance of ordered) {
     if (instance.sequence! < first.sequence!) continue;
     if (!instance.cards.some((card) => card.cardId === 'squat-to-box')) continue;
@@ -34,6 +36,13 @@ export async function hasCompletedSquatPrefix(history: HistoryStore, steps: read
     const cards = record.cards.filter((card) => card.cardId === 'squat-to-box');
     if (!cards.length) continue;
     if (cards.length !== 1) return false;
+    const day = Date.parse(`${record.date}T00:00:00Z`);
+    if (!Number.isFinite(day) || (previousDay !== null && (day - previousDay) / 86400000 < 2)) return false;
+    previousDay = day;
+    const monday = day - ((new Date(day).getUTCDay() + 6) % 7) * 86400000;
+    const inWeek = (weeks.get(monday) ?? 0) + 1;
+    if (inWeek > 3) return false;
+    weeks.set(monday, inWeek);
     const card = cards[0], stepIndex = steps.findIndex((step) => step.version === card.itemVersion);
     if (stepIndex > targetStage) return false;
     if (stepIndex < 0 || stepIndex > stage + 1) return false;

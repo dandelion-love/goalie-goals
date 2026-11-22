@@ -135,6 +135,8 @@ export interface AppDeps {
   historyStore?: HistoryStore;
   /** Synthetic proof fixture; forbidden in production and never supplied by HTTP clients. */
   syntheticSquatProof?: () => Promise<SyntheticSquatProof | null>;
+  /** Test-only clock for progression evidence; refused in production. */
+  progressionClock?: () => Date;
   /**
    * The household's Firestore database when `config.scheduleStore` is `firestore` (story 118):
    * approvals, the audit log, progress, pain pauses and the started marker live there, beside
@@ -192,6 +194,7 @@ export async function buildApp({
   history,
   historyStore,
   syntheticSquatProof,
+  progressionClock,
   firestore,
   generation,
   logger = false,
@@ -201,6 +204,7 @@ export async function buildApp({
     throw new ConfigError(`${DEV_MOCK_FLAG} is refused in production.`);
   }
   if (syntheticSquatProof && config.production) throw new ConfigError('Synthetic squat proof is refused in production.');
+  if (progressionClock && config.production) throw new ConfigError('Synthetic progression clock is refused in production.');
   if (config.demoSeed && (config.production || !config.devMockIdentity)) {
     throw new ConfigError(`${DEMO_SEED_FLAG} needs ${DEV_MOCK_FLAG}=1 and is refused in production.`);
   }
@@ -436,7 +440,7 @@ export async function buildApp({
     if (current.index > 0) await trainingService.proposeFor(utcDate(new Date()));
     return true;
   };
-  const proofFor = (index: number) => proofStore && ownPain && series[index] ? new SquatProofService(historyService.store, proofStore, painEvidenceSource(ownPain), approvedDose, undefined, series[index]) : null;
+  const proofFor = (index: number) => proofStore && ownPain && series[index] ? new SquatProofService(historyService.store, proofStore, painEvidenceSource(ownPain), approvedDose, progressionClock, series[index]) : null;
   const activeProof = async () => { const current = await stage(); return current ? proofFor(current.index) : null; };
   const readiness = proofFor(3);
   const review = readiness && proofStore && db ? ProgressionReview.fromOwnerArchive(db, readiness, proofStore, root, 'sha256:836073df2f6a8c3c94e99bf990df658d', seriesComplete) : undefined;
@@ -451,7 +455,7 @@ export async function buildApp({
         if (!current || current.index < n || await proofStore.held() || (await painEvidenceSource(ownPain)()).anyPain) return false;
         const latest = (await historyService.store.list()).map((record) => record.date).sort().at(-1);
         if (!latest) return false;
-        const days = (Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`) - Date.parse(`${latest}T00:00:00Z`)) / 86400000;
+        const days = (Date.parse(`${(progressionClock?.() ?? new Date()).toISOString().slice(0, 10)}T00:00:00Z`) - Date.parse(`${latest}T00:00:00Z`)) / 86400000;
         return Number.isFinite(days) && days >= -1 && days < 6;
       });
     }

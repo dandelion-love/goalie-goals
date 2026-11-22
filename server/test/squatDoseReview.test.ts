@@ -15,7 +15,8 @@ it('guards the exact 10 to 12 dose decision with parent-confirmed source evidenc
   const ids: string[] = [];
   for (const n of [1, 2]) {
     const id = `dose-record-${n}`, instanceId = `dose-instance-${n}`;
-    const record: HistoryRecord = { id, instanceId, date: '2026-01-05', itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: new Date('2026-01-05T12:00:00Z'), cards: [{ cardId: 'squat-to-box', itemVersion: from, name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 10, perSide: false }, cueIds: [] }] };
+    const date = n === 1 ? '2026-01-03' : '2026-01-05';
+    const record: HistoryRecord = { id, instanceId, date, itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: new Date(`${date}T12:00:00Z`), cards: [{ cardId: 'squat-to-box', itemVersion: from, name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 10, perSide: false }, cueIds: [] }] };
     await history.startInstance({ id: instanceId, itemId: record.itemId, itemVersion: record.itemVersion, recordId: null, cards: [{ cardId: 'squat-to-box', itemVersion: from }] });
     await history.addBound(record, instanceId);
     for (const set of [0, 1]) await history.confirmSquatSet(id, from, set, { actualReps: 10, clean: true }, null);

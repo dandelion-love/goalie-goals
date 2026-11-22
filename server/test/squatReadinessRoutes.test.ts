@@ -28,10 +28,11 @@ it('uses bound records and parent confirmations on the normal route with synthet
   const status = async (who: string) => (await app.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(who) })).json();
   try {
     for (const n of [1, 2]) {
+      const recordedDate = n === 1 ? '2026-01-03' : '2026-01-05';
       const instanceId = `instance-test-${n}`;
       const id = `record-test-${n}`;
-      expect((await app.inject({ method: 'POST', url: '/api/training/started', headers: as('keeper@example.com'), payload: { date, itemId: session.itemId, itemVersion: session.itemVersion, instanceId } })).statusCode).toBe(200);
-      const entry = { id, date, itemId: session.itemId, itemVersion: session.itemVersion, outcome: 'done', instanceId, cards: [{ cardId: 'squat-to-box', itemVersion: session.cards[0].itemVersion, setsDone: 2, cues: [] }] };
+      expect((await app.inject({ method: 'POST', url: '/api/training/started', headers: as('keeper@example.com'), payload: { date: recordedDate, itemId: session.itemId, itemVersion: session.itemVersion, instanceId } })).statusCode).toBe(200);
+      const entry = { id, date: recordedDate, itemId: session.itemId, itemVersion: session.itemVersion, outcome: 'done', instanceId, cards: [{ cardId: 'squat-to-box', itemVersion: session.cards[0].itemVersion, setsDone: 2, cues: [] }] };
       expect((await app.inject({ method: 'POST', url: '/api/history/sessions', headers: as('keeper@example.com'), payload: entry })).statusCode).toBe(200);
       proof.orderedRecordIds.push(id);
       expect((await status('keeper@example.com')).status).toBe('unknown');

@@ -18,7 +18,8 @@ it('does not treat two top-dose sessions as proof of earlier dose transitions', 
 it('uses later clean pairs after an incomplete session and ignores older legacy history', async () => {
   const history = new MemoryHistoryStore();
   const steps = [10, 12, 14, 15].map((reps) => ({ reps, version: `version-${reps}` }));
-  const row = (n: number, reps: number): HistoryRecord => ({ id: `window-record-${n}`, instanceId: `window-instance-${n}`, date: '2026-01-05', itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: n === 1 ? 'stopped' : 'done', at: new Date('2026-01-05T12:00:00Z'), cards: [{ cardId: 'squat-to-box', itemVersion: `version-${reps}`, name: 'Squat', setsDone: n === 1 ? 1 : 2, setsPlanned: 2, dose: { kind: 'reps', reps, perSide: false }, cueIds: [] }] });
+  const dates = ['2026-01-05', '2026-01-07', '2026-01-09', '2026-01-12', '2026-01-14', '2026-01-16', '2026-01-19', '2026-01-21', '2026-01-23'];
+  const row = (n: number, reps: number): HistoryRecord => ({ id: `window-record-${n}`, instanceId: `window-instance-${n}`, date: dates[n - 1] ?? dates[0], itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: n === 1 ? 'stopped' : 'done', at: new Date('2026-01-05T12:00:00Z'), cards: [{ cardId: 'squat-to-box', itemVersion: `version-${reps}`, name: 'Squat', setsDone: n === 1 ? 1 : 2, setsPlanned: 2, dose: { kind: 'reps', reps, perSide: false }, cueIds: [] }] });
   const legacy = { ...row(99, 10), id: 'legacy-window-1', date: '2025-01-01' }; delete legacy.instanceId;
   await history.add(legacy);
   const doses = [10, 10, 10, 12, 12, 14, 14, 15, 15];

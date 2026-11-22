@@ -14,7 +14,8 @@ it('advances each invented dose through its own guarded parent decision', async 
   const db = new FakeFirestore(), history = new FirestoreHistoryStore(db), proofs = new FirestoreSquatProofStore(db), approvals = new FirestoreApprovalStore(db), root = defaultContentRoot();
   const initial = (await resolveSquatDoseStage(db, approvals, root))!;
   const steps = initial.snapshots.map((snap, index) => ({ version: snap.itemVersion, reps: [10, 12, 14, 15][index] }));
-  const now = new Date('2026-01-05T12:00:00Z');
+  let now = new Date('2026-01-05T12:00:00Z');
+  const dates = ['2026-01-05', '2026-01-07', '2026-01-09', '2026-01-12', '2026-01-14', '2026-01-16', '2026-01-19', '2026-01-21'];
   await approvals.create({ id: 'dose-initial-approval', kind: 'exercise', itemId: initial.snapshots[0].itemId, itemVersion: steps[0].version, content: initial.snapshots[0].content, state: 'approved', createdAt: now, decidedAt: now, decidedBy: 'parent@example.com', reason: null });
   const approved = async (version: string) => !!await approvals.approvedVersion('card-squat-to-box', version);
   const services: SquatProofService[] = [];
@@ -22,7 +23,8 @@ it('advances each invented dose through its own guarded parent decision', async 
     const step = steps[stage], ids: string[] = [];
     for (let rep = 1; rep <= 2; rep++) {
       const id = `chain-record-${stage}-${rep}`, instanceId = `chain-instance-${stage}-${rep}`;
-      const row: HistoryRecord = { id, instanceId, date: '2026-01-05', itemId: 'session', itemVersion: `session-${stage}`, title: 'Example', outcome: 'done', at: now, cards: [{ cardId: 'squat-to-box', itemVersion: step.version, name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: step.reps, perSide: false }, cueIds: [] }] };
+      const date = dates[stage * 2 + rep - 1]; now = new Date(`${date}T12:00:00Z`);
+      const row: HistoryRecord = { id, instanceId, date, itemId: 'session', itemVersion: `session-${stage}`, title: 'Example', outcome: 'done', at: now, cards: [{ cardId: 'squat-to-box', itemVersion: step.version, name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: step.reps, perSide: false }, cueIds: [] }] };
       expect(await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, cards: [{ cardId: 'squat-to-box', itemVersion: step.version }] })).toBe(true);
       expect(await history.addBound(row, instanceId)).toBe(true);
       for (const set of [0, 1]) expect(await history.confirmSquatSet(id, step.version, set, { actualReps: step.reps, clean: true }, null)).toBe(true);

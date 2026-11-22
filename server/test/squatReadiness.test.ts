@@ -3,7 +3,8 @@ import type { HistoryRecord } from '../src/history.js';
 import { evaluateSquatDoseReadiness, evaluateSquatReadiness, type ReadinessFacts } from '../src/squatReadiness.js';
 const facts: ReadinessFacts = { orderedHistoryComplete: true, safety: { pain: 'clear', growth: 'clear', breakRestart: 'clear', stepDown: 'clear' }, approvedCardVersions: new Set(['approved']) };
 function session(id: string, reps = 15, clean = true): HistoryRecord {
-  return { id, instanceId: `instance-${id}`, date: '2026-01-01', itemId: 'session', itemVersion: 'session-v1', title: 'Session', outcome: 'done', at: new Date('2026-01-01T00:00:00Z'), cards: [{ cardId: 'squat-to-box', itemVersion: 'approved', name: 'Squat to box', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps, perSide: false }, cueIds: [], squatSets: [{ actualReps: reps, clean, revision: 1 }, { actualReps: reps, clean, revision: 1 }] }] };
+  const date = id === 'first' || id === 'legacy' ? '2026-01-01' : id === 'third' ? '2026-01-05' : '2026-01-03';
+  return { id, instanceId: `instance-${id}`, date, itemId: 'session', itemVersion: 'session-v1', title: 'Session', outcome: 'done', at: new Date(`${date}T00:00:00Z`), cards: [{ cardId: 'squat-to-box', itemVersion: 'approved', name: 'Squat to box', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps, perSide: false }, cueIds: [], squatSets: [{ actualReps: reps, clean, revision: 1 }, { actualReps: reps, clean, revision: 1 }] }] };
 }
 describe('squat readiness from verified facts', () => {
   it('checks the exact approved source dose for an individual step', () => {
@@ -12,6 +13,13 @@ describe('squat readiness from verified facts', () => {
     expect(evaluateSquatDoseReadiness(pair, facts, { reps: 10 })).toBe('unknown');
     expect(evaluateSquatDoseReadiness(pair, facts, { reps: 10, version: 'other' })).toBe('unknown');
     expect(evaluateSquatDoseReadiness(pair, facts, { reps: 11, version: 'approved' })).toBe('unknown');
+  });
+  it('refuses repeated same-day and consecutive-day squat sessions', () => {
+    const first = session('first'), second = session('second');
+    second.date = first.date;
+    expect(evaluateSquatReadiness([first, second], facts)).toBe('unknown');
+    second.date = '2026-01-02';
+    expect(evaluateSquatReadiness([first, second], facts)).toBe('unknown');
   });
   it('counts two qualifying sessions, ignoring sessions without the exercise', () => {
     const other = { ...session('other'), cards: [] };

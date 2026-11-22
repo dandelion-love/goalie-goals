@@ -45,7 +45,8 @@ it.each(['memory', 'firestore'])('%s cannot clear a newer hold with an older att
 async function record(store: HistoryStore, n: number, late = false) {
   const id = `record-proof-${n}`;
   const instanceId = `instance-proof-${n}`;
-  const row: HistoryRecord = { id, instanceId, date: '2026-01-05', itemId: 'session-proof', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: new Date('2026-01-05T12:00:00Z'), cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1', name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 15, perSide: false }, cueIds: [] }] };
+  const date = n % 2 ? '2026-01-03' : '2026-01-05';
+  const row: HistoryRecord = { id, instanceId, date, itemId: 'session-proof', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: new Date(`${date}T12:00:00Z`), cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1', name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 15, perSide: false }, cueIds: [] }] };
   expect(await store.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1' }], recordId: null }, late)).toBe(true);
   expect(await store.addBound(row, instanceId)).toBe(true);
   for (const set of [0, 1]) expect(await store.confirmSquatSet(id, 'card-v1', set, { actualReps: 15, clean: true }, null)).toBe(true);
