@@ -75,6 +75,11 @@ describe('equipment catalog', () => {
     expect(screen.getByText('Exercise evidence and requirements').compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const link = within(summary).getByRole('button', { name: 'Wall pass' });
     fireEvent.click(link);
+    fireEvent.click(screen.getByRole('button', { name: 'Ball (required)' }));
+    expect(await screen.findByRole('heading', { name: 'Ball', level: 3 })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to exercise' }));
+    const ballLink = await screen.findByRole('button', { name: 'Ball (required)' });
+    await waitFor(() => expect(document.activeElement).toBe(ballLink));
     fireEvent.click(screen.getByRole('button', { name: 'Back to item' }));
     await waitFor(() => expect(document.activeElement).toBe(within(screen.getByRole('region', { name: 'Exercise evidence summary' })).getByRole('button', { name: 'Wall pass' })));
   });
