@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import { buildApp } from '../src/app.js';
 import { FirestoreApprovalStore } from '../src/approvals.js';
 import { FirestoreHistoryStore, type HistoryRecord } from '../src/history.js';
@@ -17,6 +18,11 @@ it('uses normal authenticated Firestore routes for a synthetic parent review and
   const archive = ownerApprovedSquatVersions(defaultContentRoot());
   const versions = [cardSnapshot(loadContent().cards.get('squat-to-box')!).itemVersion, ...[12, 14, 15].map((reps) => archive.find((entry) => entry.rung === 'squat-to-box' && entry.dose === `2 x ${reps}`)!.itemVersion)];
   for (let n = 0; n < versions.length; n++) await store.create({ id: `synthetic-dose-approved-${n}`, kind: 'exercise', itemId: 'card-squat-to-box', itemVersion: versions[n], content: { title: 'Example', detail: 'Example' }, state: 'approved', createdAt: now, decidedAt: now, decidedBy: 'parent@example.com', reason: null });
+  for (let n = 0; n < 3; n++) {
+    const from = versions[n], to = versions[n + 1], afterSequence = (n + 1) * 2;
+    const key = createHash('sha256').update(`${from}\0${to}`).digest('hex');
+    await db.collection('squatDoseTransitions').doc(key).create({ from, to, afterSequence, decisionSequence: afterSequence, approvalId: `synthetic-dose-approved-${n + 1}` });
+  }
   const history = new FirestoreHistoryStore(db), ids: string[] = [];
   for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
     const id = `normal-record-${n}`, instanceId = `normal-instance-${n}`;
@@ -40,8 +46,8 @@ it('uses normal authenticated Firestore routes for a synthetic parent review and
       expect(answer.statusCode).toBe(200);
     }
     const steps = versions.map((version, index) => ({ version, reps: [10, 12, 14, 15][index] }));
-    expect(await hasCompletedSquatSeries(history, steps, async () => true)).toBe(true);
-    expect(await hasCompletedSquatSeries(history, steps, async (version) => version !== versions[1])).toBe(false);
+    expect(await hasCompletedSquatSeries(history, steps, async () => true, async () => true)).toBe(true);
+    expect(await hasCompletedSquatSeries(history, steps, async (version) => version !== versions[1], async () => true)).toBe(false);
     expect((await get('/api/history/squat-review-window')).json().sessions.map((s: { id: string }) => s.id)).toEqual(ids.slice(-2));
     const attestation = { orderedRecordIds: ids.slice(-2), allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true };
     expect((await post('/api/history/squat-attestation', attestation, 'keeper@example.com')).statusCode).toBe(403);
@@ -60,6 +66,6 @@ it('uses normal authenticated Firestore routes for a synthetic parent review and
     expect((await get('/api/history/squat-evidence', 'keeper@example.com')).json().status).toBe('held');
     expect(JSON.stringify((await get('/api/training/collection', 'keeper@example.com')).json())).not.toContain('squat-to-box-pause');
     expect((await post('/api/household/reset', { confirm: 'RESET', date })).statusCode).toBe(200);
-    expect(db.paths().some((path) => path.startsWith('progressionReviewOffers/') || path.startsWith('progressionReviewDecisions/') || path.startsWith('squatReadiness/'))).toBe(false);
+    expect(db.paths().some((path) => path.startsWith('progressionReviewOffers/') || path.startsWith('progressionReviewDecisions/') || path.startsWith('squatReadiness/') || path.startsWith('squatDoseTransitions/'))).toBe(false);
   } finally { await app.close(); }
 });

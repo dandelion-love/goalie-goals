@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
@@ -46,7 +47,7 @@ import { FirestoreScheduleStore, MemoryScheduleStore, ScheduleService, type Sche
 import { registerScheduleRoutes } from './scheduleRoutes.js';
 import { FirestoreHistoryStore, HistoryService, MemoryHistoryStore, type HistoryStore } from './history.js';
 import { registerHistoryRoutes, type SyntheticSquatProof } from './historyRoutes.js';
-import type { FsDb } from './firestoreDb.js';
+import { deleteCollection, type FsDb } from './firestoreDb.js';
 import {
   FirestoreGenerationStore,
   GENERATION_HEADER,
@@ -408,7 +409,14 @@ export async function buildApp({
   const archive = readiness ? ownerApprovedSquatVersions(config.contentRoot || defaultContentRoot()) : [];
   const firstSquat = trainingService.library.cards.get('squat-to-box');
   const series = firstSquat ? [{ version: cardSnapshot(firstSquat).itemVersion, reps: 10 }, ...[12, 14, 15].map((reps) => ({ version: archive.find((entry) => entry.rung === 'squat-to-box' && entry.dose === `2 x ${reps}`)?.itemVersion ?? '', reps }))] : [];
-  const seriesComplete = () => hasCompletedSquatSeries(historyService.store, series, (version) => approvalService.isApproved('card-squat-to-box', version));
+  const seriesComplete = () => hasCompletedSquatSeries(historyService.store, series, (version) => approvalService.isApproved('card-squat-to-box', version), async (from, to, after, before) => {
+    if (!db) return false;
+    const key = createHash('sha256').update(`${from}\0${to}`).digest('hex');
+    const record = (await db.collection('squatDoseTransitions').doc(key).get()).data() as { from?: unknown; to?: unknown; afterSequence?: unknown; decisionSequence?: unknown; approvalId?: unknown } | undefined;
+    if (!record || record.from !== from || record.to !== to || record.afterSequence !== after || typeof record.decisionSequence !== 'number' || !Number.isSafeInteger(record.decisionSequence) || record.decisionSequence < after || record.decisionSequence >= before || typeof record.approvalId !== 'string') return false;
+    const approval = await approvalService.store.get(record.approvalId);
+    return !!approval && approval.state === 'approved' && approval.itemId === 'card-squat-to-box' && approval.itemVersion === to && !!approval.decidedAt;
+  });
   const review = readiness && proofStore && db ? ProgressionReview.fromOwnerArchive(db, readiness, proofStore, config.contentRoot || defaultContentRoot(), 'sha256:836073df2f6a8c3c94e99bf990df658d', seriesComplete) : undefined;
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused(), history: historyService, gate: resetPainGate, currentGeneration: () => currentGeneration });
   registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration, syntheticSquatProof, cardApproved: (version) => approvalService.isApproved('card-squat-to-box', version), readiness });
@@ -424,7 +432,8 @@ export async function buildApp({
 
   // Every store the app made or was given that can delete its part of the household.
   const parts: HouseholdPart[] = [];
-  for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store, equipment, proofStore, review]) {
+  const doseTransitions = review && db ? { deleteAll: () => deleteCollection(db, 'squatDoseTransitions') } : undefined;
+  for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store, equipment, proofStore, review, doseTransitions]) {
     if (isPart(p)) parts.push(p);
   }
   // Starting fresh keeps the parent's training days (story 121).
