@@ -4,6 +4,7 @@
 // for tests and the demo, in the household's Firestore data in production (story 118).
 
 import { createHash, randomUUID } from 'node:crypto';
+import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
 import { asDate, asObject, createOrdered, deleteCollection, seqOf, type FsDb, type FsDocSnap } from './firestoreDb.js';
 import type { Notifier } from './notifier.js';
 import { isRole, type Role } from './roles.js';
@@ -394,7 +395,10 @@ export class FirestoreApprovalStore implements ApprovalStore {
       const r = data ? readRequest(id, data) : null;
       if (!r || r.state !== from) return null;
       const done = next(r);
+      const revision = evidenceRevisionRef(this.db);
+      await readEvidenceRevision(tx, revision);
       tx.set(ref, { ...requestData(done), seq: seqOf(data) });
+      bumpEvidenceRevision(tx, revision);
       return copy(done);
     });
   }

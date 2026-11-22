@@ -20,6 +20,7 @@
 // Firestore collection of their own. `deleteAll` removes every record with the household.
 
 import type { Role } from './roles.js';
+import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
 import type { Dose, DoseKind } from './content.js';
 import { DATE_RE, type TrainingService } from './training.js';
 import type { Outcome } from './progression.js';
@@ -303,8 +304,11 @@ export class FirestoreHistoryStore implements HistoryStore {
       if (old !== undefined && (!Number.isSafeInteger(old) || (old as number) < 0)) throw new Error('Invalid session sequence');
       const sequence = (old as number | undefined ?? 0) + 1;
       if (!Number.isSafeInteger(sequence)) throw new Error('Session sequence exhausted');
+      const revision = evidenceRevisionRef(db);
+      await readEvidenceRevision(tx, revision);
       tx.create(ref, { ...instance, sequence, late });
       tx.set(counter, { value: sequence });
+      bumpEvidenceRevision(tx, revision);
       return true;
     });
   }
@@ -324,9 +328,12 @@ export class FirestoreHistoryStore implements HistoryStore {
         return instance.recordId === record.id && !!previous && sameBoundRecord(previous, record, instanceId);
       }
       if (historySnap.exists) return false;
+      const revision = evidenceRevisionRef(db);
+      await readEvidenceRevision(tx, revision);
       const { id: _id, ...data } = record;
       tx.create(history, { ...data, instanceId });
       tx.set(start, { ...instance, recordId: record.id });
+      bumpEvidenceRevision(tx, revision);
       return true;
     });
   }
@@ -360,8 +367,11 @@ export class FirestoreHistoryStore implements HistoryStore {
       const snap = await tx.get(ref);
       const record = readRecord(id, snap.data());
       if (!record || !putSquatSet(record, version, set, evidence, previous)) return false;
+      const revision = evidenceRevisionRef(db);
+      await readEvidenceRevision(tx, revision);
       const { id: _id, ...data } = record;
       tx.set(ref, data);
+      bumpEvidenceRevision(tx, revision);
       return true;
     });
   }

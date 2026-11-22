@@ -2,6 +2,18 @@ import { expect, it } from 'vitest';
 import { FirestoreHistoryStore, MemoryHistoryStore, type HistoryRecord, type HistoryStore } from '../src/history.js';
 import { FirestoreSquatProofStore, MemorySquatProofStore, SquatProofService, type SquatProofStore } from '../src/squatProof.js';
 import { FakeFirestore } from './fakeFirestore.js';
+import { evidenceRevisionRef, guardedEvidenceMutation, readEvidenceRevision } from '../src/evidenceRevision.js';
+
+it('invalidates a pending decision when a real set confirmation changes', async () => {
+  const db = new FakeFirestore();
+  const history = new FirestoreHistoryStore(db);
+  const id = await record(history, 10);
+  const revision = await db.runTransaction((tx) => readEvidenceRevision(tx, evidenceRevisionRef(db)));
+  expect(await history.confirmSquatSet(id, 'card-v1', 0, { actualReps: 14, clean: false }, { actualReps: 15, clean: true, revision: 1 })).toBe(true);
+  const target = db.collection('decisions').doc('pending');
+  expect(await guardedEvidenceMutation(db, revision, async (tx) => { tx.set(target, { approved: true }); })).toEqual({ applied: false });
+  expect((await target.get()).exists).toBe(false);
+});
 
 async function record(store: HistoryStore, n: number, late = false) {
   const id = `record-proof-${n}`;

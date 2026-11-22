@@ -6,6 +6,7 @@
 // do: in memory for tests and the demo, the household's Firestore data in production (story 118).
 
 import type { AuditLog } from './approvals.js';
+import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
 import { asDate, asObject, type FsDb } from './firestoreDb.js';
 import type { Notifier } from './notifier.js';
 import type { PauseSource } from './progress.js';
@@ -212,7 +213,12 @@ export class FirestorePainStore implements PainStore {
     const ref = this.ref();
     return this.db.runTransaction(async (tx) => {
       const { reports, result } = change(this.reports(await tx.get(ref)));
-      if (reports) tx.set(ref, { reports: reports.map(painData) });
+      if (reports) {
+        const revision = evidenceRevisionRef(this.db);
+        await readEvidenceRevision(tx, revision);
+        tx.set(ref, { reports: reports.map(painData) });
+        bumpEvidenceRevision(tx, revision);
+      }
       return result;
     });
   }
