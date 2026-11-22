@@ -1362,6 +1362,7 @@ button:active:not(:disabled) {
 .trading-card-nameplate { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-1); padding: var(--space-2); border-radius: var(--radius-sm); background: var(--surface); }
 .trading-card-nameplate h3 { min-width: 0; margin: 0; font-size: var(--text-md); line-height: var(--leading-xl); overflow-wrap: anywhere; }
 .trading-card[data-kind='Equipment'] .trading-card-nameplate { grid-template-columns: minmax(0, 1fr); }
+.trading-card .trading-card-nameplate.with-back { grid-template-columns: auto minmax(0, 1fr) auto; }
 .trading-card[data-kind='Equipment'] .trading-card-stage { justify-self: end; }
 .trading-card-stage { display: grid; place-items: center; align-content: center; min-width: var(--target); min-height: var(--target); padding: var(--space-1); border-radius: var(--radius-pill); background: var(--action); color: var(--action-on); font-weight: var(--weight-display); font-size: var(--text-sm); line-height: var(--leading-xl); }
 .trading-card-stage[data-rank] { position: relative; color: var(--rank-ink); border: var(--border-width) solid var(--rank-ink); font-size: var(--text-md); }
@@ -1392,6 +1393,7 @@ button:active:not(:disabled) {
 .equipment-catalog-detail.MuiCard-root { overflow: visible; }
 .equipment-catalog-hero { max-width: calc(var(--tile-min) * 2); }
 .equipment-catalog-hero .trading-card-art { aspect-ratio: auto; height: var(--tile-min); }
-.equipment-ownership { display: inline-flex; flex-direction: column; align-items: center; font-size: var(--text-sm); }
+.equipment-ownership { position: relative; display: inline-flex; flex-direction: column; align-items: center; font-size: var(--text-sm); }
+.equipment-ownership .equipment-owned { box-shadow: 0 0 var(--space-2) var(--success-edge); }
 .equipment-ownership small { max-width: var(--tile-min); }
-.equipment-confirm { display: flex; flex-direction: column; background: var(--surface); color: var(--text); padding: var(--space-2); }
+.equipment-confirm { position: absolute; z-index: 2; top: 100%; right: 0; min-width: calc(var(--tile-min) * 1.5); display: flex; flex-direction: column; background: var(--surface); color: var(--text); padding: var(--space-2); border: var(--hairline) solid var(--card-line); box-shadow: var(--shadow-2); }
