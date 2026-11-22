@@ -6,7 +6,7 @@ Status: proposed for review. This document does not approve a dose, exercise, do
 
 The existing progression library lists `squat-to-box-pause` as the second squat rung. Its movement is the first rung with a still two-second pause just above the box, followed by standing. The documented starting dose is two sets of ten repetitions with 60 seconds of rest; its later unlock target is two sets of fifteen. The listed equipment is body only and a stable step or box. These are candidate content values, not a new prescription. See `docs/knowledge/progression-library/ladders-strength.md` and `docs/knowledge/decisions/training-rules.md`.
 
-The existing `squat-to-box` card starts at two sets of ten. That version cannot satisfy the two-by-fifteen prior-rung threshold. A qualifying prior-card dose would require its own version, owner content approval and parent in-app approval. The new paused exercise and its dossier likewise need their own reviewed versions, owner content approval and parent in-app approval before use. No approval follows from this proposal or from the synthetic preview.
+The existing `squat-to-box` card starts at two sets of ten. That version cannot satisfy the two-by-fifteen prior-rung threshold. A real dose increase must follow the documented single-lever steps, with two clean sessions and parent approval at each change; it cannot jump directly to the target. The rule lists two more repetitions per set, which yields 10, 12, 14, then 16; the target is 15 and the limit forbids exceeding it. The final step therefore needs a reviewed rule clarification before a progression path is encoded. Each exact dose version also requires owner content approval and parent in-app approval. The new paused exercise and its dossier likewise need their own reviewed versions, owner content approval and parent in-app approval before use. No approval follows from this proposal or from the synthetic preview.
 
 ## Behavioral acceptance
 
@@ -19,6 +19,6 @@ The existing `squat-to-box` card starts at two sets of ten. That version cannot 
 ## Review outputs required before implementation
 
 - A checked exercise specification, dossier, source and licence record, and suitable figure or neutral fallback.
-- A versioned, reviewed plan for the prior-dose transition and for the second card; neither is approved by this draft.
+- A versioned, reviewed plan for each prior-dose transition, including resolution of the final step to fifteen, and for the second card; none is approved by this draft.
 - Authoritative sequence completeness and safety/restart facts from issue 154, with positive and rejection tests.
 - A review of the owner approval and parent in-app approval boundaries, including the exact versions they cover.

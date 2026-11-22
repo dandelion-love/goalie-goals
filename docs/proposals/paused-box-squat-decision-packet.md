@@ -11,7 +11,7 @@ Should the implementation proceed to prepare exact, reviewable versions for the 
 | Prior card | Current squat-to-box version starts at 2 sets of 10; candidate qualifying version is 2 sets of 15. | Owner content approval of the exact version, then the parent's in-app approval. |
 | Next card | Paused box squat: stop for 2 seconds above a stable box or step; candidate start is 2 sets of 10, 60 seconds rest. | Owner content approval of the exact card and dossier, then the parent's in-app approval. |
 
-The existing `squat-to-box` card remains at 2 sets of 10 until a different version has those approvals. The existing ladder records the candidate values; the proposal does not add a new prescription. The second card and its dossier are not yet drafted or approved. The previously rejected paused-squat illustration will not be used.
+The existing `squat-to-box` card remains at 2 sets of 10 until a different version has those approvals. The 2-by-15 version is a destination, not a direct jump: the documented rule requires one lever at a time, two clean sessions and parent approval at each dose change. Its stated two-repetition step leads from 10 to 12 to 14, then 16, while the target and limit are 15. A reviewer must clarify the final step before it is encoded; this packet does not assume that a one-repetition exception is allowed. Each exact dose version also needs owner content approval. The existing ladder records the candidate values; the proposal does not add a new prescription. The second card and its dossier are not yet drafted or approved. The previously rejected paused-squat illustration will not be used.
 
 ## Evidence and safety boundary
 
