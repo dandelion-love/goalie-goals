@@ -1,6 +1,7 @@
 import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Layout } from './layout';
 import { ApprovedTraining as ApprovedTrainingPanel, History as HistoryPanel } from './ApprovalScreens';
+import { CardCollection } from './CardCollection';
 import { TodayPanel as TodayPanelBody } from './LessonPath';
 import { sound, useWarmCues } from './sound';
 import { ProgressPanel as ProgressPanelBody } from './ProgressPanel';
@@ -512,6 +513,7 @@ export function KeeperHome({
       <div hidden={destination !== 'library'}>
       <Reveal open={sessionsSettled}>
         <div className={layout === 'expanded' ? 'panes' : 'stack'}>
+          {!pause && destination === 'library' && <CardCollection fetchImpl={fetchImpl} refresh={changed + epoch} />}
           {!pause && <ApprovedTraining fetchImpl={fetchImpl} refresh={changed + epoch} onSettled={onTraining} />}
           <Reveal open={trainingSettled}>
             <History fetchImpl={fetchImpl} refresh={recorded + sent + epoch} />

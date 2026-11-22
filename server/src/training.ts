@@ -624,6 +624,21 @@ export class TrainingService {
     return cards.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  /** Keeper-safe collection: only approved exercise snapshots and approved dossiers. */
+  async collectionExercises() {
+    const items = await this.approvals.approvedItems();
+    const dossiers = await this.dossiers.approved();
+    return items.flatMap((item) => {
+      if (item.kind !== 'exercise') return [];
+      const snap = this.snapshots.cards.get(item.itemVersion);
+      if (!snap || snap.itemId !== item.itemId) return [];
+      const card = snap.source.card;
+      return [{ id: card.id, itemVersion: snap.itemVersion, name: card.name, why: card.why,
+        setup: Object.values(card.setup), cautions: card.stop_if, needs: card.needs ?? null,
+        figureUrl: this.cardToClient(snap).figureUrl, dossier: dossiers.get(card.id) ?? null }];
+    }).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   /** The figure of an approved card version, or null: an unapproved figure is never served. */
   async figure(cardId: string, version: string): Promise<string | null> {
     const snap = this.snapshots.cards.get(version);

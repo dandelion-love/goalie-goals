@@ -23,12 +23,12 @@ describe('equipment catalog', () => {
   it('navigates both ways and restores focus on Back within the destination', async () => {
     window.history.replaceState(null, '', '/?view=equipment');
     render(<Example />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Goalkeeper gloves' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Equipment: Goalkeeper gloves/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Wall pass/ }));
     expect(screen.getByText(/All required: Goalkeeper gloves, Ball/)).toBeTruthy();
     expect(screen.getByText(/One of: Wall or Partner/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Ball (required)' }));
-    expect(await screen.findByRole('heading', { name: 'Ball' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Ball', level: 2 })).toBeTruthy();
     window.history.back();
     const ballLink = await screen.findByRole('button', { name: 'Ball (required)' });
     await waitFor(() => expect(document.activeElement).toBe(ballLink));
@@ -36,7 +36,7 @@ describe('equipment catalog', () => {
     const exerciseLink = await screen.findByRole('button', { name: /Wall pass/ });
     await waitFor(() => expect(document.activeElement).toBe(exerciseLink));
     fireEvent.click(screen.getByRole('button', { name: 'Back to equipment' }));
-    const itemLink = await screen.findByRole('button', { name: 'Goalkeeper gloves' });
+    const itemLink = await screen.findByRole('button', { name: /Equipment: Goalkeeper gloves/ });
     await waitFor(() => expect(document.activeElement).toBe(itemLink));
   });
   it('reports malformed relationships as unavailable', async () => {
@@ -47,7 +47,7 @@ describe('equipment catalog', () => {
   it('shows an empty relationship state for an item without linked exercises', async () => {
     const empty = vi.fn(async (url: string | URL | Request) => new Response(JSON.stringify(String(url).endsWith('/exercises') ? { exercises: [] } : { gloves: 'unknown' }), { status: 200 })) as unknown as typeof fetch;
     render(<EquipmentCatalog fetchImpl={empty} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Goalkeeper gloves' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Equipment: Goalkeeper gloves/ }));
     expect(screen.getByText('No known linked exercises.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Back to equipment' })).toBeTruthy();
   });
@@ -56,7 +56,7 @@ describe('equipment catalog', () => {
     const withDossier = { ...exercise, dossier: { cardId: 'pass', itemVersion: 'v1', name: 'Wall pass', headline: 'Practice', why: [{ label: 'Why', text: 'A sourced claim.', sources: [1] }], expect: [], sources: [{ n: 1, title: 'Source', url: 'https://example.org/source' }] } };
     const seeded = vi.fn(async (url: string | URL | Request) => new Response(JSON.stringify(String(url).endsWith('/exercises') ? { exercises: [withDossier] } : { gloves: 'unknown' }), { status: 200 })) as unknown as typeof fetch;
     render(<Example fetcher={seeded} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Goalkeeper gloves' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Equipment: Goalkeeper gloves/ }));
     const summary = screen.getByRole('region', { name: 'Exercise evidence summary' });
     expect(screen.getByRole('heading', { name: 'Exercises using this item' }).compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const link = within(summary).getByRole('button', { name: 'Wall pass' });
@@ -69,6 +69,6 @@ describe('equipment catalog', () => {
     render(<Example />);
     expect(await screen.findByRole('heading', { name: 'Exercise unavailable' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Back to item' }));
-    expect(await screen.findByRole('heading', { name: 'Ball' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Ball', level: 2 })).toBeTruthy();
   });
 });
