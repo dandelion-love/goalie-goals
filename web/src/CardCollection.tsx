@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { TradingCard } from './CardTile';
-import { DossierView } from './DossierScreens';
-import { isDossier, type Dossier } from './dossier';
+import { isDossier } from './dossier';
+import { ApprovedExerciseDetail } from './ApprovedExerciseDetail';
 import { cardRequirements, equipmentAlsoNeeds, equipmentEnables, equipmentIds, equipmentName, relationship, type EquipmentExercise } from './equipmentModel';
 import { RUNGS } from './ladders';
 import { collectionArtwork } from './collectionArtwork';
 import { rankForRung } from './cardRank';
 
-type Exercise = EquipmentExercise & { itemVersion: string; figureUrl: string };
+export type CollectionExercise = EquipmentExercise & { itemVersion: string; figureUrl: string };
+type Exercise = CollectionExercise;
 type Load = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; exercises: Exercise[] };
 type Place = { item: string | null; exercise: string | null };
 const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
-function validExercise(value: unknown): value is Exercise {
+export function validExercise(value: unknown): value is Exercise {
   if (!value || typeof value !== 'object') return false;
   const e = value as Record<string, unknown>;
   const n = e.needs as Record<string, unknown> | null;
@@ -81,12 +82,7 @@ export function CardCollection({ fetchImpl = fetch, refresh = 0 }: { fetchImpl?:
     const card = kind === 'Exercise' ? exercises.find((e) => e.id === id) : undefined;
     return <TradingCard level={rung?.rung} series={rung?.ladder} footer={rung ? `${rung.ladder} · ${rankForRung(rung.rung)?.name ?? `Rung ${rung.rung}`}` : undefined} requirements={card ? cardRequirements(card) : equipmentAlsoNeeds(id, exercises)} key={`${kind}:${id}`} kind={kind} name={name} state={kind === 'Exercise' ? 'Approved; readiness not checked' : 'Availability not shared'} summary={card ? card.dossier?.headline ?? 'Benefits not available' : equipmentEnables(id, exercises)} artwork={collectionArtwork[id]} fallbackArtwork={artwork} buttonRef={(node) => { const k = `${kind === 'Exercise' ? 'exercise' : 'item'}:${id}`; if (node) buttons.current.set(k, node); else buttons.current.delete(k); }} onOpen={() => { const node = buttons.current.get(`${kind === 'Exercise' ? 'exercise' : 'item'}:${id}`); if (node) go(next, node); }} />;
   };
-  if (exercise) return <article className="card"><h2>{exercise.name}</h2><div className="trading-card-hero"><TradingCard kind="Exercise" name={exercise.name} level={RUNGS.find((r) => r.id === exercise.id)?.rung} series={RUNGS.find((r) => r.id === exercise.id)?.ladder} requirements={cardRequirements(exercise)} state="Approved; readiness not checked" summary={exercise.dossier?.headline ?? 'Benefits not available'} artwork={collectionArtwork[exercise.id]} fallbackArtwork={exercise.figureUrl} /></div><p>{exercise.why}</p><p>Exercise approved. Session readiness and other requirements still need checking.</p>
-    <h3>Setup</h3>{exercise.setup.length ? <ul>{exercise.setup.map((s, i) => <li key={i}>{s}</li>)}</ul> : <p>Setup is not recorded.</p>}
-    <h3>Cautions</h3>{exercise.cautions.length ? <ul>{exercise.cautions.map((s, i) => <li key={i}>{s}</li>)}</ul> : <p>Cautions are not recorded.</p>}
-    <h3>Equipment used</h3><div className="collection-grid">{items.filter((id) => relationship(exercise, id)).map((id) => tile('Equipment', id, equipmentName(id), { item: id, exercise: null }))}</div>
-    {exercise.dossier ? <details><summary>Dossier and sources</summary><p>This approved dossier is versioned separately from the exercise.</p><DossierView dossier={exercise.dossier as Dossier} level={3} /></details> : <p>An approved dossier is not available.</p>}
-    <button className="secondary" onClick={() => back({ item, exercise: null })}>Back</button></article>;
+  if (exercise) return <ApprovedExerciseDetail exercise={exercise} equipment={<div className="collection-grid">{items.filter((id) => relationship(exercise, id)).map((id) => tile('Equipment', id, equipmentName(id), { item: id, exercise: null }))}</div>} onBack={() => back({ item, exercise: null })} />;
   if (item) return <article className="card"><h2>{equipmentName(item)}</h2><div className="trading-card-hero"><TradingCard kind="Equipment" name={equipmentName(item)} state="Availability not shared" requirements={equipmentAlsoNeeds(item, exercises)} summary={equipmentEnables(item, exercises)} artwork={collectionArtwork[item]} /></div><p>Availability and item-specific fit are not shared here.</p><h3>Exercises using this item</h3><div className="collection-grid">{exercises.filter((e) => relationship(e, item)).map((e) => tile('Exercise', e.id, e.name, { item, exercise: e.id }, e.figureUrl))}</div><button className="secondary" onClick={() => back({ item: null, exercise: null })}>{window.history.state?.collectionFrom?.exercise ? 'Back to exercise' : 'Back to collection'}</button></article>;
   const groups = new Map<string, Exercise[]>();
   for (const e of exercises) { const series = RUNGS.find((r) => r.id === e.id)?.ladder ?? 'Other exercises'; groups.set(series, [...(groups.get(series) ?? []), e]); }

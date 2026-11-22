@@ -9,10 +9,11 @@ import { StartFresh } from './StartFresh';
 import { Reveal } from './Loading';
 import { useMoment } from './motion';
 import { EquipmentCatalog } from './EquipmentCatalog';
+import { ProgressionLibrary } from './ProgressionLibrary';
 import { RoleShell, useDestination } from './RoleShell';
 import { Button } from './Interface';
 
-const PARENT_DESTINATIONS = [{ id: 'inbox', label: 'Inbox' }, { id: 'plan', label: 'Plan' }, { id: 'progress', label: 'Progress' }, { id: 'equipment', label: 'Equipment' }, { id: 'settings', label: 'Reset' }] as const;
+const PARENT_DESTINATIONS = [{ id: 'inbox', label: 'Inbox' }, { id: 'plan', label: 'Plan' }, { id: 'progress', label: 'Progress' }, { id: 'equipment', label: 'Equipment' }, { id: 'tree', label: 'Progression' }, { id: 'settings', label: 'Reset' }] as const;
 
 // The parent's home, in its own chunk (story 101 AC2): the keeper's device never loads it.
 
@@ -81,6 +82,7 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
       </Reveal>
       </div>
       {destination === 'equipment' && <EquipmentCatalog fetchImpl={fetchImpl} onChange={changed} />}
+      {destination === 'tree' && <ProgressionLibrary fetchImpl={fetchImpl} refresh={answered + epoch} />}
       <Reveal open={inboxOpen}>
           <div ref={inbox} className="inbox-pane" hidden={destination !== 'inbox'}>
             <ParentInbox layout={layout} fetchImpl={fetchImpl} onChange={inboxChanged} refresh={answered + epoch} onSettled={onInbox} onSummary={onInboxSummary} onGoPlan={() => navigate('plan')} />
