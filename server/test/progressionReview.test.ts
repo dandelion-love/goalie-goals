@@ -42,8 +42,11 @@ it('offers and records a parent review only for current synthetic evidence', asy
     expect(await history.confirmSquatSet(ids[1], 'card-v1', 0, { actualReps: 15, clean: true }, { actualReps: 14, clean: false, revision: 2 })).toBe(true);
     expect(await readiness.attest({ orderedRecordIds: ids, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true })).toBe(true);
     const current = (await post('/api/progression/review-offer')).json().id;
+    const competing = (await post('/api/progression/review-offer')).json().id;
     expect((await post(`/api/progression/review-offer/${current}/approve`, 'keeper@example.com')).statusCode).toBe(403);
-    expect((await post(`/api/progression/review-offer/${current}/approve`)).statusCode).toBe(200);
+    const results = await Promise.all([current, competing].map((id) => post(`/api/progression/review-offer/${id}/approve`)));
+    expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
+    expect(db.paths().filter((p) => p.startsWith('progressionReviewDecisions/'))).toHaveLength(1);
     expect((await post(`/api/progression/review-offer/${current}/approve`)).statusCode).toBe(409);
   } finally { await app.close(); }
 });
