@@ -274,10 +274,14 @@ async function renderedLooks(): Promise<Map<string, Set<string>>> {
 
   // Parent home: the inbox, the pause, the training days; then an approval and its Undo toast.
   render(<App fetchImpl={parentServer()} />);
+  fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
   const item = await screen.findByRole('listitem', { name: 'Starter plan' });
+  take();
+  fireEvent.click(screen.getByRole('button', { name: 'Plan' }));
   await screen.findByRole('group', { name: 'Training days' });
   await waitFor(() => expect(screen.getAllByRole('button', { name: /^(Mon|Tue)$/ }).every((b) => !(b as HTMLButtonElement).disabled)).toBe(true));
   take();
+  fireEvent.click(screen.getByRole('button', { name: /^Inbox/ }));
   await act(async () => {
     fireEvent.click(within(item).getByRole('button', { name: 'Approve' }));
   });

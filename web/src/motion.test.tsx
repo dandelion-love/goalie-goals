@@ -373,6 +373,7 @@ describe('AC2: motion at the key moments, in the same commit as the cue', () => 
   it('settles the inbox when an approval leaves it, in the same commit as the new list', async () => {
     const server = parentServer();
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const plan = await screen.findByRole('listitem', { name: 'Starter plan' });
     take();
     fireEvent.click(within(plan).getByRole('button', { name: 'Approve' }));

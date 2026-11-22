@@ -70,6 +70,8 @@ function parentServer({ paused = true, failReset = false } = {}) {
 }
 
 async function openStartFresh() {
+  const settings = await screen.findByRole('button', { name: 'Settings' });
+  if (!settings.hasAttribute('aria-current')) fireEvent.click(settings);
   const card = (await screen.findByRole('heading', { name: 'Start fresh' })).closest('article')!;
   fireEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Start fresh' }));
   return card as HTMLElement;
@@ -82,17 +84,14 @@ configure({ asyncUtilTimeout: 5000 });
 
 
 describe('Start fresh (AC1)', () => {
-  it('sits at the bottom of the home, after Approve, Clear the pause and the History', async () => {
+  it('keeps reset in Settings, separate from approvals and history', async () => {
     render(<App fetchImpl={parentServer().fetchImpl} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
     const fresh = await screen.findByRole('heading', { name: 'Start fresh' });
-    const approve = await screen.findByRole('button', { name: /^Approve/ });
-    const clear = await screen.findByRole('button', { name: 'Clear the pause' });
-    const history = screen.getByRole('heading', { name: 'History' });
-    for (const before of [approve, clear, history]) {
-      expect(before.compareDocumentPosition(fresh) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    }
-    const cards = [...document.querySelectorAll('.home article.card')];
-    expect(cards.at(-1)).toBe(fresh.closest('article'));
+    expect(fresh).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Approve/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Clear the pause' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'History' })).toBeNull();
   });
 
   it('says what is cleared and what stays, and the pause note when training is paused', async () => {
@@ -149,6 +148,7 @@ describe('Start fresh (AC1)', () => {
     expect(server.resets[0]).toMatchObject({ confirm: 'RESET', date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
     expect(await screen.findByText('Training data was cleared. Starting fresh.')).toBeTruthy();
     expect(generations.value).toBe(1);
+    fireEvent.click(await screen.findByRole('button', { name: 'Progress' }));
     const line = await screen.findByText(/Parent reset the household's data/);
     expect(line.closest('li')?.querySelector('time')?.textContent).toBe('Jan 7');
     // The newest first: the reset is the oldest line of the new history.

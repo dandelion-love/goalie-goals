@@ -106,6 +106,7 @@ describe('offline (AC2)', () => {
   it('keeps only the role and approved sessions on the device: no history, inbox or progress', async () => {
     const server = keeper({ online: true });
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} now={NOW} pauseStore={new MemoryPauseStore()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Training' }));
     expect(await screen.findByRole('heading', { name: 'History' })).toBeTruthy();
     await waitFor(() => expect(localStorage.getItem(TODAY_KEY)).not.toBeNull());
     expect(Object.keys(localStorage).sort()).toEqual([ROLE_KEY, TODAY_KEY].sort());
@@ -157,12 +158,15 @@ describe('errors offer Retry (AC3)', () => {
       return json({ error: 'not found' }, 404);
     }) as typeof fetch;
     render(<App fetchImpl={fetchImpl} now={NOW} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     expect(await screen.findByText("Couldn't load the inbox.")).toBeTruthy();
-    expect(await screen.findByText("Couldn't load the history.")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/pull|swipe|refresh/i);
     fail = false;
-    for (const b of screen.getAllByRole('button', { name: 'Retry' })) fireEvent.click(b);
+    fireEvent.click(within(screen.getByRole('article', { name: /^Inbox/ })).getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('Nothing to approve.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Progress' }));
+    expect(await screen.findByText("Couldn't load the history.")).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('article', { name: 'History' })).getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText('Nothing yet.')).toBeTruthy();
   });
 
@@ -210,7 +214,9 @@ describe('layout stability (AC1)', () => {
     await waitFor(() => expect(screen.getByText('Nothing to approve.')).toBeTruthy());
     expect(screen.queryByRole('article', { name: 'Inbox' })).toBeNull();
     releaseProgress();
+    fireEvent.click(screen.getByRole('button', { name: /^Inbox/ }));
     expect(await screen.findByRole('article', { name: /^Inbox/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Progress' }));
     expect(await screen.findByRole('article', { name: 'History' })).toBeTruthy();
   });
 });
@@ -272,12 +278,14 @@ describe('undo an approval (AC4)', () => {
   it('offers Undo in a toast after Approve; Undo puts the request back and the History shows it', async () => {
     const server = parentServer();
     render(<App fetchImpl={server.fetchImpl} now={NOW} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const inbox = await screen.findByRole('article', { name: /^Inbox/ });
     fireEvent.click(await within(inbox).findByRole('button', { name: 'Approve' }));
     const toast = await screen.findByText('Approved: Starter plan');
     fireEvent.click(within(toast.parentElement!).getByRole('button', { name: 'Undo' }));
     expect(await screen.findByText("Approval undone. It's back in the inbox.")).toBeTruthy();
     expect(await within(inbox).findByRole('button', { name: 'Approve' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Progress' }));
     expect(await screen.findByText(/Parent undid the approval of Starter plan/)).toBeTruthy();
     expect(server.state.posts).toEqual(['/api/approvals/r1/approve', '/api/approvals/r1/undo']);
   });
@@ -286,8 +294,10 @@ describe('undo an approval (AC4)', () => {
     const server = parentServer();
     server.state.undoAnswer = 409;
     render(<App fetchImpl={server.fetchImpl} now={NOW} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const inbox = await screen.findByRole('article', { name: /^Inbox/ });
     fireEvent.click(await within(inbox).findByRole('button', { name: 'Approve' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Progress' }));
     const undo = await screen.findByRole('button', { name: 'Undo approval of Starter plan' });
     fireEvent.click(undo);
     expect(await screen.findByText('The keeper has already started this session, so it stays approved.')).toBeTruthy();
@@ -297,6 +307,7 @@ describe('undo an approval (AC4)', () => {
     const server = parentServer();
     server.state.undoForMs = 50;
     render(<App fetchImpl={server.fetchImpl} now={NOW} />);
+    fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const inbox = await screen.findByRole('article', { name: /^Inbox/ });
     fireEvent.click(await within(inbox).findByRole('button', { name: 'Approve' }));
     expect(await screen.findByText('Approved: Starter plan')).toBeTruthy();
