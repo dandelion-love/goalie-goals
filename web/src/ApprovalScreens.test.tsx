@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { App } from './App';
+import { ParentInbox } from './ApprovalScreens';
 import type { ApprovedItem, AuditEntry, PendingRequest } from './approvals';
 
 // A small fake of the approval API with demo content only. The real rules are tested on the
@@ -74,6 +75,17 @@ function fakeServer(role: 'keeper' | 'parent') {
 afterEach(cleanup);
 
 describe('parent inbox', () => {
+  it('shows focused detail on a compact screen and returns focus to the queue item', async () => {
+    const server = fakeServer('parent');
+    render(<ParentInbox layout="compact" fetchImpl={server.fetchImpl} />);
+    const plan = await screen.findByRole('listitem', { name: 'Starter plan' });
+    fireEvent.click(within(plan).getByRole('button', { name: 'Review Starter plan' }));
+    expect(screen.queryByRole('listitem', { name: 'Low pogo hops, a step harder' })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(within(plan).getByRole('heading', { name: 'Starter plan' })));
+    fireEvent.click(within(plan).getByRole('button', { name: 'Back to inbox' }));
+    expect(screen.getByRole('listitem', { name: 'Low pogo hops, a step harder' })).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(within(plan).getByRole('button', { name: 'Review Starter plan' })));
+  });
   it('opens a request, returns to the inbox and rejects an answer resolved elsewhere', async () => {
     const server = fakeServer('parent');
     render(<App fetchImpl={server.fetchImpl} />);
@@ -81,17 +93,18 @@ describe('parent inbox', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const plan = await screen.findByRole('listitem', { name: 'Starter plan' });
     fireEvent.click(within(plan).getByRole('button', { name: 'Review Starter plan' }));
-    expect(screen.queryByRole('listitem', { name: 'Low pogo hops, a step harder' })).toBeNull();
+    expect(screen.getByRole('listitem', { name: 'Low pogo hops, a step harder' })).toBeTruthy();
     fireEvent.click(within(plan).getByRole('button', { name: 'Back to inbox' }));
     expect(await screen.findByRole('listitem', { name: 'Low pogo hops, a step harder' })).toBeTruthy();
     fireEvent.click(within(plan).getByRole('button', { name: 'Review Starter plan' }));
     server.pending.splice(0, 1);
+    if (within(plan).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(plan).findByRole('button', { name: /^Review/ }));
     fireEvent.click(within(plan).getByRole('button', { name: 'Approve' }));
     expect((await screen.findByRole('alert')).textContent).toContain("That answer didn't go through");
     expect(server.approved).toEqual([]);
     await waitFor(() => expect(screen.queryByRole('listitem', { name: 'Starter plan' })).toBeNull());
   });
-  it('lists pending requests with Approve and Decline, and a badge with the pending count', async () => {
+  it('lists pending requests for review, with a badge matching the pending count', async () => {
     const server = fakeServer('parent');
     render(<App fetchImpl={server.fetchImpl} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
@@ -101,9 +114,16 @@ describe('parent inbox', () => {
     expect(within(inbox).getByText('Low pogo hops, a step harder')).toBeTruthy();
     expect(within(inbox).getByText('Plan')).toBeTruthy();
     expect(within(inbox).getByText('Harder version')).toBeTruthy();
-    expect(within(inbox).getAllByRole('button', { name: 'Approve' })).toHaveLength(2);
-    expect(within(inbox).getAllByRole('button', { name: 'Decline' })).toHaveLength(2);
+    expect(within(inbox).queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(within(inbox).getAllByRole('button', { name: /^Review/ })).toHaveLength(2);
     expect(within(inbox).getByLabelText('2 waiting').textContent).toBe('2');
+  });
+
+  it('offers a direct route from progress to waiting requests', async () => {
+    const server = fakeServer('parent');
+    render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Review 2 waiting requests' }));
+    expect(await screen.findByRole('heading', { name: 'Inbox', level: 1 })).toBeTruthy();
   });
 
   it('approves one request, then the badge and the list drop it', async () => {
@@ -112,6 +132,7 @@ describe('parent inbox', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const plan = await screen.findByRole('listitem', { name: 'Starter plan' });
+    if (within(plan).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(plan).findByRole('button', { name: /^Review/ }));
     fireEvent.click(within(plan).getByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(screen.queryByRole('listitem', { name: 'Starter plan' })).toBeNull());
     expect(server.posts).toEqual(['approve:r1']);
@@ -127,6 +148,7 @@ describe('parent inbox', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const harder = await screen.findByRole('listitem', { name: 'Low pogo hops, a step harder' });
+    if (within(harder).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(harder).findByRole('button', { name: /^Review/ }));
     fireEvent.click(within(harder).getByRole('button', { name: 'Decline' }));
     await waitFor(() => expect(server.posts).toEqual(['decline:r2']));
     expect(server.approved).toEqual([]);
@@ -140,6 +162,8 @@ describe('parent inbox', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     expect(await screen.findByText('Nothing to approve.')).toBeTruthy();
     expect(screen.queryByLabelText(/waiting/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'View the plan' }));
+    expect(screen.getByRole('heading', { name: 'Plan', level: 1 })).toBeTruthy();
   });
 });
 

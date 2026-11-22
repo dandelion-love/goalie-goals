@@ -10,6 +10,7 @@ import { Reveal } from './Loading';
 import { useMoment } from './motion';
 import { Equipment } from './Equipment';
 import { RoleShell, useDestination } from './RoleShell';
+import { Button } from './Interface';
 
 const PARENT_DESTINATIONS = [{ id: 'inbox', label: 'Inbox' }, { id: 'plan', label: 'Plan' }, { id: 'progress', label: 'Progress' }, { id: 'settings', label: 'Reset' }] as const;
 
@@ -24,7 +25,7 @@ const History = memo(HistoryPanel);
 const SessionHistory = memo(SessionHistoryPanel);
 const WeekPanel = memo(WeekPanelBody);
 
-export function ParentHome({ fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl?: typeof fetch; epoch?: number }) {
+export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl?: typeof fetch; epoch?: number }) {
   const { current: destination, navigate, navigation, content } = useDestination(PARENT_DESTINATIONS, 'progress');
   const [inboxSummary, setInboxSummary] = useState({ badge: 0, urgent: false });
   const onInboxSummary = useCallback((badge: number, urgent: boolean) => setInboxSummary((old) => old.badge === badge && old.urgent === urgent ? old : { badge, urgent }), []);
@@ -58,6 +59,7 @@ export function ParentHome({ fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl
   return (
     <RoleShell title="Parent home" destinations={PARENT_DESTINATIONS.map((item) => item.id === 'inbox' ? { ...item, title: 'Inbox', label: `Inbox${inboxSummary.badge ? ` (${inboxSummary.badge})` : ''}${inboxSummary.urgent ? ' urgent' : ''}` } : item)} current={destination} navigate={navigate} navigation={navigation} content={content}>
       <div hidden={destination !== 'progress'}>
+      {(inboxSummary.badge > 0 || inboxSummary.urgent) && <Button variant="primary" onClick={() => navigate('inbox')}>{inboxSummary.urgent ? 'Review urgent inbox' : `Review ${inboxSummary.badge} waiting ${inboxSummary.badge === 1 ? 'request' : 'requests'}`}</Button>}
       <ProgressPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onProgress} />
       </div>
       {/* This week (story 114): the days the parent set, each in its state, and what comes next. */}
@@ -80,7 +82,7 @@ export function ParentHome({ fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl
       </div>
       <Reveal open={inboxOpen}>
           <div ref={inbox} className="inbox-pane" hidden={destination !== 'inbox'}>
-            <ParentInbox fetchImpl={fetchImpl} onChange={inboxChanged} refresh={answered + epoch} onSettled={onInbox} onSummary={onInboxSummary} />
+            <ParentInbox layout={layout} fetchImpl={fetchImpl} onChange={inboxChanged} refresh={answered + epoch} onSettled={onInbox} onSummary={onInboxSummary} onGoPlan={() => navigate('plan')} />
           </div>
           <div hidden={destination !== 'progress'}>
           <Reveal open={historyOpen}>

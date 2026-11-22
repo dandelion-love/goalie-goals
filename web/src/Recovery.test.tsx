@@ -286,10 +286,12 @@ describe('undo an approval (AC4)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const inbox = await screen.findByRole('article', { name: /^Inbox/ });
+    if (within(inbox).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(inbox).findByRole('button', { name: /^Review/ }));
     fireEvent.click(await within(inbox).findByRole('button', { name: 'Approve' }));
     const toast = await screen.findByText('Approved: Starter plan');
     fireEvent.click(within(toast.parentElement!).getByRole('button', { name: 'Undo' }));
     expect(await screen.findByText("Approval undone. It's back in the inbox.")).toBeTruthy();
+    fireEvent.click(await within(inbox).findByRole('button', { name: /^Review/ }));
     expect(await within(inbox).findByRole('button', { name: 'Approve' })).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Progress' }));
@@ -304,6 +306,7 @@ describe('undo an approval (AC4)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const inbox = await screen.findByRole('article', { name: /^Inbox/ });
+    if (within(inbox).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(inbox).findByRole('button', { name: /^Review/ }));
     fireEvent.click(await within(inbox).findByRole('button', { name: 'Approve' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Progress' }));
@@ -319,6 +322,7 @@ describe('undo an approval (AC4)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const inbox = await screen.findByRole('article', { name: /^Inbox/ });
+    if (within(inbox).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(inbox).findByRole('button', { name: /^Review/ }));
     fireEvent.click(await within(inbox).findByRole('button', { name: 'Approve' }));
     expect(await screen.findByText('Approved: Starter plan')).toBeTruthy();
     await waitFor(() => expect(screen.queryByText('Approved: Starter plan')).toBeNull());

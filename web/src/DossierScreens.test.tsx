@@ -227,11 +227,13 @@ describe("the parent's request (AC3)", () => {
     expect(within(row).getByText('About an exercise')).toBeTruthy();
     // Fetched only when the parent opens it.
     expect(calls).not.toContain('GET /api/approvals/d1/dossier');
+    if (within(row).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(row).findByRole('button', { name: /^Review/ }));
     fireEvent.click(within(row).getByRole('button', { name: 'Read it' }));
     await within(row).findByText(DOSSIER.headline);
     expect(calls).toContain('GET /api/approvals/d1/dossier');
     expectDossier(row);
     checkCopy(row, 20);
+    if (within(row).queryAllByRole('button', { name: /^(Approve|Decline|Read it)$/ }).length === 0) fireEvent.click(await within(row).findByRole('button', { name: /^Review/ }));
     fireEvent.click(within(row).getByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(calls).toContain('POST /api/approvals/d1/approve'));
   });

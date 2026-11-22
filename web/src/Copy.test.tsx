@@ -175,6 +175,7 @@ describe('the words on both homes (AC1)', () => {
     await screen.findByRole('heading', { name: 'Training paused: something hurts' });
     // Story 104: the keeper's mistake note, in the same copy rules.
     await screen.findByText('Check in before clearing.');
+    fireEvent.click(screen.getByRole('button', { name: 'Review Session: Strong middle' }));
     expect(copyOnScreen().lines).toContain('Lapses unanswered on Jan 12; silence never approves.');
     checkCopy('P1 parent home', ELSEWHERE);
     fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
