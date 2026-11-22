@@ -40,6 +40,7 @@ export interface ClientDossier {
   expect: ClientClaim[];
   whyUnavailable?: string;
   expectUnavailable?: string;
+  musclesUnavailable?: string;
   context?: ClientClaim[];
   limits?: ClientClaim[];
   sources: ClientSource[];
@@ -106,13 +107,15 @@ function toClient(source: DossierSource, name: string, version: string, includeL
   // Only the explicit unavailable format adds context to a newly reviewed dossier. Existing
   // dossier approvals covered their original two sections and must not reveal extra material.
   const unavailable = !!dossier.why.unavailable && !!dossier.expect.unavailable;
+  const muscles = dossier.muscles as { unavailable?: unknown } | null;
+  const musclesUnavailable = unavailable && typeof muscles?.unavailable === 'string' ? muscles.unavailable : undefined;
   const context = unavailable ? [...dossier.science.claims, ...dossier.science.limits].map((c) => ({ label: 'Research context', text: c.text, evidence: c.evidence, detail: c.detail, sources: cite(c) })) : undefined;
   const limits = includeLimits ? dossier.science.limits.map((c) => ({ label: 'Limitation', text: c.text, evidence: c.evidence, detail: c.detail, sources: cite(c) })) : undefined;
   const sources = [...numbers].map(([id, n]) => {
     const s = byId.get(id)!;
     return { n, title: s.title, url: s.url.startsWith('https://') ? s.url : null };
   });
-  return { cardId: dossier.id, itemVersion: version, name, headline: dossier.why.headline, why, expect, sources, ...(limits ? { limits } : {}), ...(dossier.why.unavailable ? { whyUnavailable: dossier.why.unavailable } : {}), ...(dossier.expect.unavailable ? { expectUnavailable: dossier.expect.unavailable } : {}), ...(context ? { context } : {}) };
+  return { cardId: dossier.id, itemVersion: version, name, headline: dossier.why.headline, why, expect, sources, ...(limits ? { limits } : {}), ...(dossier.why.unavailable ? { whyUnavailable: dossier.why.unavailable } : {}), ...(dossier.expect.unavailable ? { expectUnavailable: dossier.expect.unavailable } : {}), ...(musclesUnavailable ? { musclesUnavailable } : {}), ...(context ? { context } : {}) };
 }
 
 function snapshot(source: DossierSource, name: string): DossierSnapshot {

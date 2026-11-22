@@ -28,6 +28,7 @@ export interface Dossier {
   expect: DossierClaim[];
   whyUnavailable?: string;
   expectUnavailable?: string;
+  musclesUnavailable?: string;
   context?: DossierClaim[];
   limits?: DossierClaim[];
   sources: DossierSource[];
@@ -52,6 +53,7 @@ export function isDossier(value: unknown): value is Dossier {
     Array.isArray(d.sources) &&
     (d.whyUnavailable === undefined || typeof d.whyUnavailable === 'string') &&
     (d.expectUnavailable === undefined || typeof d.expectUnavailable === 'string') &&
+    (d.musclesUnavailable === undefined || typeof d.musclesUnavailable === 'string') &&
     (d.context === undefined || Array.isArray(d.context))
   );
 }

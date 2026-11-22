@@ -17,6 +17,7 @@ it('previews unavailable evidence and its cited context before the same version 
   const preview = await dossiers.forRequest(request);
   expect(preview?.whyUnavailable).toContain('No reviewed');
   expect(preview?.expectUnavailable).toContain('No reviewed');
+  expect(preview?.musclesUnavailable).toBe('No reviewed muscle map is available for this variation.');
   expect(preview?.context).toHaveLength(3);
   expect(preview?.sources).toHaveLength(2);
   expect((await dossiers.approved()).size).toBe(0);

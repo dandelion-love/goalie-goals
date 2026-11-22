@@ -53,6 +53,7 @@ export function DossierView({ dossier, level = 3 }: { dossier: Dossier; level?: 
       <H>What to expect</H>
       {dossier.expectUnavailable && <p>{dossier.expectUnavailable}</p>}
       <Claims claims={dossier.expect} />
+      {dossier.musclesUnavailable && <><H>Training focus</H><p>{dossier.musclesUnavailable}</p></>}
       {dossier.context && <><H>Research context and limits</H><Claims claims={dossier.context} showEvidence /></>}
       <H>Sources</H>
       <ol className="dossier-sources">

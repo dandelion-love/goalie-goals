@@ -11,10 +11,11 @@ import type { WakeLockController } from './wakeLock';
 import { BRIDGE, PLANK, demoSession } from './session.fixture';
 
 it('shows explicit unavailable states and qualified research context', () => {
-  const dossier: Dossier = { cardId: 'example', itemVersion: 'v1', name: 'Example', headline: 'Example', why: [], expect: [], whyUnavailable: 'Benefits are unavailable.', expectUnavailable: 'Outcomes are unavailable.', context: [{ label: 'Research context', text: 'A study involved adults.', evidence: 'adult', sources: [1] }], sources: [{ n: 1, title: 'Example study', url: 'https://example.org/study' }] };
+  const dossier: Dossier = { cardId: 'example', itemVersion: 'v1', name: 'Example', headline: 'Example', why: [], expect: [], whyUnavailable: 'Benefits are unavailable.', expectUnavailable: 'Outcomes are unavailable.', musclesUnavailable: 'Focus is unavailable.', context: [{ label: 'Research context', text: 'A study involved adults.', evidence: 'adult', sources: [1] }], sources: [{ n: 1, title: 'Example study', url: 'https://example.org/study' }] };
   render(<DossierView dossier={dossier} />);
   expect(screen.getByText('Benefits are unavailable.')).toBeTruthy();
   expect(screen.getByText('Outcomes are unavailable.')).toBeTruthy();
+  expect(screen.getByText('Focus is unavailable.')).toBeTruthy();
   expect(screen.getByText(/A study involved adults.*Evidence: adult/)).toBeTruthy();
   expect(screen.getByText('Example study')).toBeTruthy();
 });
