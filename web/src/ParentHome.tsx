@@ -56,7 +56,7 @@ export function ParentHome({ fetchImpl, epoch = 0 }: { layout: Layout; fetchImpl
   const inboxOpen = daysOpen && settled.days;
   const historyOpen = inboxOpen && settled.inbox;
   return (
-    <RoleShell title="Parent home" destinations={PARENT_DESTINATIONS.map((item) => item.id === 'inbox' ? { ...item, label: `Inbox${inboxSummary.badge ? ` (${inboxSummary.badge})` : ''}${inboxSummary.urgent ? ' — urgent' : ''}` } : item)} current={destination} navigate={navigate} navigation={navigation} content={content}>
+    <RoleShell title="Parent home" destinations={PARENT_DESTINATIONS.map((item) => item.id === 'inbox' ? { ...item, label: `Inbox${inboxSummary.badge ? ` (${inboxSummary.badge})` : ''}${inboxSummary.urgent ? ' urgent' : ''}` } : item)} current={destination} navigate={navigate} navigation={navigation} content={content}>
       <div hidden={destination !== 'progress'}>
       <ProgressPanel fetchImpl={fetchImpl} refresh={answered + epoch} onSettled={onProgress} />
       </div>
