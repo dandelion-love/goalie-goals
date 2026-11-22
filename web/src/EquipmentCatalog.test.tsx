@@ -32,7 +32,13 @@ describe('equipment catalog', () => {
     window.history.replaceState(null, '', '/?view=equipment');
     render(<Example />);
     fireEvent.click(await screen.findByRole('button', { name: /Equipment: Goalkeeper gloves/ }));
+    const back = screen.getByRole('button', { name: 'Back to equipment' });
+    const linkedExercise = screen.getByRole('button', { name: /Wall pass/ });
+    const hero = screen.getByText("The item's training role, fit and restrictions are not recorded.", { exact: false });
+    expect(back.compareDocumentPosition(linkedExercise) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(linkedExercise.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: /Wall pass/ }));
+    expect(screen.getByRole('button', { name: 'Back to item' }).compareDocumentPosition(screen.getByText('Practise passing')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByText(/All required: Goalkeeper gloves, Ball/)).toBeTruthy();
     expect(screen.getByText(/One of: Wall or Partner/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Ball (required)' }));
