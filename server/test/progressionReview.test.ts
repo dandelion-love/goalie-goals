@@ -7,6 +7,7 @@ import { FirestoreSquatProofStore, SquatProofService } from '../src/squatProof.j
 import { ProgressionReview, registerProgressionReviewRoutes } from '../src/progressionReview.js';
 import { MemoryRoleStore } from '../src/roles.js';
 import { FakeFirestore } from './fakeFirestore.js';
+import { defaultContentRoot } from '../src/content.js';
 
 it('offers and records a parent review only for current synthetic evidence', async () => {
   const db = new FakeFirestore(), history = new FirestoreHistoryStore(db), proofs = new FirestoreSquatProofStore(db);
@@ -23,13 +24,17 @@ it('offers and records a parent review only for current synthetic evidence', asy
   expect(await readiness.attest({ orderedRecordIds: ids, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true })).toBe(true);
   const signer = new TestSigner(), audience = '/test/review';
   const app = await buildApp({ config: { audience, devMockIdentity: false, devMockAccount: '', roleSeed: 'parent@example.com=parent;keeper@example.com=keeper', roleStore: 'memory', port: 0, webRoot: '', production: false }, verifier: new ProxyJwtVerifier(audience, signer.keys) });
-  registerProgressionReviewRoutes(app, new ProgressionReview(db, readiness, proofs, { itemId: 'synthetic-next', version: 'synthetic-v1' }), MemoryRoleStore.fromSeed('parent@example.com=parent;keeper@example.com=keeper'));
+  const review = ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'sha256:836073df2f6a8c3c94e99bf990df658d');
+  expect(() => ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'unknown')).toThrow('no owner decision');
+  expect(() => ProgressionReview.fromOwnerArchive(db, readiness, proofs, defaultContentRoot(), 'sha256:ebe9725306de0c55f06f059ca1952118')).toThrow('No readiness rule');
+  registerProgressionReviewRoutes(app, review, MemoryRoleStore.fromSeed('parent@example.com=parent;keeper@example.com=keeper'));
   const headers = (account: string) => ({ [IDENTITY_HEADER]: signer.sign({ account, audience }) });
   const post = (url: string, account = 'parent@example.com') => app.inject({ method: 'POST', url, headers: headers(account) });
   try {
     expect((await post('/api/progression/review-offer', 'keeper@example.com')).statusCode).toBe(403);
     const first = await post('/api/progression/review-offer');
     expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({ itemId: 'squat-to-box-pause', dose: '2 x 10' });
     const stale = first.json().id;
     const originalStatus = readiness.status.bind(readiness);
     vi.spyOn(readiness, 'status').mockImplementationOnce(async () => {

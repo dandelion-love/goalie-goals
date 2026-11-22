@@ -4,13 +4,23 @@ import type { FsDb } from './firestoreDb.js';
 import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
 import type { SquatProofService, SquatProofStore } from './squatProof.js';
 import type { RoleStore } from './roles.js';
+import { ownerApprovedSquatVersions } from './ownerProgression.js';
+
+type ReviewCandidate = { itemId: string; version: string; title: string; dose: string; cues: string[] };
 
 /** Isolated review prototype: this records no training approval or active progression. */
 export class ProgressionReview {
-  constructor(private readonly db: FsDb, private readonly readiness: SquatProofService,
-    private readonly proofs: SquatProofStore, private readonly candidate: { itemId: string; version: string }) {}
+  private constructor(private readonly db: FsDb, private readonly readiness: SquatProofService,
+    private readonly proofs: SquatProofStore, private readonly candidate: ReviewCandidate) {}
 
-  async offer(): Promise<{ id: string; itemId: string; version: string } | null> {
+  static fromOwnerArchive(db: FsDb, readiness: SquatProofService, proofs: SquatProofStore, contentRoot: string, version: string): ProgressionReview {
+    const entry = ownerApprovedSquatVersions(contentRoot).find((item) => item.itemVersion === version);
+    if (!entry) throw new Error('Progression version has no owner decision');
+    if (entry.rung !== 'squat-to-box-pause' || entry.predecessor !== 'squat-to-box') throw new Error('No readiness rule for progression version');
+    return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues });
+  }
+
+  async offer(): Promise<({ id: string } & ReviewCandidate) | null> {
     const before = await this.proofs.read();
     if (!before || await this.readiness.status() !== 'ready-for-parent') return null;
     const after = await this.proofs.read();
