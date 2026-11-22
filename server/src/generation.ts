@@ -10,6 +10,7 @@
 // device that held data from before can still tell.
 
 import { asObject, type FsDb } from './firestoreDb.js';
+import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
 
 /** The response and request header that carries the generation. */
 export const GENERATION_HEADER = 'x-household-generation';
@@ -63,7 +64,10 @@ export class FirestoreGenerationStore implements GenerationStore {
     return this.db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       const next = (snap.exists ? valueOf(snap.data()) : 0) + 1;
+      const revision = evidenceRevisionRef(this.db);
+      await readEvidenceRevision(tx, revision);
       tx.set(ref, { value: next });
+      bumpEvidenceRevision(tx, revision);
       return next;
     });
   }

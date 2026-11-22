@@ -232,8 +232,9 @@ describe('AC2 and AC5: the training data goes; roles and the training days stay;
     expect((await reset(a)).statusCode).toBe(200);
     const collections = new Set(db.paths().map((p) => p.split('/')[0]));
     expect([...collections].sort()).toEqual(
-      [APPROVALS_COLLECTION, AUDIT_COLLECTION, COUNTERS_COLLECTION, GENERATION_COLLECTION, SCHEDULE_COLLECTION].sort(),
+      [APPROVALS_COLLECTION, AUDIT_COLLECTION, COUNTERS_COLLECTION, GENERATION_COLLECTION, SCHEDULE_COLLECTION, 'progressionEvidence'].sort(),
     );
+    expect(Object.keys(db.docs.get('progressionEvidence/revision') ?? {})).toEqual(['value']);
     expect(db.paths().filter((p) => oldRequests.includes(p))).toEqual([]);
     expect(db.paths().some((p) => p.startsWith(`${PROGRESS_COLLECTION}/`))).toBe(false);
     expect(logLines.join('\n')).not.toContain(NOTE);

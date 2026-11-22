@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { bumpEvidenceRevision, evidenceRevisionRef, guardedEvidenceMutation, readEvidenceRevision } from '../src/evidenceRevision.js';
 import { FakeFirestore } from './fakeFirestore.js';
+import { FirestoreGenerationStore } from '../src/generation.js';
 
 it('rejects a stale decision and makes concurrent decisions compete on the same revision', async () => {
   const db = new FakeFirestore();
@@ -30,4 +31,12 @@ it('fails closed for malformed revisions and leaves decision documents unchanged
     tx.set(db.collection('decisions').doc('one'), { approved: true });
   })).rejects.toThrow('Invalid evidence revision');
   expect((await db.collection('decisions').doc('one').get()).exists).toBe(false);
+});
+
+it('invalidates an observed revision when household reset begins', async () => {
+  const db = new FakeFirestore();
+  const ref = evidenceRevisionRef(db);
+  const observed = await db.runTransaction((tx) => readEvidenceRevision(tx, ref));
+  expect(await new FirestoreGenerationStore(db).bump()).toBe(1);
+  expect(await guardedEvidenceMutation(db, observed, async () => 'approved')).toEqual({ applied: false });
 });
