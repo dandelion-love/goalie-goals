@@ -15,6 +15,10 @@ it('uses the keeper projection and navigates between equipment and approved exer
   fireEvent.click(screen.getByRole('button', { name: /Exercise: Wall pass/ }));
   expect(screen.getByText('Find a wall')).toBeTruthy();
   expect(screen.getByText(/readiness and other requirements/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: /Equipment: Ball/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Back to exercise' }));
+  const ball = await screen.findByRole('button', { name: /Equipment: Ball/ });
+  await waitFor(() => expect(document.activeElement).toBe(ball));
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   const link = await screen.findByRole('button', { name: /Exercise: Wall pass/ });
   await waitFor(() => expect(document.activeElement).toBe(link));

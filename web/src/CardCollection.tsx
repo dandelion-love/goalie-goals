@@ -59,7 +59,7 @@ export function CardCollection({ fetchImpl = fetch, refresh = 0 }: { fetchImpl?:
     const url = new URL(location.href);
     if (next.item) url.searchParams.set('collectionItem', next.item); else url.searchParams.delete('collectionItem');
     if (next.exercise) url.searchParams.set('collectionExercise', next.exercise); else url.searchParams.delete('collectionExercise');
-    window.history.pushState({ ...window.history.state, collectionStep: true }, '', url); prior.current = next; setPlace(next);
+    window.history.pushState({ ...window.history.state, collectionStep: true, collectionFrom: place }, '', url); prior.current = next; setPlace(next);
   };
   const back = (fallback: Place) => {
     if (window.history.state?.collectionStep) { window.history.back(); return; }
@@ -87,7 +87,7 @@ export function CardCollection({ fetchImpl = fetch, refresh = 0 }: { fetchImpl?:
     <h3>Equipment used</h3><div className="collection-grid">{items.filter((id) => relationship(exercise, id)).map((id) => tile('Equipment', id, equipmentName(id), { item: id, exercise: null }))}</div>
     {exercise.dossier ? <details><summary>Dossier and sources</summary><p>This approved dossier is versioned separately from the exercise.</p><DossierView dossier={exercise.dossier as Dossier} level={3} /></details> : <p>An approved dossier is not available.</p>}
     <button className="secondary" onClick={() => back({ item, exercise: null })}>Back</button></article>;
-  if (item) return <article className="card"><h2>{equipmentName(item)}</h2><div className="trading-card-hero"><TradingCard kind="Equipment" name={equipmentName(item)} state="Availability not shared" requirements={equipmentAlsoNeeds(item, exercises)} summary={equipmentEnables(item, exercises)} artwork={collectionArtwork[item]} /></div><p>Availability and item-specific fit are not shared here.</p><h3>Exercises using this item</h3><div className="collection-grid">{exercises.filter((e) => relationship(e, item)).map((e) => tile('Exercise', e.id, e.name, { item, exercise: e.id }, e.figureUrl))}</div><button className="secondary" onClick={() => back({ item: null, exercise: null })}>Back to collection</button></article>;
+  if (item) return <article className="card"><h2>{equipmentName(item)}</h2><div className="trading-card-hero"><TradingCard kind="Equipment" name={equipmentName(item)} state="Availability not shared" requirements={equipmentAlsoNeeds(item, exercises)} summary={equipmentEnables(item, exercises)} artwork={collectionArtwork[item]} /></div><p>Availability and item-specific fit are not shared here.</p><h3>Exercises using this item</h3><div className="collection-grid">{exercises.filter((e) => relationship(e, item)).map((e) => tile('Exercise', e.id, e.name, { item, exercise: e.id }, e.figureUrl))}</div><button className="secondary" onClick={() => back({ item: null, exercise: null })}>{window.history.state?.collectionFrom?.exercise ? 'Back to exercise' : 'Back to collection'}</button></article>;
   const groups = new Map<string, Exercise[]>();
   for (const e of exercises) { const series = RUNGS.find((r) => r.id === e.id)?.ladder ?? 'Other exercises'; groups.set(series, [...(groups.get(series) ?? []), e]); }
   return <article className="card"><h2>Card collection</h2><p>Explore approved exercises and the equipment they use. Card views do not change readiness.</p>
