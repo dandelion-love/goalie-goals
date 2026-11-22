@@ -123,7 +123,7 @@ export interface TodayResponse {
 }
 
 /** A card version as proposed: kept so an older approved version can still be shown. */
-interface CardSnapshot {
+export interface CardSnapshot {
   source: CardSource;
   itemId: string;
   itemVersion: string;
@@ -164,7 +164,7 @@ export function withinWordLimit(text: string, limit = DETAIL_SENTENCE_WORDS): bo
  * What the parent reads about a card: why it helps, when that is short enough, and its dose,
  * in plain words. The card's hash binds the version without being shown.
  */
-function cardSnapshot(source: CardSource): CardSnapshot {
+export function cardSnapshot(source: CardSource): CardSnapshot {
   const { card } = source;
   const dose = `Dose: ${doseText(card.dose)}.`;
   const content: ItemContent = {

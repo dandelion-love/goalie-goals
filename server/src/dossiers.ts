@@ -38,6 +38,10 @@ export interface ClientDossier {
   headline: string;
   why: ClientClaim[];
   expect: ClientClaim[];
+  whyUnavailable?: string;
+  expectUnavailable?: string;
+  musclesUnavailable?: string;
+  context?: ClientClaim[];
   limits?: ClientClaim[];
   sources: ClientSource[];
 }
@@ -57,7 +61,7 @@ export function weeksLabel(weeks: [number, number]): string {
   return lo === hi ? `${lo} ${lo === 1 ? 'week' : 'weeks'}` : `${lo} to ${hi} weeks`;
 }
 
-interface DossierSnapshot {
+export interface DossierSnapshot {
   cardId: string;
   itemId: string;
   itemVersion: string;
@@ -98,23 +102,31 @@ function toClient(source: DossierSource, name: string, version: string, includeL
       ...(c.groupId ? { groupId: c.groupId } : {}),
       sources: cite(c),
     })),
-    { label: 'Keep it up', text: dossier.expect.keep_up.text, evidence: dossier.expect.keep_up.evidence, detail: dossier.expect.keep_up.detail, sources: cite(dossier.expect.keep_up) },
+    ...(dossier.expect.keep_up ? [{ label: 'Keep it up', text: dossier.expect.keep_up.text, evidence: dossier.expect.keep_up.evidence, detail: dossier.expect.keep_up.detail, sources: cite(dossier.expect.keep_up) }] : []),
   ];
+  // Only the explicit unavailable format adds context to a newly reviewed dossier. Existing
+  // dossier approvals covered their original two sections and must not reveal extra material.
+  const unavailable = !!dossier.why.unavailable && !!dossier.expect.unavailable;
+  const muscles = dossier.muscles as { unavailable?: unknown } | null;
+  const musclesUnavailable = unavailable && typeof muscles?.unavailable === 'string' ? muscles.unavailable : undefined;
+  const context = unavailable ? [...dossier.science.claims, ...dossier.science.limits].map((c) => ({ label: 'Research context', text: c.text, evidence: c.evidence, detail: c.detail, sources: cite(c) })) : undefined;
   const limits = includeLimits ? dossier.science.limits.map((c) => ({ label: 'Limitation', text: c.text, evidence: c.evidence, detail: c.detail, sources: cite(c) })) : undefined;
   const sources = [...numbers].map(([id, n]) => {
     const s = byId.get(id)!;
     return { n, title: s.title, url: s.url.startsWith('https://') ? s.url : null };
   });
-  return { cardId: dossier.id, itemVersion: version, name, headline: dossier.why.headline, why, expect, sources, ...(limits ? { limits } : {}) };
+  return { cardId: dossier.id, itemVersion: version, name, headline: dossier.why.headline, why, expect, sources, ...(limits ? { limits } : {}), ...(dossier.why.unavailable ? { whyUnavailable: dossier.why.unavailable } : {}), ...(dossier.expect.unavailable ? { expectUnavailable: dossier.expect.unavailable } : {}), ...(musclesUnavailable ? { musclesUnavailable } : {}), ...(context ? { context } : {}) };
 }
 
-function snapshot(source: DossierSource, name: string): DossierSnapshot {
+export function dossierSnapshot(source: DossierSource, name: string): DossierSnapshot {
   const cardId = source.dossier.id;
   const count = source.dossier.sources.length;
   // What the parent reads in the inbox; "Read it" there shows the whole of what the keeper sees.
   const content: ItemContent = {
     title: `${name}: why it matters`,
-    detail: `What the keeper reads about this exercise: why it helps a goalkeeper and what to expect. It cites ${count} sources.`,
+    detail: source.dossier.why.unavailable && source.dossier.expect.unavailable
+      ? `What the keeper reads about this exercise: unavailable evidence and its research context. It cites ${count} sources.`
+      : `What the keeper reads about this exercise: why it helps a goalkeeper and what to expect. It cites ${count} sources.`,
     binding: `dossier ${cardId} ${source.contentHash}`,
   };
   const version = itemVersion(content);
@@ -145,7 +157,7 @@ export class DossierService {
     for (const [cardId, source] of library.dossiers ?? []) {
       const card = library.cards.get(cardId);
       if (!card) continue;
-      const snap = snapshot(source, card.card.name);
+      const snap = dossierSnapshot(source, card.card.name);
       this.versions.set(snap.itemVersion, snap);
       out.push(snap);
     }
