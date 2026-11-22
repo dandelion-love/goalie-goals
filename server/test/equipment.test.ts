@@ -31,7 +31,7 @@ describe('goalkeeper gloves', () => {
     });
     const headers = (account: string) => ({ [IDENTITY_HEADER]: signer.sign({ account, audience }) });
     try {
-      expect((await app.inject({ method: 'GET', url: '/api/equipment', headers: headers('sam@example.com') })).json()).toEqual({ gloves: 'unknown' });
+      expect((await app.inject({ method: 'GET', url: '/api/equipment', headers: headers('sam@example.com') })).json()).toEqual({ gloves: 'unknown', acquiredAt: null });
       expect((await app.inject({ method: 'GET', url: '/api/equipment/exercises', headers: headers('kai@example.com') })).statusCode).toBe(403);
       const collection = await app.inject({ method: 'GET', url: '/api/training/collection', headers: headers('kai@example.com') });
       expect(collection.statusCode).toBe(200);
@@ -44,7 +44,7 @@ describe('goalkeeper gloves', () => {
       expect(catalog.json().exercises).toEqual(expect.any(Array));
       expect((await app.inject({ method: 'PUT', url: '/api/equipment', headers: headers('kai@example.com'), payload: { gloves: 'available' } })).statusCode).toBe(403);
       expect((await app.inject({ method: 'PUT', url: '/api/equipment', headers: headers('sam@example.com'), payload: { gloves: 'yes' } })).statusCode).toBe(400);
-      expect((await app.inject({ method: 'PUT', url: '/api/equipment', headers: headers('sam@example.com'), payload: { gloves: 'available' } })).json()).toEqual({ gloves: 'available' });
+      expect((await app.inject({ method: 'PUT', url: '/api/equipment', headers: headers('sam@example.com'), payload: { gloves: 'available' } })).json()).toEqual({ gloves: 'available', acquiredAt: expect.any(String) });
     } finally { await app.close(); }
   });
 
@@ -73,10 +73,18 @@ describe('goalkeeper gloves', () => {
     const first = new FirestoreEquipmentStore(db);
     expect(await first.read()).toBe('unknown');
     await first.write('available');
+    const recorded = (await first.readDetails()).acquiredAt;
+    expect(recorded).toEqual(expect.any(String));
     const restarted = new FirestoreEquipmentStore(db);
     expect(await restarted.read()).toBe('available');
+    await restarted.write('available');
+    expect((await restarted.readDetails()).acquiredAt).toBe(recorded);
     await restarted.write('unavailable');
     expect(await first.read()).toBe('unavailable');
+    db.docs.set('equipment/household', { gloves: 'available' });
+    expect(await restarted.readDetails()).toEqual({ gloves: 'available', acquiredAt: null });
+    await restarted.write('available');
+    expect((await restarted.readDetails()).acquiredAt).toBeNull();
   });
 
   it('requires gloves and both approvals, and checks a previously approved session and late start', async () => {

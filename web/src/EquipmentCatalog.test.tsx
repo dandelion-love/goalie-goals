@@ -34,7 +34,7 @@ describe('equipment catalog', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Equipment: Goalkeeper gloves/ }));
     const back = screen.getByRole('button', { name: 'Back to equipment' });
     const linkedExercise = screen.getByRole('button', { name: /Wall pass/ });
-    const hero = screen.getByText("The item's training role, fit and restrictions are not recorded.", { exact: false });
+    const hero = screen.getByText('Exercise evidence and requirements');
     expect(back.compareDocumentPosition(linkedExercise) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(linkedExercise.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: /Wall pass/ }));
@@ -42,7 +42,7 @@ describe('equipment catalog', () => {
     expect(screen.getByText(/All required: Goalkeeper gloves, Ball/)).toBeTruthy();
     expect(screen.getByText(/One of: Wall or Partner/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Ball (required)' }));
-    expect(await screen.findByRole('heading', { name: 'Ball', level: 2 })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Ball', level: 3 })).toBeTruthy();
     window.history.back();
     const ballLink = await screen.findByRole('button', { name: 'Ball (required)' });
     await waitFor(() => expect(document.activeElement).toBe(ballLink));
@@ -72,7 +72,7 @@ describe('equipment catalog', () => {
     render(<Example fetcher={seeded} />);
     fireEvent.click(await screen.findByRole('button', { name: /Equipment: Goalkeeper gloves/ }));
     const summary = screen.getByRole('region', { name: 'Exercise evidence summary' });
-    expect(screen.getByRole('heading', { name: 'Exercises using this item' }).compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText('Exercise evidence and requirements').compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const link = within(summary).getByRole('button', { name: 'Wall pass' });
     fireEvent.click(link);
     fireEvent.click(screen.getByRole('button', { name: 'Back to item' }));
@@ -83,6 +83,6 @@ describe('equipment catalog', () => {
     render(<Example />);
     expect(await screen.findByRole('heading', { name: 'Exercise unavailable' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Back to item' }));
-    expect(await screen.findByRole('heading', { name: 'Ball', level: 2 })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Ball', level: 3 })).toBeTruthy();
   });
 });

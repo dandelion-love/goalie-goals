@@ -50,6 +50,7 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
   const itemButtons = useRef(new Map<string, HTMLButtonElement>());
   const exerciseButtons = useRef(new Map<string, HTMLButtonElement>());
   const exerciseItemButtons = useRef(new Map<string, HTMLButtonElement>());
+  const relatedItemButtons = useRef(new Map<string, HTMLButtonElement>());
   const summaryOrigin = useRef<{ item: string; exercise: string; token: string } | null>(null);
   const prior = useRef(place);
   useEffect(() => {
@@ -78,6 +79,7 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
           (target ?? exerciseButtons.current.get(old.exercise))?.focus();
           summaryOrigin.current = null;
         }
+        else if (old.item && next.item && !old.exercise && !next.exercise) relatedItemButtons.current.get(old.item)?.focus();
         else if (old.item && !next.item) itemButtons.current.get(old.item)?.focus();
       });
     };
@@ -114,13 +116,14 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
   </CardContent></Card>;
   if (item) {
     const linked = state.exercises.filter((e) => relationship(e, item));
+    const related = equipmentIds(linked).filter((id) => id !== item && linked.some((e) => relationship(e, id)));
     return <Card component="article" className="card equipment-catalog-detail"><CardContent>
-      <h2>{equipmentName(item)}</h2><Button onClick={() => back({ item: null, exercise: null })}>Back to equipment</Button>
-      <h3>Exercises using this item</h3>
-      {linked.length ? <List>{linked.map((e) => <ListItemButton component="button" key={e.id} ref={(node) => { if (node) exerciseButtons.current.set(e.id, node); else exerciseButtons.current.delete(e.id); }} onClick={() => { summaryOrigin.current = null; go({ item, exercise: e.id }); }}><ListItemText primary={e.name} secondary={`${relationship(e, item)}; other approvals and requirements still apply`} /></ListItemButton>)}</List> : <p>No known linked exercises.</p>}
-      <div className="trading-card-hero equipment-catalog-hero"><TradingCard kind="Equipment" name={equipmentName(item)} state="Availability needs checking" summary={equipmentEnables(item, state.exercises)} requirements={equipmentAlsoNeeds(item, state.exercises)} artwork={collectionArtwork[item]} /></div><p>The item's training role, fit and restrictions are not recorded. Alternatives are shown where an exercise declares them.</p>
-      {item === 'other:goalkeeper-gloves' && <Equipment fetchImpl={fetchImpl} onChange={onChange} />}
-      <EquipmentSummary item={item} exercises={linked} open={(id, token) => { summaryOrigin.current = { item, exercise: id, token }; go({ item, exercise: id }); }} />
+      <div className="trading-card-hero equipment-catalog-hero"><TradingCard kind="Equipment" name={equipmentName(item)} artwork={collectionArtwork[item]} headerAction={<Button aria-label="Back to equipment" onClick={() => back({ item: null, exercise: null })}>Back</Button>} badge={item === 'other:goalkeeper-gloves' ? <Equipment fetchImpl={fetchImpl} onChange={onChange} /> : undefined}>
+        <p><strong>Enables:</strong> {linked.length ? linked.map((e) => <Button key={e.id} ref={(node) => { if (node) exerciseButtons.current.set(e.id, node); else exerciseButtons.current.delete(e.id); }} onClick={() => { summaryOrigin.current = null; go({ item, exercise: e.id }); }}>{e.name}</Button>) : 'No known linked exercises.'}</p>
+        <p><strong>Also needs:</strong> {equipmentAlsoNeeds(item, state.exercises)}</p>
+        {related.length > 0 && <p>Equipment: {related.map((id) => <Button key={id} ref={(node) => { if (node) relatedItemButtons.current.set(id, node); else relatedItemButtons.current.delete(id); }} onClick={() => go({ item: id, exercise: null })}>{equipmentName(id)}</Button>)}</p>}
+        <details open={summaryOrigin.current?.item === item || undefined}><summary>Exercise evidence and requirements</summary><EquipmentSummary item={item} exercises={linked} open={(id, token) => { summaryOrigin.current = { item, exercise: id, token }; go({ item, exercise: id }); }} /></details>
+      </TradingCard></div>
     </CardContent></Card>;
   }
   return <Card component="article" className="card"><CardContent><h2>Equipment items</h2><p>Choose an item to see where it is used.</p><div className="collection-grid">{ids.map((id) => <TradingCard key={id} kind="Equipment" name={equipmentName(id)} state="Availability needs checking" summary={equipmentEnables(id, state.exercises)} requirements={equipmentAlsoNeeds(id, state.exercises)} artwork={collectionArtwork[id]} buttonRef={(node) => { if (node) itemButtons.current.set(id, node); else itemButtons.current.delete(id); }} onOpen={() => go({ item: id, exercise: null })} />)}</div></CardContent></Card>;

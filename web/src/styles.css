@@ -1391,3 +1391,7 @@ button:active:not(:disabled) {
 .trading-card-hero { max-width: var(--measure-notice); margin: var(--space-4) auto; }
 .equipment-catalog-detail.MuiCard-root { overflow: visible; }
 .equipment-catalog-hero { max-width: calc(var(--tile-min) * 2); }
+.equipment-catalog-hero .trading-card-art { aspect-ratio: auto; height: var(--tile-min); }
+.equipment-ownership { display: inline-flex; flex-direction: column; align-items: center; font-size: var(--text-sm); }
+.equipment-ownership small { max-width: var(--tile-min); }
+.equipment-confirm { display: flex; flex-direction: column; background: var(--surface); color: var(--text); padding: var(--space-2); }
