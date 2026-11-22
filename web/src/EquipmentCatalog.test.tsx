@@ -43,7 +43,7 @@ describe('equipment catalog', () => {
     expect(screen.getByText(/One of: Wall or Partner/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Ball (required)' }));
     expect(await screen.findByRole('heading', { name: 'Ball', level: 3 })).toBeTruthy();
-    window.history.back();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to exercise' }));
     const ballLink = await screen.findByRole('button', { name: 'Ball (required)' });
     await waitFor(() => expect(document.activeElement).toBe(ballLink));
     fireEvent.click(screen.getByRole('button', { name: 'Back to item' }));

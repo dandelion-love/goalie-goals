@@ -87,7 +87,8 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
     const url = new URL(window.location.href);
     if (next.item) url.searchParams.set('equipment', next.item); else url.searchParams.delete('equipment');
     if (next.exercise) url.searchParams.set('exercise', next.exercise); else url.searchParams.delete('exercise');
-    window.history.pushState({ ...window.history.state, equipmentStep: true }, '', url);
+    const equipmentFrom = prior.current.exercise ? 'exercise' : prior.current.item ? 'item' : 'collection';
+    window.history.pushState({ ...window.history.state, equipmentStep: true, equipmentFrom }, '', url);
     prior.current = next;
     setPlace(next);
   }, []);
@@ -120,7 +121,7 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
     const pattern = related.length ? new RegExp(`(${[...names.keys()].sort((a, b) => b.length - a.length).map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'g') : null;
     const needs = equipmentAlsoNeeds(item, state.exercises);
     return <Card component="article" className="card equipment-catalog-detail"><CardContent>
-      <div className="trading-card-hero equipment-catalog-hero"><TradingCard kind="Equipment" name={equipmentName(item)} artwork={collectionArtwork[item]} headerAction={<Button aria-label="Back to equipment" onClick={() => back({ item: null, exercise: null })}>Back</Button>} badge={item === 'other:goalkeeper-gloves' ? <Equipment fetchImpl={fetchImpl} onChange={onChange} /> : undefined}>
+      <div className="trading-card-hero equipment-catalog-hero"><TradingCard kind="Equipment" name={equipmentName(item)} artwork={collectionArtwork[item]} headerAction={<Button aria-label={window.history.state?.equipmentFrom === 'exercise' ? 'Back to exercise' : window.history.state?.equipmentFrom === 'item' ? 'Back to item' : 'Back to equipment'} onClick={() => back({ item: null, exercise: null })}>Back</Button>} badge={item === 'other:goalkeeper-gloves' ? <Equipment fetchImpl={fetchImpl} onChange={onChange} /> : undefined}>
         <p><strong>Enables:</strong> {linked.length ? linked.map((e) => <Button key={e.id} ref={(node) => { if (node) exerciseButtons.current.set(e.id, node); else exerciseButtons.current.delete(e.id); }} onClick={() => { summaryOrigin.current = null; go({ item, exercise: e.id }); }}>{e.name}</Button>) : 'No known linked exercises.'}</p>
         <p><strong>Also needs:</strong> {needs.split(/(\([^)]*\))/g).map((segment, group) => group % 2 || !pattern ? segment : segment.split(pattern).map((part, index) => { const id = names.get(part); return id ? <Button key={`${group}:${index}`} ref={(node) => { if (node) relatedItemButtons.current.set(id, node); else relatedItemButtons.current.delete(id); }} onClick={() => go({ item: id, exercise: null })}>{part}</Button> : part; }))}</p>
         <details open={summaryOrigin.current?.item === item || undefined}><summary>Exercise evidence and requirements</summary><EquipmentSummary item={item} exercises={linked} open={(id, token) => { summaryOrigin.current = { item, exercise: id, token }; go({ item, exercise: id }); }} /></details>
