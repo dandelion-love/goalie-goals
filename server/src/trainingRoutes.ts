@@ -82,6 +82,12 @@ export function registerTrainingRoutes(
     return { cards: await training.approvedCards() };
   });
 
+  app.get('/api/training/collection', async (req, reply) => {
+    reply.header('cache-control', 'no-store');
+    if (!(await allowed(req.identity!.account))) return reply.code(403).send({ error: 'forbidden' });
+    return { exercises: await training.collectionExercises() };
+  });
+
   // A card's figure, for an approved version only. Served as an image with no active content.
   app.get<{ Params: { id: string }; Querystring: { v?: string } }>(
     '/api/training/cards/:id/figure.svg',

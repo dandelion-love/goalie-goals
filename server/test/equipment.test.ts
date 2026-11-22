@@ -33,6 +33,11 @@ describe('goalkeeper gloves', () => {
     try {
       expect((await app.inject({ method: 'GET', url: '/api/equipment', headers: headers('sam@example.com') })).json()).toEqual({ gloves: 'unknown' });
       expect((await app.inject({ method: 'GET', url: '/api/equipment/exercises', headers: headers('kai@example.com') })).statusCode).toBe(403);
+      const collection = await app.inject({ method: 'GET', url: '/api/training/collection', headers: headers('kai@example.com') });
+      expect(collection.statusCode).toBe(200);
+      expect(collection.headers['cache-control']).toBe('no-store');
+      expect(collection.json()).toEqual({ exercises: expect.any(Array) });
+      expect((await app.inject({ method: 'GET', url: '/api/training/collection', headers: headers('outsider@example.com') })).statusCode).toBe(403);
       const catalog = await app.inject({ method: 'GET', url: '/api/equipment/exercises', headers: headers('sam@example.com') });
       expect(catalog.statusCode).toBe(200);
       expect(catalog.headers['cache-control']).toBe('no-store');
@@ -48,11 +53,13 @@ describe('goalkeeper gloves', () => {
     const training = new TrainingService({ approvals, equipment: new MemoryEquipmentStore(), content: loadContent(), plan: new SingleSessionPlan({ ...STARTER_SESSION, cardIds: ['wall-chest-pass'] }) });
     expect(await training.equipmentExercises()).toEqual([]);
     await training.proposeFor(date);
+    expect(await training.collectionExercises()).toEqual([]);
     const list = await training.equipmentExercises();
     expect(list).toHaveLength(1);
     expect(list[0]).toMatchObject({ id: 'wall-chest-pass', needs: { all: expect.arrayContaining(['other:goalkeeper-gloves']) } });
     const request = (await approvals.pending()).find((r) => r.itemId === 'card-wall-chest-pass')!;
     await approvals.approve(request.id, parent);
+    expect(await training.collectionExercises()).toEqual([expect.objectContaining({ id: 'wall-chest-pass', itemVersion: request.itemVersion, dossier: null })]);
     expect((await training.equipmentExercises()).map((e) => e.id)).toEqual(['wall-chest-pass']);
     const changed = loadContent();
     const cards = new Map(changed.cards);
