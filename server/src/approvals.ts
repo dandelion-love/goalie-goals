@@ -5,7 +5,7 @@
 
 import { createHash, randomUUID } from 'node:crypto';
 import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
-import { asDate, asObject, createOrdered, deleteCollection, seqOf, type FsDb, type FsDocSnap } from './firestoreDb.js';
+import { asDate, asObject, createOrdered, deleteCollection, prepareOrderedCreate, seqOf, type FsDb, type FsDocSnap, type FsTx } from './firestoreDb.js';
 import type { Notifier } from './notifier.js';
 import { isRole, type Role } from './roles.js';
 
@@ -318,6 +318,18 @@ function requestData(r: ApprovalRequest): Record<string, unknown> {
   };
 }
 
+/** Prepare an explicitly reviewed new approval and its audit event in the caller's transaction.
+ * All reads happen before the returned function writes, as required by Firestore. */
+export async function prepareReviewedApproval(tx: FsTx, db: FsDb, request: ApprovalRequest, event: Omit<AuditEvent, 'id'>): Promise<(() => void) | null> {
+  if (request.state !== 'approved' || !request.decidedAt || event.action !== 'approved' || event.actorRole !== 'parent' ||
+      event.requestId !== request.id || event.itemId !== request.itemId || event.itemVersion !== request.itemVersion ||
+      event.kind !== request.kind || event.actor !== request.decidedBy) throw new Error('Invalid reviewed approval');
+  const writeApproval = await prepareOrderedCreate(tx, db, APPROVALS_COLLECTION, request.id, requestData(request));
+  const writeAudit = await prepareOrderedCreate(tx, db, AUDIT_COLLECTION, request.id, auditEventData(event) as unknown as Record<string, unknown>);
+  if (!writeApproval || !writeAudit) return null;
+  return () => { writeApproval(); writeAudit(); };
+}
+
 /** Well-formed requests from a listing, in the order they were made. */
 function readRequests(docs: FsDocSnap[]): ApprovalRequest[] {
   return docs
@@ -421,6 +433,10 @@ const AUDIT_ACTIONS: readonly AuditAction[] = [
 const AUDIT_KINDS: readonly AuditEvent['kind'][] = [...REQUEST_KINDS, 'pause', 'schedule', 'household'];
 const AUDIT_TEXT = ['actor', 'requestId', 'itemId', 'itemVersion', 'title'] as const;
 
+function auditEventData(event: Omit<AuditEvent, 'id'>): Omit<AuditEvent, 'id'> {
+  return { ...event, at: new Date(event.at) };
+}
+
 function readEvent(id: string, value: unknown): AuditEvent | null {
   const e = asObject(value);
   if (!e) return null;
@@ -458,7 +474,7 @@ export class FirestoreAuditLog implements AuditLog {
 
   async append(event: Omit<AuditEvent, 'id'>): Promise<AuditEvent> {
     const id = randomUUID();
-    const data = { ...event, at: new Date(event.at) };
+    const data = auditEventData(event);
     if (!(await createOrdered(this.db, this.collection, id, data))) throw new Error('Audit event id already exists.');
     return Object.freeze({ ...data, id });
   }

@@ -7,8 +7,7 @@ import type { RoleStore } from './roles.js';
 import { ownerApprovedSquatVersions } from './ownerProgression.js';
 import type { Dossier, ExerciseCard } from './content.js';
 import { cardSnapshot } from './training.js';
-import { APPROVALS_COLLECTION, AUDIT_COLLECTION, REQUEST_TTL_MS } from './approvals.js';
-import { COUNTERS_COLLECTION } from './firestoreDb.js';
+import { prepareReviewedApproval, REQUEST_TTL_MS } from './approvals.js';
 
 type ReviewCandidate = { itemId: string; version: string; title: string; dose: string; cues: string[]; card: ExerciseCard; approvalContent: { title: string; detail: string }; dossier?: Dossier; dossierVersion?: string };
 
@@ -50,26 +49,19 @@ export class ProgressionReview {
     if (await this.readiness.status() !== 'ready-for-parent') return false;
     const proofRef = this.db.collection('squatReadiness').doc('parent-proof');
     const decisionRef = this.db.collection('progressionReviewDecisions').doc(id);
-    const approvalRef = this.db.collection(APPROVALS_COLLECTION).doc(id);
-    const auditRef = this.db.collection(AUDIT_COLLECTION).doc(id);
-    const approvalCounter = this.db.collection(COUNTERS_COLLECTION).doc(APPROVALS_COLLECTION);
-    const auditCounter = this.db.collection(COUNTERS_COLLECTION).doc(AUDIT_COLLECTION);
     return this.db.runTransaction(async (tx) => {
       const revisionRef = evidenceRevisionRef(this.db);
       const revision = await readEvidenceRevision(tx, revisionRef);
       const offer = (await tx.get(offerRef)).data();
       const proof = (await tx.get(proofRef)).get('proof');
       const decision = await tx.get(decisionRef);
-      const approval = await tx.get(approvalRef), audit = await tx.get(auditRef);
-      const approvalCount = (await tx.get(approvalCounter)).get('next');
-      const auditCount = (await tx.get(auditCounter)).get('next');
-      if (Date.now() >= (previous.expiresAt as number) || revision !== previous.revision || JSON.stringify(offer) !== JSON.stringify(previous) || JSON.stringify(proof) !== JSON.stringify(previous.proof) || decision.exists || approval.exists || audit.exists) return false;
-      if ((approvalCount !== undefined && (!Number.isSafeInteger(approvalCount) || (approvalCount as number) < 0)) || (auditCount !== undefined && (!Number.isSafeInteger(auditCount) || (auditCount as number) < 0))) throw new Error('Invalid approval sequence');
+      if (Date.now() >= (previous.expiresAt as number) || revision !== previous.revision || JSON.stringify(offer) !== JSON.stringify(previous) || JSON.stringify(proof) !== JSON.stringify(previous.proof) || decision.exists) return false;
       const at = new Date(), itemId = `card-${this.candidate.itemId}`;
-      tx.create(approvalRef, { kind: 'exercise', itemId, itemVersion: this.candidate.version, content: this.candidate.approvalContent, state: 'approved', createdAt: at, decidedAt: at, decidedBy: actor, reason: null, seq: approvalCount ?? 0 });
-      tx.create(auditRef, { at, action: 'approved', actorRole: 'parent', actor, requestId: id, kind: 'exercise', itemId, itemVersion: this.candidate.version, title: this.candidate.title, reason: null, seq: auditCount ?? 0 });
-      tx.set(approvalCounter, { next: (approvalCount as number | undefined ?? 0) + 1 });
-      tx.set(auditCounter, { next: (auditCount as number | undefined ?? 0) + 1 });
+      const writeApproval = await prepareReviewedApproval(tx, this.db,
+        { id, kind: 'exercise', itemId, itemVersion: this.candidate.version, content: this.candidate.approvalContent, state: 'approved', createdAt: at, decidedAt: at, decidedBy: actor, reason: null },
+        { at, action: 'approved', actorRole: 'parent', actor, requestId: id, kind: 'exercise', itemId, itemVersion: this.candidate.version, title: this.candidate.title, reason: null });
+      if (!writeApproval) return false;
+      writeApproval();
       tx.create(decisionRef, { itemId: this.candidate.itemId, version: this.candidate.version, revision });
       bumpEvidenceRevision(tx, revisionRef);
       return true;
