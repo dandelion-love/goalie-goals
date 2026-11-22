@@ -9,7 +9,7 @@ it('uses the keeper projection and navigates between equipment and approved exer
   const fetcher = vi.fn(async () => new Response(JSON.stringify({ exercises: [exercise] }), { status: 200 })) as unknown as typeof fetch;
   render(<CardCollection fetchImpl={fetcher} />);
   const gloves = await screen.findByRole('button', { name: /Equipment: Goalkeeper gloves/ });
-  expect(screen.getByText('Practise passing')).toBeTruthy();
+  expect(screen.getByText('Benefits not available')).toBeTruthy();
   expect(fetcher).toHaveBeenCalledWith('/api/training/collection', expect.objectContaining({ cache: 'no-store' }));
   fireEvent.click(gloves);
   fireEvent.click(screen.getByRole('button', { name: /Exercise: Wall pass/ }));
@@ -24,4 +24,10 @@ it('shows a retry when the collection cannot be loaded', async () => {
   render(<CardCollection fetchImpl={fetcher} />);
   expect(await screen.findByRole('heading', { name: 'Collection unavailable' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy();
+});
+it('uses the approved dossier headline on the card face', async () => {
+  const dossier = { cardId: exercise.id, itemVersion: 'd1', name: exercise.name, headline: 'Practice with control', why: [], expect: [], sources: [] };
+  const fetcher = vi.fn(async () => new Response(JSON.stringify({ exercises: [{ ...exercise, dossier }] }), { status: 200 })) as unknown as typeof fetch;
+  render(<CardCollection fetchImpl={fetcher} />);
+  expect(await screen.findByText('Practice with control')).toBeTruthy();
 });

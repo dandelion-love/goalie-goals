@@ -11,7 +11,7 @@ import { collectionArtwork } from './collectionArtwork';
 import { DossierView } from './DossierScreens';
 import { isDossier } from './dossier';
 import { EquipmentSummary } from './EquipmentSummary';
-import { equipmentIds, equipmentName, relationship, type EquipmentExercise } from './equipmentModel';
+import { cardRequirements, equipmentAlsoNeeds, equipmentEnables, equipmentIds, equipmentName, relationship, type EquipmentExercise } from './equipmentModel';
 export { equipmentIds, relationship, type EquipmentExercise } from './equipmentModel';
 
 type Load = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; exercises: EquipmentExercise[] };
@@ -104,7 +104,7 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
   if (place.item && !item) return <Card component="article" className="card"><CardContent><h2>Equipment unavailable</h2><p>This item could not be found.</p><Button onClick={() => back({ item: null, exercise: null })}>Back to equipment</Button></CardContent></Card>;
   if (item && place.exercise && !exercise) return <Card component="article" className="card"><CardContent><h2>Exercise unavailable</h2><p>This link is no longer available.</p><Button onClick={() => back({ item, exercise: null })}>Back to item</Button></CardContent></Card>;
   if (exercise && item) return <Card component="article" className="card"><CardContent>
-    <h2>{exercise.name}</h2><div className="trading-card-hero"><TradingCard kind="Exercise" name={exercise.name} state="Approval needs checking" summary={exercise.why} artwork={collectionArtwork[exercise.id]} /></div>
+    <h2>{exercise.name}</h2><div className="trading-card-hero"><TradingCard kind="Exercise" name={exercise.name} state="Approval needs checking" summary={exercise.dossier?.headline ?? 'Benefits not available'} requirements={cardRequirements(exercise)} artwork={collectionArtwork[exercise.id]} /></div><p>{exercise.why}</p>
     {exercise.setup.length ? <><h3>Setup</h3><ul>{exercise.setup.map((s, i) => <li key={i}>{s}</li>)}</ul></> : <p>Setup is not recorded.</p>}
     {exercise.cautions.length ? <><h3>Cautions</h3><ul>{exercise.cautions.map((s, i) => <li key={i}>{s}</li>)}</ul></> : <p>Cautions are not recorded.</p>}
     {exercise.needs ? <><p>All required: {requirements(exercise.needs.all)}.</p>{exercise.needs.any.map((group, i) => <p key={i}>One of: {group.map(equipmentName).join(' or ')}.</p>)}<p>Availability, approval and readiness may still need checking.</p></> : <p>Requirements are not recorded.</p>}
@@ -115,7 +115,7 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
   if (item) {
     const linked = state.exercises.filter((e) => relationship(e, item));
     return <Card component="article" className="card"><CardContent>
-      <h2>{equipmentName(item)}</h2><div className="trading-card-hero"><TradingCard kind="Equipment" name={equipmentName(item)} state="Availability needs checking" artwork={collectionArtwork[item]} /></div><p>The item's training role, fit and restrictions are not recorded. Alternatives are shown where an exercise declares them.</p>
+      <h2>{equipmentName(item)}</h2><div className="trading-card-hero"><TradingCard kind="Equipment" name={equipmentName(item)} state="Availability needs checking" summary={equipmentEnables(item, state.exercises)} requirements={equipmentAlsoNeeds(item, state.exercises)} artwork={collectionArtwork[item]} /></div><p>The item's training role, fit and restrictions are not recorded. Alternatives are shown where an exercise declares them.</p>
       {item === 'other:goalkeeper-gloves' && <Equipment fetchImpl={fetchImpl} onChange={onChange} />}
       <h3>Exercises using this item</h3>
       {linked.length ? <List>{linked.map((e) => <ListItemButton component="button" key={e.id} ref={(node) => { if (node) exerciseButtons.current.set(e.id, node); else exerciseButtons.current.delete(e.id); }} onClick={() => { summaryOrigin.current = null; go({ item, exercise: e.id }); }}><ListItemText primary={e.name} secondary={`${relationship(e, item)}; other approvals and requirements still apply`} /></ListItemButton>)}</List> : <p>No known linked exercises.</p>}
@@ -123,5 +123,5 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
       <Button onClick={() => back({ item: null, exercise: null })}>Back to equipment</Button>
     </CardContent></Card>;
   }
-  return <Card component="article" className="card"><CardContent><h2>Equipment items</h2><p>Choose an item to see where it is used.</p><div className="collection-grid">{ids.map((id) => <TradingCard key={id} kind="Equipment" name={equipmentName(id)} state="Availability needs checking" artwork={collectionArtwork[id]} buttonRef={(node) => { if (node) itemButtons.current.set(id, node); else itemButtons.current.delete(id); }} onOpen={() => go({ item: id, exercise: null })} />)}</div></CardContent></Card>;
+  return <Card component="article" className="card"><CardContent><h2>Equipment items</h2><p>Choose an item to see where it is used.</p><div className="collection-grid">{ids.map((id) => <TradingCard key={id} kind="Equipment" name={equipmentName(id)} state="Availability needs checking" summary={equipmentEnables(id, state.exercises)} requirements={equipmentAlsoNeeds(id, state.exercises)} artwork={collectionArtwork[id]} buttonRef={(node) => { if (node) itemButtons.current.set(id, node); else itemButtons.current.delete(id); }} onOpen={() => go({ item: id, exercise: null })} />)}</div></CardContent></Card>;
 }
