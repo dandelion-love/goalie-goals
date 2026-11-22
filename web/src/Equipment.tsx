@@ -3,6 +3,7 @@ import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlined';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined';
+import NotInterestedIcon from '@mui/icons-material/NotInterestedOutlined';
 
 type Availability = 'unknown' | 'available' | 'unavailable';
 
@@ -11,11 +12,13 @@ export function Equipment({ fetchImpl = fetch, onChange }: { fetchImpl?: typeof 
   const [value, setValue] = useState<Availability | null>(null);
   const [acquiredAt, setAcquiredAt] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [details, setDetails] = useState(false);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const trigger = useRef<HTMLButtonElement>(null);
   const yes = useRef<HTMLButtonElement>(null);
+  const change = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     let active = true;
     fetchImpl('/api/equipment', { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
@@ -24,8 +27,8 @@ export function Equipment({ fetchImpl = fetch, onChange }: { fetchImpl?: typeof 
       .catch(() => { if (active) setMessage('Could not load ownership.'); });
     return () => { active = false; };
   }, [fetchImpl, attempt]);
-  useEffect(() => { if (confirm) yes.current?.focus(); }, [confirm]);
-  function close() { setConfirm(false); requestAnimationFrame(() => trigger.current?.focus()); }
+  useEffect(() => { if (confirm) yes.current?.focus(); else if (details) change.current?.focus(); }, [confirm, details]);
+  function close() { setConfirm(false); setDetails(false); requestAnimationFrame(() => trigger.current?.focus()); }
   async function save(next: Availability) {
     setBusy(true); setMessage('');
     try {
@@ -36,11 +39,12 @@ export function Equipment({ fetchImpl = fetch, onChange }: { fetchImpl?: typeof 
     } catch { setMessage('Could not save ownership. Try again.'); }
     finally { setBusy(false); }
   }
+  const status = value === 'available' ? 'Owned' : value === 'unavailable' ? 'Not owned' : 'Ownership unknown';
   return <span className="equipment-ownership">
-    <IconButton ref={trigger} aria-label="Change glove ownership" title="Change glove ownership" disabled={busy || value === null} onClick={() => setConfirm(true)}>{value === 'available' ? <CheckCircleOutlineIcon /> : <HelpOutlineIcon />}</IconButton>
-    <span>{value === 'available' ? 'Owned' : value === 'unavailable' ? 'Not owned' : 'Ownership unknown'}</span>
-    {value === 'available' && <small>{acquiredAt ? `Ownership recorded ${new Date(acquiredAt).toLocaleString()}` : 'Ownership date unavailable'}</small>}
-    {confirm && <span role="dialog" aria-label="Confirm glove ownership" className="equipment-confirm"><strong>Do you have goalkeeper gloves?</strong><span><Button ref={yes} disabled={busy} onClick={() => void save('available')}>Yes</Button><Button disabled={busy} onClick={() => void save('unavailable')}>No</Button><Button disabled={busy} onClick={() => void save('unknown')}>Not sure</Button><Button disabled={busy} onClick={close}>Cancel</Button></span></span>}
+    <IconButton ref={trigger} className={value === 'available' ? 'equipment-owned' : undefined} aria-label={`${status}. Show ownership details`} title={`${status}. Show ownership details`} disabled={busy || value === null} onClick={() => setDetails(true)}>{value === 'available' ? <CheckCircleOutlineIcon /> : value === 'unavailable' ? <NotInterestedIcon /> : <HelpOutlineIcon />}</IconButton>
+    {details && <span role="dialog" aria-label={confirm ? 'Confirm glove ownership' : 'Glove ownership details'} className="equipment-confirm">
+      {confirm ? <><strong>Do you have goalkeeper gloves?</strong><span><Button ref={yes} disabled={busy} onClick={() => void save('available')}>Yes</Button><Button disabled={busy} onClick={() => void save('unavailable')}>No</Button><Button disabled={busy} onClick={() => void save('unknown')}>Not sure</Button><Button disabled={busy} onClick={() => setConfirm(false)}>Cancel</Button></span></> : <><strong>{status}</strong>{value === 'available' && <small>{acquiredAt ? `Ownership recorded ${new Date(acquiredAt).toLocaleString()}` : 'Ownership date unavailable'}</small>}<span><Button ref={change} onClick={() => setConfirm(true)}>Change</Button><Button onClick={close}>Close</Button></span></>}
+    </span>}
     {message && <span role="status">{message}</span>}
     {message && value === null && <Button onClick={() => { setMessage(''); setAttempt((n) => n + 1); }}>Retry ownership</Button>}
   </span>;

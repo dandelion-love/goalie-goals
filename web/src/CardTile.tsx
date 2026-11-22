@@ -9,10 +9,11 @@ type TradingCardProps = {
   artwork?: string | null; fallbackArtwork?: string | null; onOpen?: () => void;
   buttonRef?: (node: HTMLButtonElement | null) => void;
   headerAction?: ReactNode; badge?: ReactNode; children?: ReactNode; footerContent?: ReactNode;
+  hideChrome?: boolean;
 };
 
 /** One portrait frame for collection cards and their detail heroes. */
-export function TradingCard({ name, kind, state, level, series, summary, requirements, footer, locked = false, factLabel = 'Builds', artwork, fallbackArtwork, onOpen, buttonRef, headerAction, badge, children, footerContent }: TradingCardProps) {
+export function TradingCard({ name, kind, state, level, series, summary, requirements, footer, locked = false, factLabel = 'Builds', artwork, fallbackArtwork, onOpen, buttonRef, headerAction, badge, children, footerContent, hideChrome = false }: TradingCardProps) {
   const [failed, setFailed] = useState(0);
   const rank = rankForRung(level);
   useEffect(() => setFailed(0), [artwork, fallbackArtwork]);
@@ -23,9 +24,9 @@ export function TradingCard({ name, kind, state, level, series, summary, require
       <div className="trading-card-art" aria-hidden="true">
         {image ? <img src={image} alt="" onError={() => setFailed((n) => n + 1)} /> : <span className="trading-card-back">{series ?? kind}{locked && <small>Locked</small>}<span className="sr-only">Artwork unavailable</span></span>}
       </div>
-      <div className="trading-card-rail"><span>{kind}</span><span>{series ?? 'Collection'}</span></div>
+      {!hideChrome && <div className="trading-card-rail"><span>{kind}</span><span>{series ?? 'Collection'}</span></div>}
       <div className="trading-card-copy">{summary && <p><strong>{kind === 'Exercise' ? `${factLabel}: ` : 'Enables: '}</strong>{summary}</p>}{requirements && <p><strong>{kind === 'Exercise' ? 'Needs: ' : 'Also needs: '}</strong>{requirements}</p>}{children}</div>
-      <footer className="trading-card-footer"><span>{footer ?? 'Collection'}</span>{footerContent}{state && <span className="trading-card-state">{state}</span>}</footer>
+      {!hideChrome && <footer className="trading-card-footer"><span>{footer ?? 'Collection'}</span>{footerContent}{state && <span className="trading-card-state">{state}</span>}</footer>}
     </div>
     {onOpen && <button type="button" className="secondary trading-card-action" ref={buttonRef} aria-label={`${kind}: ${name}.${rank ? ` ${rank.name}, level ${rank.rung}.` : ''} ${state}. Open card`} onClick={onOpen}><span className="sr-only">View</span></button>}
   </article>;
