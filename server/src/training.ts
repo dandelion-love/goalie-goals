@@ -491,6 +491,7 @@ export class TrainingService {
     if (!(await this.approvals.isApproved(session.itemId, session.itemVersion))) return false;
     for (const c of session.cards) {
       if (!(await this.approvals.isApproved(c.itemId, c.itemVersion))) return false;
+      if (!(await this.mayShowCard(c.itemVersion))) return false;
     }
     return true;
   }
@@ -573,6 +574,7 @@ export class TrainingService {
     const snap = this.snapshots.sessions.get(version);
     if (!snap || snap.itemId !== itemId || !DATE_RE.test(date)) return false;
     if (!(await this.equipmentMet(snap))) return false;
+    for (const card of snap.cards) if (!(await this.mayShowCard(card.itemVersion))) return false;
     const undone: ApprovalRequest[] = [];
     for (const item of [snap, ...snap.cards]) {
       if (await this.approvals.isApproved(item.itemId, item.itemVersion)) continue;
