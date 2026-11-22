@@ -20,6 +20,17 @@ it('invalidates a pending decision when a real set confirmation changes', async 
   expect(await guardedEvidenceMutation(db, beforeLegacy, async (tx) => { tx.set(target, { approved: true }); })).toEqual({ applied: false });
 });
 
+it('cannot publish a proof collected across a concurrent history change', async () => {
+  const db = new FakeFirestore();
+  const history = new FirestoreHistoryStore(db);
+  const proofs = new FirestoreSquatProofStore(db);
+  const attempt = await proofs.begin();
+  await record(history, 11);
+  const proof = { fingerprint: 'example', orderedRecordIds: [], pauseRevision: 'none', revision: attempt.revision, safety: { pain: 'clear' as const, growth: 'clear' as const, breakRestart: 'clear' as const, stepDown: 'clear' as const } };
+  expect(await proofs.finish(attempt, proof)).toBe(false);
+  expect(await proofs.read()).toBeNull();
+});
+
 async function record(store: HistoryStore, n: number, late = false) {
   const id = `record-proof-${n}`;
   const instanceId = `instance-proof-${n}`;
@@ -53,6 +64,7 @@ it.each(['memory', 'firestore'])('%s proof is exact, revocable and invalidated b
   const first = await proofs.begin();
   const later = await proofs.begin();
   expect(await proofs.finish(later, saved)).toBe(true);
+  expect(await proofs.finish(later, saved)).toBe(false);
   expect(await proofs.finish(first, saved)).toBe(false);
   expect(await service.status()).toBe('ready-for-parent');
   expect(await service.attest({ ...attestation, allDevicesSynced: false })).toBe(false);

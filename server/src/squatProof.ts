@@ -2,25 +2,43 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { HistoryRecord, HistoryStore, SessionInstance } from './history.js';
 import type { FsDb } from './firestoreDb.js';
 import { evaluateSquatReadiness, type ReadinessFacts, type SquatReadiness } from './squatReadiness.js';
+import { evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
 
 /** No free text or client-provided eligibility. A parent confirms facts, not a promotion. */
 export type SquatAttestation = { orderedRecordIds: string[]; allDevicesSynced: boolean; growthClear: boolean; breakRestartClear: boolean; stepDownClear: boolean };
-type StoredProof = { fingerprint: string; orderedRecordIds: string[]; safety: ReadinessFacts['safety']; pauseRevision: string };
-export interface SquatProofStore { read(): Promise<StoredProof | null>; begin(): Promise<string>; finish(token: string, proof: StoredProof): Promise<boolean>; deleteAll(): Promise<void> }
+type StoredProof = { fingerprint: string; orderedRecordIds: string[]; safety: ReadinessFacts['safety']; pauseRevision: string; revision: string | null };
+type ProofAttempt = { token: string; revision: string | null };
+export interface SquatProofStore { read(): Promise<StoredProof | null>; begin(): Promise<ProofAttempt>; finish(attempt: ProofAttempt, proof: StoredProof): Promise<boolean>; deleteAll(): Promise<void> }
 export class MemorySquatProofStore implements SquatProofStore {
   private proof: StoredProof | null = null;
   private token: string | null = null;
   async read() { return this.proof && structuredClone(this.proof); }
-  async begin() { this.token = randomUUID(); this.proof = null; return this.token; }
-  async finish(token: string, proof: StoredProof) { if (this.token !== token) return false; this.proof = structuredClone(proof); return true; }
+  async begin() { this.token = randomUUID(); this.proof = null; return { token: this.token, revision: null }; }
+  async finish(attempt: ProofAttempt, proof: StoredProof) { if (this.token !== attempt.token || this.proof !== null || proof.revision !== attempt.revision) return false; this.proof = structuredClone(proof); return true; }
   async deleteAll() { this.token = null; this.proof = null; }
 }
 export class FirestoreSquatProofStore implements SquatProofStore {
   constructor(private readonly db: FsDb) {}
   private ref() { return this.db.collection('squatReadiness').doc('parent-proof'); }
   async read() { const data = (await this.ref().get()).data() as { proof?: StoredProof | null } | undefined; return data?.proof ?? null; }
-  async begin() { const ref = this.ref(), token = randomUUID(); await this.db.runTransaction(async (tx) => { tx.set(ref, { token, proof: null }); }); return token; }
-  async finish(token: string, proof: StoredProof) { const ref = this.ref(); return this.db.runTransaction(async (tx) => { const current = await tx.get(ref); if (current.get('token') !== token) return false; tx.set(ref, { token, proof }); return true; }); }
+  async begin(): Promise<ProofAttempt> {
+    const ref = this.ref(), token = randomUUID();
+    return this.db.runTransaction(async (tx) => {
+      const revision = await readEvidenceRevision(tx, evidenceRevisionRef(this.db));
+      tx.set(ref, { token, proof: null });
+      return { token, revision };
+    });
+  }
+  async finish(attempt: ProofAttempt, proof: StoredProof) {
+    const ref = this.ref();
+    return this.db.runTransaction(async (tx) => {
+      const current = await tx.get(ref);
+      const revision = await readEvidenceRevision(tx, evidenceRevisionRef(this.db));
+      if (current.get('token') !== attempt.token || current.get('proof') !== null || revision !== attempt.revision || proof.revision !== attempt.revision) return false;
+      tx.set(ref, { token: attempt.token, proof });
+      return true;
+    });
+  }
   async deleteAll() { await this.ref().delete(); }
 }
 
@@ -71,7 +89,7 @@ export class SquatProofService {
     if (!window || JSON.stringify(input.orderedRecordIds) !== JSON.stringify(window.ordered.map((r) => r.id))) return false;
     const state = (clear: boolean) => clear ? 'clear' as const : 'held' as const;
     if (await this.pauseRevision() !== pauseRevision) return false;
-    const proof: StoredProof = { fingerprint: digest(window.snapshot), orderedRecordIds: [...input.orderedRecordIds], pauseRevision, safety: { pain: 'clear', growth: state(input.growthClear), breakRestart: state(input.breakRestartClear), stepDown: state(input.stepDownClear) } };
+    const proof: StoredProof = { fingerprint: digest(window.snapshot), orderedRecordIds: [...input.orderedRecordIds], pauseRevision, revision: token.revision, safety: { pain: 'clear', growth: state(input.growthClear), breakRestart: state(input.breakRestartClear), stepDown: state(input.stepDownClear) } };
     return this.proofs.finish(token, proof);
   }
 
