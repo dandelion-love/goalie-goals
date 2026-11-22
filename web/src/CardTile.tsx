@@ -20,7 +20,7 @@ export function TradingCard({ name, kind, state, level, series, summary, require
   const image = failed === 0 ? (artwork || fallbackArtwork) : failed === 1 && artwork ? fallbackArtwork : null;
   return <article className="trading-card" data-kind={kind} data-level={level}>
     <div className="trading-card-inner">
-      <header className="trading-card-nameplate">{headerAction}<h3>{name}</h3>{badge ?? (rank ? <span className="trading-card-stage" data-rank={rank.name} role="img" aria-label={`${rank.name}, level ${rank.rung}`}><span>{rank.rung}</span></span> : kind === 'Equipment' ? <span className="trading-card-stage trading-card-gear" role="img" aria-label="Equipment"><SettingsIcon aria-hidden="true" /></span> : null)}</header>
+      <header className={`trading-card-nameplate${headerAction ? ' with-back' : ''}`}>{headerAction}<h3>{name}</h3>{badge ?? (rank ? <span className="trading-card-stage" data-rank={rank.name} role="img" aria-label={`${rank.name}, level ${rank.rung}`}><span>{rank.rung}</span></span> : kind === 'Equipment' ? <span className="trading-card-stage trading-card-gear" role="img" aria-label="Equipment"><SettingsIcon aria-hidden="true" /></span> : null)}</header>
       <div className="trading-card-art" aria-hidden="true">
         {image ? <img src={image} alt="" onError={() => setFailed((n) => n + 1)} /> : <span className="trading-card-back">{series ?? kind}{locked && <small>Locked</small>}<span className="sr-only">Artwork unavailable</span></span>}
       </div>
