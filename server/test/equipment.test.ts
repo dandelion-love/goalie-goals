@@ -32,10 +32,34 @@ describe('goalkeeper gloves', () => {
     const headers = (account: string) => ({ [IDENTITY_HEADER]: signer.sign({ account, audience }) });
     try {
       expect((await app.inject({ method: 'GET', url: '/api/equipment', headers: headers('sam@example.com') })).json()).toEqual({ gloves: 'unknown' });
+      expect((await app.inject({ method: 'GET', url: '/api/equipment/exercises', headers: headers('kai@example.com') })).statusCode).toBe(403);
+      const catalog = await app.inject({ method: 'GET', url: '/api/equipment/exercises', headers: headers('sam@example.com') });
+      expect(catalog.statusCode).toBe(200);
+      expect(catalog.headers['cache-control']).toBe('no-store');
+      expect(catalog.json().exercises).toEqual(expect.any(Array));
       expect((await app.inject({ method: 'PUT', url: '/api/equipment', headers: headers('kai@example.com'), payload: { gloves: 'available' } })).statusCode).toBe(403);
       expect((await app.inject({ method: 'PUT', url: '/api/equipment', headers: headers('sam@example.com'), payload: { gloves: 'yes' } })).statusCode).toBe(400);
       expect((await app.inject({ method: 'PUT', url: '/api/equipment', headers: headers('sam@example.com'), payload: { gloves: 'available' } })).json()).toEqual({ gloves: 'available' });
     } finally { await app.close(); }
+  });
+
+  it('includes only the current proposed or approved exercise and its declared needs', async () => {
+    const approvals = new ApprovalService({ store: new MemoryApprovalStore(), audit: new MemoryAuditLog(), notifier: new InAppNotifier() });
+    const training = new TrainingService({ approvals, equipment: new MemoryEquipmentStore(), content: loadContent(), plan: new SingleSessionPlan({ ...STARTER_SESSION, cardIds: ['wall-chest-pass'] }) });
+    expect(await training.equipmentExercises()).toEqual([]);
+    await training.proposeFor(date);
+    const list = await training.equipmentExercises();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ id: 'wall-chest-pass', needs: { all: expect.arrayContaining(['other:goalkeeper-gloves']) } });
+    const request = (await approvals.pending()).find((r) => r.itemId === 'card-wall-chest-pass')!;
+    await approvals.approve(request.id, parent);
+    expect((await training.equipmentExercises()).map((e) => e.id)).toEqual(['wall-chest-pass']);
+    const changed = loadContent();
+    const cards = new Map(changed.cards);
+    const original = cards.get('wall-chest-pass')!;
+    cards.set('wall-chest-pass', { ...original, contentHash: 'changed-content' });
+    training.setContent({ ...changed, cards });
+    expect(await training.equipmentExercises()).toEqual([]);
   });
   it('defaults to unknown and survives a store restart', async () => {
     const db = new FakeFirestore();

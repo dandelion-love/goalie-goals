@@ -8,11 +8,11 @@ import { WeekPanel as WeekPanelBody } from './WeekPanel';
 import { StartFresh } from './StartFresh';
 import { Reveal } from './Loading';
 import { useMoment } from './motion';
-import { Equipment } from './Equipment';
+import { EquipmentCatalog } from './EquipmentCatalog';
 import { RoleShell, useDestination } from './RoleShell';
 import { Button } from './Interface';
 
-const PARENT_DESTINATIONS = [{ id: 'inbox', label: 'Inbox' }, { id: 'plan', label: 'Plan' }, { id: 'progress', label: 'Progress' }, { id: 'settings', label: 'Reset' }] as const;
+const PARENT_DESTINATIONS = [{ id: 'inbox', label: 'Inbox' }, { id: 'plan', label: 'Plan' }, { id: 'progress', label: 'Progress' }, { id: 'equipment', label: 'Equipment' }, { id: 'settings', label: 'Reset' }] as const;
 
 // The parent's home, in its own chunk (story 101 AC2): the keeper's device never loads it.
 
@@ -77,9 +77,10 @@ export function ParentHome({ layout, fetchImpl, epoch = 0 }: { layout: Layout; f
       <div hidden={destination !== 'plan'}>
       <Reveal open={daysOpen}>
         <TrainingDays fetchImpl={fetchImpl} onChange={changed} onSettled={onDays} />
-        <Equipment fetchImpl={fetchImpl} onChange={changed} />
+        <Button onClick={() => navigate('equipment')}>Equipment</Button>
       </Reveal>
       </div>
+      {destination === 'equipment' && <EquipmentCatalog fetchImpl={fetchImpl} onChange={changed} />}
       <Reveal open={inboxOpen}>
           <div ref={inbox} className="inbox-pane" hidden={destination !== 'inbox'}>
             <ParentInbox layout={layout} fetchImpl={fetchImpl} onChange={inboxChanged} refresh={answered + epoch} onSettled={onInbox} onSummary={onInboxSummary} onGoPlan={() => navigate('plan')} />

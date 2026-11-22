@@ -2,6 +2,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { FsDb } from './firestoreDb.js';
 import type { RoleStore } from './roles.js';
+import type { TrainingService } from './training.js';
 
 export type GloveAvailability = 'unknown' | 'available' | 'unavailable';
 export interface EquipmentStore {
@@ -42,7 +43,12 @@ export class FirestoreEquipmentStore extends SerializedEquipmentStore implements
   async deleteAll() { await this.guard(async () => { await this.ref().delete(); }); }
 }
 
-export function registerEquipmentRoutes(app: FastifyInstance, store: EquipmentStore, roles: RoleStore) {
+export function registerEquipmentRoutes(app: FastifyInstance, store: EquipmentStore, roles: RoleStore, training: TrainingService) {
+  app.get('/api/equipment/exercises', async (req, reply) => {
+    reply.header('cache-control', 'no-store');
+    if (await roles.roleFor(req.identity!.account) !== 'parent') return reply.code(403).send({ error: 'forbidden' });
+    return { exercises: await training.equipmentExercises() };
+  });
   app.get('/api/equipment', async (req, reply) => {
     reply.header('cache-control', 'no-store');
     if (await roles.roleFor(req.identity!.account) !== 'parent') return reply.code(403).send({ error: 'forbidden' });

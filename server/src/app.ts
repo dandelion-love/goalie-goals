@@ -360,7 +360,7 @@ export async function buildApp({
   const resetPainGate = new ResetPainGate();
   registerPainRoutes(app, { pain: painService, roles: roleStore, gate: resetPainGate, currentGeneration: () => currentGeneration });
 
-  registerEquipmentRoutes(app, equipment, roleStore);
+  registerEquipmentRoutes(app, equipment, roleStore, trainingService);
   registerDossierRoutes(app, { dossiers: trainingService.dossiers, approvals: approvalService, roles: roleStore, training: trainingService });
   if (scheduleService) registerScheduleRoutes(app, { schedule: scheduleService, roles: roleStore });
 

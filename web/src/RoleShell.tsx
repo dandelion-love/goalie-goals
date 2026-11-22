@@ -16,6 +16,7 @@ export type Destination = { id: string; label: string; title?: string };
 export function useDestination(destinations: readonly Destination[], fallback: string) {
   const valid = useCallback((value: string | null) => destinations.some((item) => item.id === value) ? value! : fallback, [destinations, fallback]);
   const [current, setCurrent] = useState(() => valid(new URL(window.location.href).searchParams.get('view')));
+  const currentRef = useRef(current);
   const navigation = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLDivElement>(null);
 
@@ -27,9 +28,11 @@ export function useDestination(destinations: readonly Destination[], fallback: s
         url.searchParams.set('view', selected);
         window.history.replaceState(window.history.state, '', url);
       }
+      const changed = currentRef.current !== selected;
+      currentRef.current = selected;
       setCurrent(selected);
-      if (content.current) content.current.scrollTop = 0;
-      if (focus) requestAnimationFrame(() => navigation.current?.focus());
+      if (changed && content.current) content.current.scrollTop = 0;
+      if (focus && changed) requestAnimationFrame(() => navigation.current?.focus());
     };
     read(false);
     const onPop = () => read(true);
@@ -43,6 +46,7 @@ export function useDestination(destinations: readonly Destination[], fallback: s
     const url = new URL(window.location.href);
     url.searchParams.set('view', selected);
     window.history.pushState(null, '', url);
+    currentRef.current = selected;
     setCurrent(selected);
     if (content.current) content.current.scrollTop = 0;
   }, [current, valid]);

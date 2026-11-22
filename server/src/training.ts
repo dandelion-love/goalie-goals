@@ -389,6 +389,21 @@ export class TrainingService {
     });
   }
 
+  /** Current exercise snapshots visible to the parent, with their declared requirements. */
+  async equipmentExercises() {
+    const approved = await this.approvals.approvedItems();
+    const pending = await this.approvals.pending();
+    const dossiers = await this.dossiers.approved();
+    const visible = new Set([...approved, ...pending].filter((item) => item.kind === 'exercise').map((item) => versionKey(item.itemId, item.itemVersion)));
+    return [...this.content.cards.values()].flatMap((source) => {
+      const snapshot = cardSnapshot(source);
+      if (!visible.has(versionKey(snapshot.itemId, snapshot.itemVersion))) return [];
+      const card = source.card;
+      return [{ id: card.id, name: card.name, why: card.why, setup: Object.values(card.setup),
+        cautions: card.stop_if, needs: card.needs ?? null, dossier: dossiers.get(card.id) ?? null }];
+    });
+  }
+
   /** Swap in new content (an edit on disk, or a test); approvals of old versions stay with them. */
   setContent(content: ContentLibrary): void {
     this.content = content;
