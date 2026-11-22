@@ -698,23 +698,32 @@ def dossier_errors(d: object, stem: str, cards: dict[str, dict]) -> list[str]:
     elif REFUSED.search(headline):
         out.append(f"why.headline: says {REFUSED.search(headline).group(1)!r}, which the "
                    f"claim rules refuse")
-    if not _count(why.get("claims"), 2, 4):
+    why_unavailable = why.get("unavailable")
+    if why_unavailable is not None and (not _text(why_unavailable, 10, 200) or why.get("claims") != []):
+        out.append("why.unavailable requires a reason and an empty claims list")
+    elif why_unavailable is None and not _count(why.get("claims"), 2, 4):
         out.append("why.claims must list 2 to 4 claims")
     for i, c in enumerate(why.get("claims") or []):
         out += claim_errors(c, f"why.claims[{i}]", population, used, action=True)
 
     expect = _part(d, "expect", out)
-    if not _count(expect.get("claims"), 2, 4):
+    expect_unavailable = expect.get("unavailable")
+    if expect_unavailable is not None and (not _text(expect_unavailable, 10, 200) or expect.get("claims") != [] or "keep_up" in expect):
+        out.append("expect.unavailable requires a reason, no claims and no keep_up")
+    elif expect_unavailable is None and not _count(expect.get("claims"), 2, 4):
         out.append("expect.claims must list 2 to 4 claims")
     for i, c in enumerate(expect.get("claims") or []):
         out += claim_errors(c, f"expect.claims[{i}]", population, used, outcome=True)
-    if "keep_up" not in expect:
+    if "keep_up" not in expect and expect_unavailable is None:
         out.append("expect.keep_up is missing")
-    else:
+    elif "keep_up" in expect:
         out += claim_errors(expect["keep_up"], "expect.keep_up", population, used)
 
     muscles = _part(d, "muscles", out)
-    if not _count(muscles.get("map"), 2, 8):
+    muscles_unavailable = muscles.get("unavailable")
+    if muscles_unavailable is not None and (not _text(muscles_unavailable, 10, 200) or muscles.get("map") != [] or muscles.get("note") is not None):
+        out.append("muscles.unavailable requires a reason, an empty map and no note")
+    elif muscles_unavailable is None and not _count(muscles.get("map"), 2, 8):
         out.append("muscles.map must list 2 to 8 entries")
     for i, m in enumerate(muscles.get("map") or []):
         where = f"muscles.map[{i}]"
@@ -748,6 +757,9 @@ def dossier_errors(d: object, stem: str, cards: dict[str, dict]) -> list[str]:
     for sid in population:
         if sid not in used:
             out.append(f"source {sid} is not cited by any claim")
+    for section, value in (("why", why_unavailable), ("expect", expect_unavailable), ("muscles", muscles_unavailable)):
+        if isinstance(value, str) and REFUSED.search(value):
+            out.append(f"{section}.unavailable contains a refused claim")
     for text in keeper_text(d):
         for sentence in SENTENCE_END.split(text.strip()):
             if _words(sentence) > SENTENCE_WORDS:
@@ -760,6 +772,7 @@ def keeper_text(d: dict) -> list[str]:
     """The keeper-facing text of a dossier: the headline, every claim and the muscle labels."""
     part = lambda k: d.get(k) if isinstance(d.get(k), dict) else {}  # noqa: E731
     out = [part("why").get("headline", "")]
+    out += [part(section).get("unavailable", "") for section in ("why", "expect", "muscles")]
     for section in ("why", "expect", "science"):
         for key in ("claims", "limits"):
             out += [c.get("text", "") for c in part(section).get(key) or [] if isinstance(c, dict)]

@@ -14,11 +14,11 @@ The following exact candidate files are ready for independent review and a separ
 The existing `squat-to-box` card remains at 2 sets of 10 until a different version has those approvals. The 2-by-15 version is a destination, not a direct jump: the documented rule requires one lever at a time, two clean sessions and parent approval at each dose change. The owner chose a capped final step from 2 × 14 to 2 × 15 under those same conditions. Each exact dose version also needs owner content approval. The exact second card, matching spec, neutral figure and proposed dossier are outside runtime content. The previously rejected paused-squat illustration will not be used.
 
 The proposed machine-readable dossier uses explicit unavailable states for unsupported
-benefits, expected outcomes and muscle focus. The existing content checker requires
-claims and a muscle map, and the current dossier projection assumes a keep-up claim.
-Those constraints cannot represent this draft without inventing evidence. Runtime
-support for the unavailable states must be implemented and reviewed before this exact
-dossier can be installed or proposed for parent approval.
+benefits, expected outcomes and muscle focus. The original checker required claims and
+a muscle map, and the original projection assumed a keep-up claim. Support for explicit
+unavailable states is prepared on this branch, including a parent preview of sourced
+research context; it must be independently reviewed before this exact dossier can be
+installed or proposed for parent approval.
 
 ## Exact candidate bytes
 

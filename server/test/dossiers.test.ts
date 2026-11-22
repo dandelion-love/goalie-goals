@@ -152,7 +152,7 @@ describe('what the keeper sees (AC2, AC3)', () => {
     expect(d.expect.map((c) => c.label)).toEqual(['6 weeks', '9 weeks', 'Keep it up']);
     expect(d.expect[0].text).toContain('8 to 22%');
     // Only the sources the two sections cite, numbered in order, each with its public link.
-    const cited = [...PLANK.dossier.why.claims, ...PLANK.dossier.expect.claims, PLANK.dossier.expect.keep_up].flatMap(
+    const cited = [...PLANK.dossier.why.claims, ...PLANK.dossier.expect.claims, PLANK.dossier.expect.keep_up!].flatMap(
       (c) => c.sources,
     );
     expect(d.sources.map((s) => s.n)).toEqual(d.sources.map((_, i) => i + 1));

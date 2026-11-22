@@ -3,11 +3,21 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import axe from 'axe-core';
 import { SessionPlayer } from './SessionPlayer';
 import { ApprovedTraining, ParentInbox } from './ApprovalScreens';
+import { DossierView } from './DossierScreens';
 import type { ApprovedItem, PendingRequest } from './approvals';
 import type { Dossier } from './dossier';
 import type { Card } from './training';
 import type { WakeLockController } from './wakeLock';
 import { BRIDGE, PLANK, demoSession } from './session.fixture';
+
+it('shows explicit unavailable states and qualified research context', () => {
+  const dossier: Dossier = { cardId: 'example', itemVersion: 'v1', name: 'Example', headline: 'Example', why: [], expect: [], whyUnavailable: 'Benefits are unavailable.', expectUnavailable: 'Outcomes are unavailable.', context: [{ label: 'Research context', text: 'A study involved adults.', evidence: 'adult', sources: [1] }], sources: [{ n: 1, title: 'Example study', url: 'https://example.org/study' }] };
+  render(<DossierView dossier={dossier} />);
+  expect(screen.getByText('Benefits are unavailable.')).toBeTruthy();
+  expect(screen.getByText('Outcomes are unavailable.')).toBeTruthy();
+  expect(screen.getByText(/A study involved adults.*Evidence: adult/)).toBeTruthy();
+  expect(screen.getByText('Example study')).toBeTruthy();
+});
 
 // Story 115: an approved dossier opens from the player's card intro and from "Your training";
 // the parent reads a dossier request in the inbox before approving it. The server decides what

@@ -38,6 +38,9 @@ export interface ClientDossier {
   headline: string;
   why: ClientClaim[];
   expect: ClientClaim[];
+  whyUnavailable?: string;
+  expectUnavailable?: string;
+  context?: ClientClaim[];
   limits?: ClientClaim[];
   sources: ClientSource[];
 }
@@ -98,14 +101,18 @@ function toClient(source: DossierSource, name: string, version: string, includeL
       ...(c.groupId ? { groupId: c.groupId } : {}),
       sources: cite(c),
     })),
-    { label: 'Keep it up', text: dossier.expect.keep_up.text, evidence: dossier.expect.keep_up.evidence, detail: dossier.expect.keep_up.detail, sources: cite(dossier.expect.keep_up) },
+    ...(dossier.expect.keep_up ? [{ label: 'Keep it up', text: dossier.expect.keep_up.text, evidence: dossier.expect.keep_up.evidence, detail: dossier.expect.keep_up.detail, sources: cite(dossier.expect.keep_up) }] : []),
   ];
+  // Only the explicit unavailable format adds context to a newly reviewed dossier. Existing
+  // dossier approvals covered their original two sections and must not reveal extra material.
+  const unavailable = !!dossier.why.unavailable && !!dossier.expect.unavailable;
+  const context = unavailable ? [...dossier.science.claims, ...dossier.science.limits].map((c) => ({ label: 'Research context', text: c.text, evidence: c.evidence, detail: c.detail, sources: cite(c) })) : undefined;
   const limits = includeLimits ? dossier.science.limits.map((c) => ({ label: 'Limitation', text: c.text, evidence: c.evidence, detail: c.detail, sources: cite(c) })) : undefined;
   const sources = [...numbers].map(([id, n]) => {
     const s = byId.get(id)!;
     return { n, title: s.title, url: s.url.startsWith('https://') ? s.url : null };
   });
-  return { cardId: dossier.id, itemVersion: version, name, headline: dossier.why.headline, why, expect, sources, ...(limits ? { limits } : {}) };
+  return { cardId: dossier.id, itemVersion: version, name, headline: dossier.why.headline, why, expect, sources, ...(limits ? { limits } : {}), ...(dossier.why.unavailable ? { whyUnavailable: dossier.why.unavailable } : {}), ...(dossier.expect.unavailable ? { expectUnavailable: dossier.expect.unavailable } : {}), ...(context ? { context } : {}) };
 }
 
 function snapshot(source: DossierSource, name: string): DossierSnapshot {
@@ -114,7 +121,9 @@ function snapshot(source: DossierSource, name: string): DossierSnapshot {
   // What the parent reads in the inbox; "Read it" there shows the whole of what the keeper sees.
   const content: ItemContent = {
     title: `${name}: why it matters`,
-    detail: `What the keeper reads about this exercise: why it helps a goalkeeper and what to expect. It cites ${count} sources.`,
+    detail: source.dossier.why.unavailable && source.dossier.expect.unavailable
+      ? `What the keeper reads about this exercise: unavailable evidence and its research context. It cites ${count} sources.`
+      : `What the keeper reads about this exercise: why it helps a goalkeeper and what to expect. It cites ${count} sources.`,
     binding: `dossier ${cardId} ${source.contentHash}`,
   };
   const version = itemVersion(content);

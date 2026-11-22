@@ -95,8 +95,8 @@ export interface Dossier {
   id: string;
   card: string;
   sources: DossierSourceRef[];
-  why: { headline: string; claims: DossierClaim[] };
-  expect: { claims: DossierClaim[]; keep_up: DossierClaim };
+  why: { headline: string; claims: DossierClaim[]; unavailable?: string };
+  expect: { claims: DossierClaim[]; keep_up?: DossierClaim; unavailable?: string };
   muscles: unknown;
   clips: unknown[];
   science: { claims: DossierClaim[]; limits: DossierClaim[] };

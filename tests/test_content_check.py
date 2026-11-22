@@ -354,6 +354,18 @@ class DossierCheck(unittest.TestCase):
         self.assertEqual(cc.check(self.root), [])
         self.assertEqual(cc.dossier_warnings(self.root, now="2026-11-18T00:00:00Z"), [])
 
+    def test_explicit_unavailable_evidence_requires_no_hidden_claims(self) -> None:
+        path = ROOT / "docs/proposals/candidates"
+        d = json.loads((path / "squat-to-box-pause.dossier.json").read_text(encoding="utf-8"))
+        card = json.loads((path / "squat-to-box-pause.json").read_text(encoding="utf-8"))
+        cards = {"squat-to-box-pause": card}
+        self.assertEqual(cc.dossier_errors(d, "squat-to-box-pause", cards), [])
+        d["expect"]["keep_up"] = {"text": "Hidden claim"}
+        self.assertTrue(any("expect.unavailable" in e for e in cc.dossier_errors(d, "squat-to-box-pause", cards)))
+        del d["expect"]["keep_up"]
+        d["muscles"]["unavailable"] = ""
+        self.assertTrue(any("muscles.unavailable" in e for e in cc.dossier_errors(d, "squat-to-box-pause", cards)))
+
     def test_dossier_is_not_read_as_a_card(self) -> None:
         self.assertNotIn("plank.dossier", cc.load_cards(self.root))
 

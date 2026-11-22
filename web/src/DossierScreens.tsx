@@ -16,7 +16,7 @@ function groups(claims: DossierClaim[]): { label: string; claims: DossierClaim[]
   return out;
 }
 
-function Claims({ claims }: { claims: DossierClaim[] }) {
+function Claims({ claims, showEvidence = false }: { claims: DossierClaim[]; showEvidence?: boolean }) {
   return (
     <dl className="dossier-claims">
       {groups(claims).map((g, i) => (
@@ -25,6 +25,7 @@ function Claims({ claims }: { claims: DossierClaim[] }) {
           {g.claims.map((c, j) => (
             <dd key={j}>
               {c.text}
+              {showEvidence && c.evidence && ` Evidence: ${c.evidence}.`}
               {c.sources.length > 0 && (
                 <span className="dossier-refs">
                   {' '}
@@ -47,9 +48,12 @@ export function DossierView({ dossier, level = 3 }: { dossier: Dossier; level?: 
     <div className="dossier">
       <p className="dossier-headline">{dossier.headline}</p>
       <H>Why it matters for a goalkeeper</H>
+      {dossier.whyUnavailable && <p>{dossier.whyUnavailable}</p>}
       <Claims claims={dossier.why} />
       <H>What to expect</H>
+      {dossier.expectUnavailable && <p>{dossier.expectUnavailable}</p>}
       <Claims claims={dossier.expect} />
+      {dossier.context && <><H>Research context and limits</H><Claims claims={dossier.context} showEvidence /></>}
       <H>Sources</H>
       <ol className="dossier-sources">
         {dossier.sources.map((s) => (
