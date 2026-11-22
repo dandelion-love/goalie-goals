@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useState } from 'react';
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
 import {
   answerRequest,
   fetchApproved,
@@ -84,12 +84,14 @@ export function ParentInbox({
   onChange,
   refresh = 0,
   onSettled,
+  onSummary,
 }: {
   fetchImpl?: typeof fetch;
   onChange?: () => void;
   /** Reload when this changes (an undo from the History, for example). */
   refresh?: number;
   onSettled?: () => void;
+  onSummary?: (badge: number, urgent: boolean) => void;
 }) {
   const [state, setState] = useState<Load<{ rows: Row[]; badge: number; pause: PauseStatus | null }>>({
     kind: 'loading',
@@ -98,7 +100,15 @@ export function ParentInbox({
   const [busy, setBusy] = useState<{ id: string; verb: 'approve' | 'decline' | 'undo' } | null>(null);
   const [toast, setToast] = useState<{ toast: Toast; ms: number } | null>(null);
   const once = useOneAtATime();
+  const [selected, setSelected] = useState<string | null>(null);
+  const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   useSettled(state.kind !== 'loading', onSettled);
+  useEffect(() => {
+    if (state.kind === 'ready') onSummary?.(state.data.badge, !!state.data.pause?.paused);
+  }, [state, onSummary]);
+  useEffect(() => {
+    if (selected && state.kind === 'ready' && !state.data.rows.some((row) => row.request.id === selected)) setSelected(null);
+  }, [selected, state]);
 
   /** Changes the rows of a loaded inbox (at a tap, or as an answer lands). */
   const editRows = (edit: (rows: Row[]) => Row[]) =>
@@ -159,7 +169,7 @@ export function ParentInbox({
         });
       } catch {
         // In the toast's place, which is always kept, so the message moves nothing.
-        setToast({ toast: { kind: 'error', text: "That answer didn't go through. It is still waiting." }, ms: NOTE_MS });
+        setToast({ toast: { kind: 'error', text: "That answer didn't go through. Check the inbox and try again." }, ms: NOTE_MS });
       }
       await load();
       setBusy(null);
@@ -221,9 +231,17 @@ export function ParentInbox({
       {state.kind === 'ready' && state.data.rows.length > 0 && (
         <ul className="requests">
           {state.data.rows.map(({ request: r, answered }) => (
-            <li key={r.id} className="request" aria-label={r.title}>
+            <li key={r.id} className="request" aria-label={r.title} hidden={selected !== null && selected !== r.id}>
               <span className="kind">{KIND_LABEL[r.kind] ?? r.kind}</span>
               <h3>{r.title}</h3>
+              {selected === r.id ? (
+                <button type="button" className="secondary" disabled={busy !== null} onClick={() => {
+                  setSelected(null);
+                  requestAnimationFrame(() => rowButtons.current.get(r.id)?.focus());
+                }}>Back to inbox</button>
+              ) : (
+                <button type="button" className="secondary" aria-label={`Review ${r.title}`} disabled={busy !== null} ref={(element) => { if (element) rowButtons.current.set(r.id, element); else rowButtons.current.delete(r.id); }} onClick={() => setSelected(r.id)}>Review</button>
+              )}
               <p>{r.detail}</p>
               {/* Story 115: the parent reads the whole dossier before answering. */}
               {r.kind === 'dossier' && (

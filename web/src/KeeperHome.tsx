@@ -36,6 +36,9 @@ import { Reveal } from './Loading';
 import { chunk } from './chunks';
 import { afterPaint } from './defer';
 import { warmPainReport } from './warmPain';
+import { RoleShell, useDestination } from './RoleShell';
+
+const KEEPER_DESTINATIONS = [{ id: 'today', label: 'Today' }, { id: 'week', label: 'Week' }, { id: 'history', label: 'History' }, { id: 'library', label: 'Training' }] as const;
 
 // The keeper's home, in its own chunk (story 101 AC2): the parent's device never loads it.
 
@@ -193,6 +196,15 @@ export function KeeperHome({
     return () => clearTimeout(id);
   }, []);
   const [playing, setPlaying] = useState<Session | null>(null);
+  const homeHeading = useRef<HTMLHeadingElement>(null);
+  const returning = useRef(false);
+  useEffect(() => {
+    if (!playing && returning.current) {
+      returning.current = false;
+      homeHeading.current?.focus();
+    }
+  }, [playing]);
+  const { current: destination, navigate, navigation, content } = useDestination(KEEPER_DESTINATIONS, 'today');
   const [equipmentMessage, setEquipmentMessage] = useState('');
   const equipmentStart = useRef(false);
   const [finishedHere, setDoneToday] = useState(false);
@@ -357,6 +369,8 @@ export function KeeperHome({
           // A transition (story #98 AC5): the tap paints its response at once, and the home,
           // a large render, follows without holding the tap's frame.
           startTransition(() => {
+            returning.current = true;
+            navigate('today');
             setPlaying(null);
             setProgress(null);
           });
@@ -433,15 +447,11 @@ export function KeeperHome({
   const paused = !!pause || reporting;
 
   return (
-    <section className="home" aria-labelledby="home-title">
-      <div className="home-bar">
-        <h1 id="home-title">Keeper home</h1>
-        {!paused && (
+    <RoleShell title="Keeper home" destinations={KEEPER_DESTINATIONS} current={destination} navigate={navigate} navigation={navigation} content={content} heading={homeHeading} action={!paused && (
           <button type="button" className="danger session-control safety-control" onClick={hurtTapped}>
             Something hurts
           </button>
-        )}
-      </div>
+        )}>
       {reporting && (
         <article className="card" aria-labelledby="report-title">
           <h2 id="report-title">Something hurts</h2>
@@ -469,6 +479,7 @@ export function KeeperHome({
           onMistake={reporting && !pause?.sent && !pause?.report ? undefined : () => mistake(null)}
         />
       ) : (
+        <div hidden={destination !== 'today'}>
         <TodayPanel
           fetchImpl={fetchImpl}
           onStart={tryStart}
@@ -479,18 +490,26 @@ export function KeeperHome({
           now={now}
           next={next}
         />
+        </div>
       )}
       {/* This week (story 114): the near goal across the week, under today. */}
+      <div hidden={destination !== 'week'}>
       <Reveal open={todaySettled}>
         <WeekPanel fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onWeekSettled} onWeek={onWeek} now={now} />
       </Reveal>
+      </div>
+      <div hidden={destination !== 'today'}>
       <Reveal open={weekSettled}>
         <ProgressPanel fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onProgress} />
       </Reveal>
+      </div>
       {/* Recent sessions (story 113): their own panel, above the approvals. */}
+      <div hidden={destination !== 'history'}>
       <Reveal open={progressSettled}>
         <SessionHistory fetchImpl={fetchImpl} refresh={recorded + epoch} onSettled={onSessions} />
       </Reveal>
+      </div>
+      <div hidden={destination !== 'library'}>
       <Reveal open={sessionsSettled}>
         <div className={layout === 'expanded' ? 'panes' : 'stack'}>
           {!pause && <ApprovedTraining fetchImpl={fetchImpl} refresh={changed + epoch} onSettled={onTraining} />}
@@ -499,6 +518,7 @@ export function KeeperHome({
           </Reveal>
         </div>
       </Reveal>
-    </section>
+      </div>
+    </RoleShell>
   );
 }

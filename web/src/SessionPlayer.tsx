@@ -466,16 +466,20 @@ function CardStep({
     );
   }
 
-  // The timer or counter and the next action sit in their own block: below the drill in
-  // portrait, and at the top of the right-hand column in landscape, so both stay in view.
+  // Keep the current action before optional detail in reading order and portrait layout.
   return (
     <div className={layout === 'expanded' ? 'player-panes card-panes' : 'player-stack'}>
+      <div className="player-controls">
+        {controls}
+        <h2>Stop if</h2>
+        <ul>{card.stopIf.map((s) => <li key={s}>{s}</li>)}</ul>
+      </div>
       <div className="player-main">
         <DrillFigure card={card} />
         <p className="dose">{`${card.doseText}${dose.tempo ? `. Tempo: ${dose.tempo}.` : '.'}`}</p>
       </div>
-      <div className="player-controls">{controls}</div>
-      <div className="player-side">
+      <details className="player-side">
+        <summary>Exercise details</summary>
         <h2>Steps</h2>
         <ol>
           {card.steps.map((s) => (
@@ -496,17 +500,11 @@ function CardStep({
             </li>
           ))}
         </ul>
-        <h2>Stop if</h2>
-        <ul>
-          {card.stopIf.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ul>
         <p className="meta">
           Easier: {card.easier.variant} ({card.easier.useWhen})
         </p>
         <p className="meta">Sets done this session: {state.setsDone}</p>
-      </div>
+      </details>
     </div>
   );
 }
@@ -526,7 +524,9 @@ const SETUP_LINES: { key: string; label: string }[] = [
 function CardIntro({ card }: { card: Card }) {
   const lines = SETUP_LINES.filter(({ key }) => card.setup[key]?.trim());
   return (
-    <section className="card-intro" aria-labelledby="card-intro-title">
+    <details className="card-intro">
+      <summary>For the parent</summary>
+      <section aria-labelledby="card-intro-title">
       <h2 id="card-intro-title">For the parent</h2>
       <dl className="card-setup">
         {lines.map(({ key, label }) => (
@@ -543,7 +543,8 @@ function CardIntro({ card }: { card: Card }) {
       <ParentChecks card={card} />
       {/* Story 115: the card's approved dossier opens here, before set 1. */}
       {card.dossier && <DossierToggle dossier={card.dossier} />}
-    </section>
+      </section>
+    </details>
   );
 }
 
