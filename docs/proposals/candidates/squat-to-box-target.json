@@ -1,0 +1,96 @@
+{
+  "id": "squat-to-box",
+  "name": "Squat to box",
+  "aliases": [
+    "box squat",
+    "sit-to-stand"
+  ],
+  "category": "strength",
+  "why": "Strong legs push you up for a dive or a high catch. Sitting back to a box teaches a safe squat shape.",
+  "goal": [
+    "leg-strength",
+    "hip-strength"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only",
+      "other:step"
+    ],
+    "any": []
+  },
+  "space_m": [
+    1,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "Floor about 1 m by 1 m in front of the box.",
+    "equipment": "A stable low box or step that does not slide.",
+    "parent": "Stand side-on, about 2 m away, to see knees and back."
+  },
+  "steps": [
+    "Stand a short step in front of the box. Feet about shoulder width, toes turned out a little.",
+    "Reach both arms forward and push your hips back, as if sitting.",
+    "Lower until you lightly touch the box. Do not sit down or relax.",
+    "Push through the whole foot to stand tall again."
+  ],
+  "cues": [
+    "Hips back first",
+    "Knees follow toes",
+    "Touch and go"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Knees fall inward",
+      "fix": "Push the knees out, in line with the toes."
+    },
+    {
+      "mistake": "Dropping onto the box",
+      "fix": "Slow the last part down and only brush the box."
+    },
+    {
+      "mistake": "Heels lift",
+      "fix": "Keep your weight mid-foot and sit back more."
+    }
+  ],
+  "parent_check": [
+    "Knees stay over the toes on every rep",
+    "Heels stay down",
+    "Back stays long, not rounded"
+  ],
+  "stop_if": [
+    "Pain in the knee, hip or lower back",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
+    "Knees keep caving in after a reminder (end the set)"
+  ],
+  "easier": {
+    "variant": "Shorter range: stop halfway down and come back up.",
+    "use_when": "Knees cave in or heels lift."
+  },
+  "harder": {
+    "variant": "Pause for two seconds just above the box before standing.",
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
+  },
+  "dose": {
+    "kind": "reps",
+    "sets": 2,
+    "reps": 15,
+    "per_side": false,
+    "rest_s": 60,
+    "tempo": "down slow for three, stand up smoothly"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "glute-bridge",
+    "split-squat"
+  ],
+  "media": {
+    "figure": "content/figures/squat-to-box.svg"
+  },
+  "spec": "content/exercises/squat-to-box.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}

@@ -1,0 +1,96 @@
+{
+  "id": "squat-to-box-pause",
+  "name": "Paused box squat",
+  "aliases": [
+    "paused squat to box"
+  ],
+  "category": "strength",
+  "why": "Practise a controlled squat. Pause just above the box.",
+  "goal": [
+    "leg-strength",
+    "hip-strength"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only",
+      "other:step"
+    ],
+    "any": []
+  },
+  "space_m": [
+    1,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "Floor about 1 m by 1 m in front of the box.",
+    "equipment": "A stable low box or step that does not slide.",
+    "parent": "Stand side-on, about 2 m away, to see knees and back."
+  },
+  "steps": [
+    "Stand a short step in front of the box.",
+    "Reach forward and move your hips back.",
+    "Lower slowly. Stop just above the box.",
+    "Hold still for two seconds.",
+    "Push through the whole foot to stand tall."
+  ],
+  "cues": [
+    "Hips back first",
+    "Knees follow toes",
+    "Pause above box"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Knees fall inward",
+      "fix": "Push the knees out, in line with the toes."
+    },
+    {
+      "mistake": "Dropping onto the box",
+      "fix": "Slow down and stop above the box."
+    },
+    {
+      "mistake": "Heels lift",
+      "fix": "Keep your weight mid-foot and sit back more."
+    }
+  ],
+  "parent_check": [
+    "Knees stay over the toes on every rep",
+    "Heels stay down",
+    "The pause is still and does not bounce"
+  ],
+  "stop_if": [
+    "Pain in the knee, hip or lower back",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
+    "Knees keep caving in after a reminder (end the set)"
+  ],
+  "easier": {
+    "variant": "Return to the approved squat to box.",
+    "use_when": "The pause or squat is not controlled."
+  },
+  "harder": {
+    "variant": "Squat without the box.",
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
+  },
+  "dose": {
+    "kind": "reps",
+    "sets": 2,
+    "reps": 10,
+    "per_side": false,
+    "rest_s": 60,
+    "tempo": "down slow for three, stand up smoothly"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "glute-bridge",
+    "split-squat"
+  ],
+  "media": {
+    "figure": "content/figures/squat-to-box-pause.svg"
+  },
+  "spec": "content/exercises/squat-to-box-pause.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}
