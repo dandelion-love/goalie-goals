@@ -5,8 +5,9 @@ import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from 
 import type { SquatProofService, SquatProofStore } from './squatProof.js';
 import type { RoleStore } from './roles.js';
 import { ownerApprovedSquatVersions } from './ownerProgression.js';
+import type { Dossier, ExerciseCard } from './content.js';
 
-type ReviewCandidate = { itemId: string; version: string; title: string; dose: string; cues: string[] };
+type ReviewCandidate = { itemId: string; version: string; title: string; dose: string; cues: string[]; card: ExerciseCard; dossier?: Dossier; dossierVersion?: string };
 
 /** Isolated review prototype: this records no training approval or active progression. */
 export class ProgressionReview {
@@ -17,7 +18,7 @@ export class ProgressionReview {
     const entry = ownerApprovedSquatVersions(contentRoot).find((item) => item.itemVersion === version);
     if (!entry) throw new Error('Progression version has no owner decision');
     if (entry.rung !== 'squat-to-box-pause' || entry.predecessor !== 'squat-to-box') throw new Error('No readiness rule for progression version');
-    return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues });
+    return new ProgressionReview(db, readiness, proofs, { itemId: entry.rung, version: entry.itemVersion, title: entry.card.card.name, dose: entry.dose, cues: entry.card.card.cues, card: entry.card.card, ...(entry.dossier && entry.dossierVersion ? { dossier: entry.dossier.dossier, dossierVersion: entry.dossierVersion } : {}) });
   }
 
   async offer(): Promise<({ id: string } & ReviewCandidate) | null> {
