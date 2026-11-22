@@ -522,7 +522,7 @@ export function KeeperHome({
         </div>
       </Reveal>
       </div>
-      {destination === 'tree' && !pause && <ProgressionLibrary fetchImpl={fetchImpl} refresh={changed + epoch} />}
+      {destination === 'tree' && <ProgressionLibrary fetchImpl={fetchImpl} refresh={changed + epoch} held={paused} />}
     </RoleShell>
   );
 }
