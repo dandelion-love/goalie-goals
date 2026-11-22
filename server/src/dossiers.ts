@@ -18,6 +18,7 @@ export interface ClientClaim {
   text: string;
   evidence?: string;
   detail?: string;
+  groupId?: string;
   /** Numbers into `sources` (1-based), in the order the claim cites them. */
   sources: number[];
 }
@@ -37,6 +38,7 @@ export interface ClientDossier {
   headline: string;
   why: ClientClaim[];
   expect: ClientClaim[];
+  limits?: ClientClaim[];
   sources: ClientSource[];
 }
 
@@ -61,13 +63,14 @@ interface DossierSnapshot {
   itemVersion: string;
   content: ItemContent;
   client: ClientDossier;
+  equipmentClient: ClientDossier;
 }
 
 /**
  * The two sections, with only the sources they cite, numbered in the order they are first
  * cited. A source with a repo path (an `app` source) is listed without a link.
  */
-function toClient(source: DossierSource, name: string, version: string): ClientDossier {
+function toClient(source: DossierSource, name: string, version: string, includeLimits = false): ClientDossier {
   const { dossier } = source;
   const byId = new Map(dossier.sources.map((s) => [s.id, s]));
   const numbers = new Map<string, number>();
@@ -83,6 +86,7 @@ function toClient(source: DossierSource, name: string, version: string): ClientD
     text: c.text,
     evidence: c.evidence,
     detail: c.detail,
+    ...(c.groupId ? { groupId: c.groupId } : {}),
     sources: cite(c),
   }));
   const expect = [
@@ -91,15 +95,17 @@ function toClient(source: DossierSource, name: string, version: string): ClientD
       text: c.text,
       evidence: c.evidence,
       detail: c.detail,
+      ...(c.groupId ? { groupId: c.groupId } : {}),
       sources: cite(c),
     })),
     { label: 'Keep it up', text: dossier.expect.keep_up.text, evidence: dossier.expect.keep_up.evidence, detail: dossier.expect.keep_up.detail, sources: cite(dossier.expect.keep_up) },
   ];
+  const limits = includeLimits ? dossier.science.limits.map((c) => ({ label: 'Limitation', text: c.text, evidence: c.evidence, detail: c.detail, sources: cite(c) })) : undefined;
   const sources = [...numbers].map(([id, n]) => {
     const s = byId.get(id)!;
     return { n, title: s.title, url: s.url.startsWith('https://') ? s.url : null };
   });
-  return { cardId: dossier.id, itemVersion: version, name, headline: dossier.why.headline, why, expect, sources };
+  return { cardId: dossier.id, itemVersion: version, name, headline: dossier.why.headline, why, expect, sources, ...(limits ? { limits } : {}) };
 }
 
 function snapshot(source: DossierSource, name: string): DossierSnapshot {
@@ -112,7 +118,7 @@ function snapshot(source: DossierSource, name: string): DossierSnapshot {
     binding: `dossier ${cardId} ${source.contentHash}`,
   };
   const version = itemVersion(content);
-  return { cardId, itemId: dossierItemId(cardId), itemVersion: version, content, client: toClient(source, name, version) };
+  return { cardId, itemId: dossierItemId(cardId), itemVersion: version, content, client: toClient(source, name, version), equipmentClient: toClient(source, name, version, true) };
 }
 
 export interface DossierServiceDeps {
@@ -167,6 +173,18 @@ export class DossierService {
       if (item.kind !== 'dossier') continue;
       const snap = this.versions.get(item.itemVersion);
       if (snap && snap.itemId === item.itemId) out.set(snap.cardId, snap.client);
+    }
+    return out;
+  }
+
+  /** Parent-only equipment summaries also need each approved dossier's sourced limitations. */
+  async approvedForEquipment(): Promise<Map<string, ClientDossier>> {
+    this.current();
+    const out = new Map<string, ClientDossier>();
+    for (const item of await this.approvals.approvedItems()) {
+      if (item.kind !== 'dossier') continue;
+      const snap = this.versions.get(item.itemVersion);
+      if (snap && snap.itemId === item.itemId) out.set(snap.cardId, snap.equipmentClient);
     }
     return out;
   }

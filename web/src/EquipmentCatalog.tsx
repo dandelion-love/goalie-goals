@@ -7,12 +7,11 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import { Equipment } from './Equipment';
 import { DossierView } from './DossierScreens';
-import { isDossier, type Dossier } from './dossier';
+import { isDossier } from './dossier';
+import { EquipmentSummary } from './EquipmentSummary';
+import { equipmentIds, equipmentName, relationship, type EquipmentExercise } from './equipmentModel';
+export { equipmentIds, relationship, type EquipmentExercise } from './equipmentModel';
 
-export type EquipmentExercise = {
-  id: string; name: string; why: string; setup: string[]; cautions: string[];
-  needs: { all: string[]; any: string[][] } | null; dossier: Dossier | null;
-};
 type Load = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; exercises: EquipmentExercise[] };
 type Place = { item: string | null; exercise: string | null };
 
@@ -20,32 +19,16 @@ function isEquipmentExercise(value: unknown): value is EquipmentExercise {
   if (!value || typeof value !== 'object') return false;
   const e = value as Record<string, unknown>;
   const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every((s) => typeof s === 'string');
+  const claim = (v: unknown) => !!v && typeof v === 'object' && typeof (v as Record<string, unknown>).text === 'string' && typeof (v as Record<string, unknown>).label === 'string' && Array.isArray((v as Record<string, unknown>).sources) && ((v as Record<string, unknown>).sources as unknown[]).every(Number.isInteger);
+  const dossier = e.dossier;
+  const validDossier = isDossier(dossier) && dossier.why.every(claim) && dossier.expect.every(claim)
+    && (dossier.limits === undefined || (Array.isArray(dossier.limits) && dossier.limits.every(claim)))
+    && dossier.sources.every((s) => !!s && Number.isInteger(s.n) && typeof s.title === 'string' && (s.url === null || (typeof s.url === 'string' && s.url.startsWith('https://'))));
   const needs = e.needs as Record<string, unknown> | null;
   return typeof e.id === 'string' && typeof e.name === 'string' && typeof e.why === 'string'
     && strings(e.setup) && strings(e.cautions)
     && (needs === null || (typeof needs === 'object' && strings(needs.all) && Array.isArray(needs.any) && needs.any.every(strings)))
-    && (e.dossier === null || isDossier(e.dossier));
-}
-
-/** Use declared requirement identifiers, never text matches or inferred links. */
-export function equipmentIds(exercises: EquipmentExercise[]): string[] {
-  const ids = new Set(['other:goalkeeper-gloves']);
-  for (const e of exercises) {
-    for (const id of e.needs?.all ?? []) if (id !== 'body only') ids.add(id);
-    for (const group of e.needs?.any ?? []) for (const id of group) if (id !== 'body only') ids.add(id);
-  }
-  return [...ids].sort();
-}
-
-export function relationship(exercise: EquipmentExercise, item: string): 'required' | 'alternative' | null {
-  if (exercise.needs?.all.includes(item)) return 'required';
-  if (exercise.needs?.any.some((group) => group.includes(item))) return 'alternative';
-  return null;
-}
-
-export function equipmentName(id: string): string {
-  const name = id.replace(/^other:/, '').replace(/[-_]/g, ' ');
-  return name ? name[0].toUpperCase() + name.slice(1) : 'Equipment';
+    && (dossier === null || validDossier);
 }
 
 function requirements(ids: string[]): string {
@@ -65,6 +48,7 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
   const itemButtons = useRef(new Map<string, HTMLButtonElement>());
   const exerciseButtons = useRef(new Map<string, HTMLButtonElement>());
   const exerciseItemButtons = useRef(new Map<string, HTMLButtonElement>());
+  const summaryOrigin = useRef<{ item: string; exercise: string; token: string } | null>(null);
   const prior = useRef(place);
   useEffect(() => {
     let live = true;
@@ -84,7 +68,14 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
       if (new URL(window.location.href).searchParams.get('view') !== 'equipment') return;
       requestAnimationFrame(() => {
         if (!old.exercise && old.item && next.exercise) exerciseItemButtons.current.get(old.item)?.focus();
-        else if (old.exercise && next.item && !next.exercise) exerciseButtons.current.get(old.exercise)?.focus();
+        else if (old.exercise && next.item && !next.exercise) {
+          const origin = summaryOrigin.current;
+          const target = origin?.item === next.item && origin.exercise === old.exercise
+            ? [...document.querySelectorAll<HTMLButtonElement>('[data-evidence-origin]')].find((button) => button.dataset.evidenceOrigin === origin.token)
+            : undefined;
+          (target ?? exerciseButtons.current.get(old.exercise))?.focus();
+          summaryOrigin.current = null;
+        }
         else if (old.item && !next.item) itemButtons.current.get(old.item)?.focus();
       });
     };
@@ -125,7 +116,8 @@ export function EquipmentCatalog({ fetchImpl = fetch, onChange }: { fetchImpl?: 
       <h2>{equipmentName(item)}</h2><p>The item's training role, fit and restrictions are not recorded. Alternatives are shown where an exercise declares them.</p>
       {item === 'other:goalkeeper-gloves' && <Equipment fetchImpl={fetchImpl} onChange={onChange} />}
       <h3>Exercises using this item</h3>
-      {linked.length ? <List>{linked.map((e) => <ListItemButton component="button" key={e.id} ref={(node) => { if (node) exerciseButtons.current.set(e.id, node); else exerciseButtons.current.delete(e.id); }} onClick={() => go({ item, exercise: e.id })}><ListItemText primary={e.name} secondary={`${relationship(e, item)}; other approvals and requirements still apply`} /></ListItemButton>)}</List> : <p>No known linked exercises.</p>}
+      {linked.length ? <List>{linked.map((e) => <ListItemButton component="button" key={e.id} ref={(node) => { if (node) exerciseButtons.current.set(e.id, node); else exerciseButtons.current.delete(e.id); }} onClick={() => { summaryOrigin.current = null; go({ item, exercise: e.id }); }}><ListItemText primary={e.name} secondary={`${relationship(e, item)}; other approvals and requirements still apply`} /></ListItemButton>)}</List> : <p>No known linked exercises.</p>}
+      <EquipmentSummary item={item} exercises={linked} open={(id, token) => { summaryOrigin.current = { item, exercise: id, token }; go({ item, exercise: id }); }} />
       <Button onClick={() => back({ item: null, exercise: null })}>Back to equipment</Button>
     </CardContent></Card>;
   }

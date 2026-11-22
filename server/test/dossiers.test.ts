@@ -177,6 +177,16 @@ describe('what the keeper sees (AC2, AC3)', () => {
     expect((await plankCard()).dossier!.headline).toBe(changed);
   });
 
+  it('makes sourced limitations available to the parent equipment view only after approval', async () => {
+    await cardsApproved();
+    expect((await training.dossiers.approvedForEquipment()).has('plank')).toBe(false);
+    await approvals.approve((await dossierRequest()).id, PARENT);
+    const equipment = (await training.dossiers.approvedForEquipment()).get('plank')!;
+    expect(equipment.limits?.map((claim) => claim.text)).toEqual(PLANK.dossier.science.limits.map((claim) => claim.text));
+    expect(equipment.limits?.every((claim) => claim.sources.every((n) => equipment.sources.some((source) => source.n === n)))).toBe(true);
+    expect((await training.dossiers.approved()).get('plank')).not.toHaveProperty('limits');
+  });
+
   it('labels a range of weeks', () => {
     expect(weeksLabel([6, 6])).toBe('6 weeks');
     expect(weeksLabel([1, 1])).toBe('1 week');
