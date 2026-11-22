@@ -103,6 +103,7 @@ describe('AC1 and AC5: this week as a strip of seven days', () => {
       '/api/pain/status': { paused: false, since: null, reports: [] },
     });
     render(<App fetchImpl={fetchImpl} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
     expect(await screen.findByRole('heading', { name: 'This week' })).toBeTruthy();
     expect(await screen.findByText('2 of 4 sessions')).toBeTruthy();
@@ -118,6 +119,7 @@ describe('AC2 and AC5: the next planned session after a session', () => {
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} now={JAN_5} />);
     const done = (await screen.findByText('Done for today')).closest('.done-today') as HTMLElement;
     expect(await within(done).findByText('Next session: Wed, Spring legs. About 15 minutes.')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Week' }));
     expect(server.urls).toContain('/api/progress/week?date=2026-01-05');
     // The strip shows today trained.

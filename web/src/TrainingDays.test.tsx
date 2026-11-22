@@ -54,8 +54,9 @@ function fakeServer(role: 'keeper' | 'parent', { saveFails = false } = {}) {
 afterEach(cleanup);
 
 async function control() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
   const plan = await screen.findByRole('button', { name: 'Plan' });
-  if (!plan.hasAttribute('aria-current')) fireEvent.click(plan);
+  fireEvent.click(plan);
   return (await screen.findByRole('heading', { name: 'Training days' })).closest('article')!;
 }
 
@@ -91,6 +92,7 @@ describe('training days on Parent home', () => {
     expect(server.puts[0]).toMatchObject({ days: [3, 5, 0] });
     expect(within(card).getByText('Wed: Strong middle')).toBeTruthy();
     expect(within(card).getByText('Sun: Quick feet, strong arms')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Progress' }));
     await waitFor(() => expect(screen.getByText(/Parent set the training days \(Wed, Fri, Sun\)/)).toBeTruthy());
   });

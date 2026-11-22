@@ -68,6 +68,7 @@ function parentServer() {
 describe('AC2: the same minutes wherever a session is offered', () => {
   it("the parent's training days, inbox request and week line show the server's minutes", async () => {
     render(<App fetchImpl={parentServer()} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
     const days = (await screen.findByRole('heading', { name: 'Training days' })).closest('article')!;
     const themes = await within(days).findAllByRole('listitem');
@@ -77,10 +78,12 @@ describe('AC2: the same minutes wherever a session is offered', () => {
       'Fri: Quick feet, strong armsAbout 12 minutes',
     ]);
     // The inbox request leads with the same number as the training days give Spring legs.
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: /^Inbox/ }));
     const request = await screen.findByRole('listitem', { name: 'Session: Spring legs' });
     expect(within(request).getByText(/^About 15 minutes\./)).toBeTruthy();
     // The week's next line: Wednesday's Spring legs, the same 15.
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Plan' }));
     expect(await screen.findByText('Next session: Wed, Spring legs. About 15 minutes.')).toBeTruthy();
     const shown = [

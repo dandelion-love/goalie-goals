@@ -144,8 +144,9 @@ afterEach(cleanup);
 describe('recent sessions on both homes (AC2, AC5)', () => {
   it('keeper home: newest first, with the day, session, ending, sets and cues', async () => {
     render(<App fetchImpl={withHistory(keeperServer(todayWith()).fetchImpl)} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'History' }));
-    expect(screen.getByRole('button', { name: 'History' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('heading', { name: 'History', level: 1 })).toBeTruthy();
     const { items } = await lines();
     expect(items.map((li) => li.querySelector('summary')!.textContent)).toEqual([
       'Jan 7: Strong middle, Done4 of 4 sets, 3 good-form cues',
@@ -195,12 +196,13 @@ describe('approvals keep their own list (AC4)', () => {
   it.each(['keeper', 'parent'] as const)('%s home: sessions and approvals in separate panels', async (who) => {
     if (who === 'keeper') {
       render(<App fetchImpl={withHistory(keeperServer(todayWith()).fetchImpl)} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
       fireEvent.click(await screen.findByRole('button', { name: 'History' }));
     } else {
       render(<ParentHome layout="compact" fetchImpl={parentApi()} />);
     }
     const { panel } = await lines();
-    if (who === 'keeper') fireEvent.click(screen.getByRole('button', { name: 'Training' }));
+    if (who === 'keeper') { fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' })); fireEvent.click(screen.getByRole('button', { name: 'Training' })); }
     const approvals = await screen.findByRole('article', { name: 'History' });
     await within(approvals).findByText(/Session: Strong middle/);
     expect(within(panel).queryByText(/approved/)).toBeNull();

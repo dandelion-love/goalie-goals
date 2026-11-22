@@ -266,6 +266,7 @@ describe("the parent's inbox and History (AC3)", () => {
     const reports = [{ id: 'demo-report-0008', bodyArea: 'knee', note: null, date: '2026-01-07', mistakeAt: '2026-01-07T17:02:00Z' }];
     const server = fakeServer('parent', { reports });
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const item = await screen.findByRole('article', { name: 'Training paused: something hurts' });
     expect(within(item).getByText('Marked as a mistake by the keeper')).toBeTruthy();
@@ -284,6 +285,7 @@ describe("the parent's inbox and History (AC3)", () => {
   it('shows no note on a report the keeper did not mark', async () => {
     const server = fakeServer('parent', { reports: [{ id: 'demo-report-0009', bodyArea: 'knee', note: null, date: '2026-01-07' }] });
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const item = await screen.findByRole('article', { name: 'Training paused: something hurts' });
     expect(within(item).queryByText('Marked as a mistake by the keeper')).toBeNull();

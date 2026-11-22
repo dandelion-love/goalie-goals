@@ -136,6 +136,7 @@ describe('the safety taps run in the tap’s own task (story 101 AC4)', () => {
     const pauseStore = new MemoryPauseStore();
     render(<App fetchImpl={keeperServer(todayWith()).fetchImpl} wakeLock={wake} pauseStore={pauseStore} />);
     await screen.findByRole('button', { name: 'Start session' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Training' }));
     await screen.findByRole('heading', { name: 'Your training' });
 

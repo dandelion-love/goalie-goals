@@ -168,6 +168,7 @@ afterEach(cleanup);
 describe('the words on both homes (AC1)', () => {
   it('parent home: plain request details, short labels, no repo paths or card versions', async () => {
     render(<App fetchImpl={parentServer()} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     expect(await screen.findByRole('heading', { name: 'Session: Strong middle' })).toBeTruthy();
     await screen.findByText(/Keeper reported something hurts/);
@@ -176,11 +177,13 @@ describe('the words on both homes (AC1)', () => {
     await screen.findByText('Check in before clearing.');
     expect(copyOnScreen().lines).toContain('Lapses unanswered on Jan 12; silence never approves.');
     checkCopy('P1 parent home', ELSEWHERE);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Plan' }));
     // Story 114: this week's strip, in the same copy rules.
     await screen.findByText('1 of 3 sessions');
     // Story 120: the training days with each session's minutes, in the same copy rules.
     await screen.findByText('About 15 minutes');
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Progress' }));
     // Story 113: a recent session, opened, in the same copy rules.
     const recent = await screen.findByText('Jan 5: Strong middle, Stopped for safety');
@@ -191,6 +194,7 @@ describe('the words on both homes (AC1)', () => {
 
   it("parent home: Start fresh's confirm step (story 121)", async () => {
     render(<App fetchImpl={parentServer()} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Reset' }));
     const card = (await screen.findByRole('heading', { name: 'Start fresh' }, { timeout: 5000 })).closest('article') as HTMLElement;
     fireEvent.click(within(card).getByRole('button', { name: 'Start fresh' }));
@@ -217,12 +221,15 @@ describe('the words on both homes (AC1)', () => {
         : server.fetchImpl(input, init)) as typeof fetch;
     render(<App fetchImpl={fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
     await screen.findByRole('button', { name: 'Start session' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Training' }));
     await screen.findByText(/Squat jump and stick/);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Week' }));
     await screen.findByRole('list', { name: 'Days this week' });
     checkCopy('K1 keeper home', ELSEWHERE);
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Today' }));
     click('Start session');
     checkCopy('K2 warm-up move', IN_SESSION);

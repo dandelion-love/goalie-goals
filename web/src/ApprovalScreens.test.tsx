@@ -77,6 +77,7 @@ describe('parent inbox', () => {
   it('opens a request, returns to the inbox and rejects an answer resolved elsewhere', async () => {
     const server = fakeServer('parent');
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const plan = await screen.findByRole('listitem', { name: 'Starter plan' });
     fireEvent.click(within(plan).getByRole('button', { name: 'Review Starter plan' }));
@@ -93,6 +94,7 @@ describe('parent inbox', () => {
   it('lists pending requests with Approve and Decline, and a badge with the pending count', async () => {
     const server = fakeServer('parent');
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const inbox = (await screen.findByRole('heading', { name: /Inbox/, level: 2 })).closest('article')!;
     expect(await within(inbox).findByText('Starter plan')).toBeTruthy();
@@ -107,12 +109,14 @@ describe('parent inbox', () => {
   it('approves one request, then the badge and the list drop it', async () => {
     const server = fakeServer('parent');
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const plan = await screen.findByRole('listitem', { name: 'Starter plan' });
     fireEvent.click(within(plan).getByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(screen.queryByRole('listitem', { name: 'Starter plan' })).toBeNull());
     expect(server.posts).toEqual(['approve:r1']);
     expect(screen.getByLabelText('1 waiting').textContent).toBe('1');
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(screen.getByRole('button', { name: 'Progress' }));
     expect(await screen.findByText(/Parent approved Starter plan/)).toBeTruthy();
   });
@@ -120,6 +124,7 @@ describe('parent inbox', () => {
   it('declines a request', async () => {
     const server = fakeServer('parent');
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const harder = await screen.findByRole('listitem', { name: 'Low pogo hops, a step harder' });
     fireEvent.click(within(harder).getByRole('button', { name: 'Decline' }));
@@ -131,6 +136,7 @@ describe('parent inbox', () => {
     const server = fakeServer('parent');
     server.pending.length = 0;
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     expect(await screen.findByText('Nothing to approve.')).toBeTruthy();
     expect(screen.queryByLabelText(/waiting/)).toBeNull();
@@ -149,6 +155,7 @@ describe('keeper home', () => {
       approvedAt: '2026-01-04T09:00:00Z',
     });
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Training' }));
     const training = (await screen.findByRole('heading', { name: 'Your training' })).closest('article')!;
     expect(await within(training).findByText('Lateral shuffle')).toBeTruthy();
@@ -163,6 +170,7 @@ describe('keeper home', () => {
   it('shows the same history the parent sees', async () => {
     const server = fakeServer('keeper');
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Training' }));
     const history = (await screen.findByRole('heading', { name: 'History' })).closest('article')!;
     expect(await within(history).findByText(/App asked for Starter plan/)).toBeTruthy();

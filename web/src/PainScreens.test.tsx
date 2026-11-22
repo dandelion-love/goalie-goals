@@ -139,6 +139,7 @@ describe('History after a report', () => {
   it('shows the report on the keeper home at once, without a reload', async () => {
     const server = fakeServer('keeper');
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} pauseStore={new MemoryPauseStore()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Training' }));
     const history = await screen.findByRole('article', { name: 'History' });
     expect(await within(history).findByText('Nothing yet.')).toBeTruthy();
@@ -285,6 +286,7 @@ describe('the parent clears the pause from the inbox (AC3)', () => {
       { id: 'e1', at: '2026-01-07T17:00:00Z', action: 'paused', actorRole: 'keeper', kind: 'pause', title: 'something hurts (knee)', reason: null },
     ];
     render(<App fetchImpl={server.fetchImpl} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     const item = await screen.findByRole('article', { name: 'Training paused: something hurts' });
     const inbox = screen.getByRole('article', { name: /^Inbox/ });

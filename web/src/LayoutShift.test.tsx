@@ -104,6 +104,7 @@ describe('the Training days card holds its final size (AC2)', () => {
     const server = parentServer();
     server.hold('/api/training/days');
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
     const card = (await screen.findByRole('heading', { name: 'Training days' })).closest('article')!;
     expect(card.getAttribute('aria-busy')).toBe('true');
@@ -130,6 +131,7 @@ describe('the Training days card holds its final size (AC2)', () => {
   it('keeps a place for the message after Save, so a message moves nothing below', async () => {
     const server = parentServer();
     render(<App fetchImpl={server.fetchImpl} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Plan' }));
     const card = (await screen.findByRole('heading', { name: 'Training days' })).closest('article')!;
     const group = await within(card).findByRole('group', { name: 'Training days' });

@@ -70,8 +70,9 @@ function parentServer({ paused = true, failReset = false } = {}) {
 }
 
 async function openStartFresh() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
   const settings = await screen.findByRole('button', { name: 'Reset' });
-  if (!settings.hasAttribute('aria-current')) fireEvent.click(settings);
+  fireEvent.click(settings);
   const card = (await screen.findByRole('heading', { name: 'Start fresh' })).closest('article')!;
   fireEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Start fresh' }));
   return card as HTMLElement;
@@ -86,6 +87,7 @@ configure({ asyncUtilTimeout: 5000 });
 describe('Start fresh (AC1)', () => {
   it('keeps reset in Settings, separate from approvals and history', async () => {
     render(<App fetchImpl={parentServer().fetchImpl} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Reset' }));
     const fresh = await screen.findByRole('heading', { name: 'Start fresh' });
     expect(fresh).toBeTruthy();
@@ -148,6 +150,7 @@ describe('Start fresh (AC1)', () => {
     expect(server.resets[0]).toMatchObject({ confirm: 'RESET', date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
     expect(await screen.findByText('Training data was cleared. Starting fresh.')).toBeTruthy();
     expect(generations.value).toBe(1);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Progress' }));
     const line = await screen.findByText(/Parent reset the household's data/);
     expect(line.closest('li')?.querySelector('time')?.textContent).toBe('Jan 7');

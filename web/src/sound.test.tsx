@@ -603,6 +603,7 @@ describe('warming the cues (story #98 AC4)', () => {
     const warm = vi.spyOn(sound, 'warm').mockImplementation(() => {});
     const prime = vi.spyOn(sound, 'prime').mockImplementation(() => {});
     render(<App fetchImpl={parentServer()} wakeLock={wake} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open navigation menu' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Inbox/ }));
     await screen.findByRole('heading', { name: /approval|inbox|waiting/i, level: 2 });
     idle();
