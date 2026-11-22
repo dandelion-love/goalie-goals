@@ -61,7 +61,7 @@ export function weeksLabel(weeks: [number, number]): string {
   return lo === hi ? `${lo} ${lo === 1 ? 'week' : 'weeks'}` : `${lo} to ${hi} weeks`;
 }
 
-interface DossierSnapshot {
+export interface DossierSnapshot {
   cardId: string;
   itemId: string;
   itemVersion: string;
@@ -118,7 +118,7 @@ function toClient(source: DossierSource, name: string, version: string, includeL
   return { cardId: dossier.id, itemVersion: version, name, headline: dossier.why.headline, why, expect, sources, ...(limits ? { limits } : {}), ...(dossier.why.unavailable ? { whyUnavailable: dossier.why.unavailable } : {}), ...(dossier.expect.unavailable ? { expectUnavailable: dossier.expect.unavailable } : {}), ...(musclesUnavailable ? { musclesUnavailable } : {}), ...(context ? { context } : {}) };
 }
 
-function snapshot(source: DossierSource, name: string): DossierSnapshot {
+export function dossierSnapshot(source: DossierSource, name: string): DossierSnapshot {
   const cardId = source.dossier.id;
   const count = source.dossier.sources.length;
   // What the parent reads in the inbox; "Read it" there shows the whole of what the keeper sees.
@@ -157,7 +157,7 @@ export class DossierService {
     for (const [cardId, source] of library.dossiers ?? []) {
       const card = library.cards.get(cardId);
       if (!card) continue;
-      const snap = snapshot(source, card.card.name);
+      const snap = dossierSnapshot(source, card.card.name);
       this.versions.set(snap.itemVersion, snap);
       out.push(snap);
     }

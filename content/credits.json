@@ -424,6 +424,94 @@
       "licence": "CC-BY-SA-4.0",
       "source": "written for this repo",
       "checked": "2026-11-19"
+    },
+    {
+      "path": "content/progression-versions/squat/manifest.json",
+      "title": "Squat progression candidate: manifest.json",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-12.json",
+      "title": "Squat progression candidate: squat-to-box-12.json",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-12.spec.md",
+      "title": "Squat progression candidate: squat-to-box-12.spec.md",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-14.json",
+      "title": "Squat progression candidate: squat-to-box-14.json",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-14.spec.md",
+      "title": "Squat progression candidate: squat-to-box-14.spec.md",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-15.spec.md",
+      "title": "Squat progression candidate: squat-to-box-15.spec.md",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-pause.dossier.json",
+      "title": "Squat progression candidate: squat-to-box-pause.dossier.json",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-pause.json",
+      "title": "Squat progression candidate: squat-to-box-pause.json",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-pause.spec.md",
+      "title": "Squat progression candidate: squat-to-box-pause.spec.md",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-pause.svg",
+      "title": "Squat progression candidate: squat-to-box-pause.svg",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-versions/squat/squat-to-box-target.json",
+      "title": "Squat progression candidate: squat-to-box-target.json",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "owner-approved review packet for this repository",
+      "checked": "2026-11-22"
     }
   ]
 }

@@ -1,0 +1,64 @@
+{
+  "id": "squat-to-box-pause",
+  "card": "content/exercises/squat-to-box-pause.json",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0",
+  "reviewed_at": "2026-11-22T00:00:00Z",
+  "stale_after": "2027-11-22T00:00:00Z",
+  "sources": [
+    {
+      "id": "villagra-1993",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/8149936/",
+      "title": "Metabolic cost and efficiency in two forms of squatting exercise in children and adults",
+      "kind": "trial",
+      "population": "mixed",
+      "band": "children and adults",
+      "year": 1993
+    },
+    {
+      "id": "mcbride-2010",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/21132859/",
+      "title": "Comparison of kinetic variables and muscle activity during a squat vs. a box squat",
+      "kind": "trial",
+      "population": "adult",
+      "band": "resistance-trained adults",
+      "year": 2010
+    }
+  ],
+  "why": {
+    "headline": "Practise a controlled squat with a pause.",
+    "claims": [],
+    "unavailable": "No reviewed goalkeeper-specific benefit is available for this variation."
+  },
+  "expect": {
+    "claims": [],
+    "unavailable": "No reviewed estimate of this variation's training effect is available."
+  },
+  "muscles": {
+    "map": [],
+    "unavailable": "No reviewed muscle map is available for this variation."
+  },
+  "clips": [],
+  "science": {
+    "claims": [
+      {
+        "text": "A study compared two squat styles in children and adults. One paused at the lowest position. It measured oxygen use and efficiency, not this pause above a box.",
+        "sources": ["villagra-1993"],
+        "evidence": "mixed"
+      },
+      {
+        "text": "A study of eight resistance-trained adults compared loaded squats and box squats. It measured force and muscle activity, not this youth variation.",
+        "sources": ["mcbride-2010"],
+        "evidence": "adult"
+      }
+    ],
+    "limits": [
+      {
+        "text": "Neither study tested this exact pause in young goalkeepers.",
+        "sources": ["villagra-1993", "mcbride-2010"],
+        "evidence": "mixed",
+        "negates": true
+      }
+    ]
+  }
+}

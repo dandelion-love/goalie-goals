@@ -111,7 +111,7 @@ export interface DossierSource {
 
 const DOSSIER_SUFFIX = '.dossier.json';
 
-interface CreditEntry {
+export interface CreditEntry {
   path: string;
   author: string;
   licence: string;

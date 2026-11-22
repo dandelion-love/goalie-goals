@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" role="img" aria-label="Neutral equipment placeholder">
+  <rect width="320" height="240" rx="20" fill="#edf4fe"/>
+  <rect x="85" y="140" width="150" height="55" rx="6" fill="#c5d8ef" stroke="#13539b" stroke-width="5"/>
+  <path d="M65 200h190" fill="none" stroke="#13539b" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="160" cy="75" r="26" fill="#fff" stroke="#13539b" stroke-width="4"/>
+  <path d="M160 60v30M145 75h30" stroke="#13539b" stroke-width="4" stroke-linecap="round"/>
+</svg>
