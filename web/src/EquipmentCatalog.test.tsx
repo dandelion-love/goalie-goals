@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { EquipmentCatalog, equipmentIds, relationship, type EquipmentExercise } from './EquipmentCatalog';
 import { RoleShell, useDestination } from './RoleShell';
+import { equipmentAlsoNeeds, equipmentEnables } from './equipmentModel';
 
 const exercise: EquipmentExercise = { id: 'pass', name: 'Wall pass', why: 'Practise passing', setup: ['Find a wall'], cautions: ['Stop if sore'], needs: { all: ['other:goalkeeper-gloves', 'ball'], any: [['wall', 'partner']] }, dossier: null };
 const destinations = [{ id: 'equipment', label: 'Equipment' }, { id: 'plan', label: 'Plan' }] as const;
@@ -19,6 +20,13 @@ describe('equipment catalog', () => {
     expect(relationship(exercise, 'wall')).toBe('alternative');
     expect(relationship(exercise, 'cones')).toBeNull();
     expect(equipmentIds([])).toEqual(['other:goalkeeper-gloves']);
+    expect(equipmentAlsoNeeds('other:goalkeeper-gloves', [exercise])).toBe('Ball; Wall or Partner');
+    expect(equipmentAlsoNeeds('wall', [exercise])).toBe('Goalkeeper gloves; Ball');
+    expect(equipmentAlsoNeeds('ball', [exercise, { ...exercise, id: 'second' }])).toBe('Goalkeeper gloves; Wall or Partner');
+    const shorter = { ...exercise, id: 'second', name: 'Catch', needs: { all: ['other:goalkeeper-gloves', 'ball'], any: [] } };
+    expect(equipmentAlsoNeeds('other:goalkeeper-gloves', [exercise, shorter])).toBe('Ball; Wall or Partner (Wall pass)');
+    expect(equipmentEnables('other:goalkeeper-gloves', [exercise, shorter])).toBe('Wall pass; Catch');
+    expect(equipmentAlsoNeeds('cones', [exercise])).toBe('Requirements not recorded');
   });
   it('navigates both ways and restores focus on Back within the destination', async () => {
     window.history.replaceState(null, '', '/?view=equipment');

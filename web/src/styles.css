@@ -1354,17 +1354,38 @@ button:active:not(:disabled) {
 }
 
 /* Portrait trading cards share one structure in the collection and detail views. */
-.collection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--tile-min)), 1fr)); gap: var(--space-4); }
+.collection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--collection-card-min)), 1fr)); gap: var(--space-4); }
 .trading-card { position: relative; min-width: 0; padding: var(--space-2); border: var(--stripe) solid var(--action-edge); border-radius: var(--radius-md); background: var(--action); box-shadow: var(--shadow-2); }
+.trading-card[data-level]:not([data-level='1']) { border-color: var(--rest-edge); background: var(--rest); }
 .trading-card:focus-within { outline: var(--focus-width) solid var(--action-ink); outline-offset: var(--focus-offset); }
-.trading-card-inner { display: flex; flex-direction: column; height: 100%; min-height: var(--tile-min); padding: var(--space-2); border: var(--border-width) solid var(--warning-edge); border-radius: var(--radius-sm); background: var(--action-tint); color: var(--text); }
-.trading-card-nameplate { padding: var(--space-2); border: var(--border-width) solid var(--action-edge); border-radius: var(--radius-sm); background: var(--surface); }
-.trading-card-nameplate p { margin: 0; color: var(--muted); font-weight: var(--weight-bold); font-size: var(--text-sm); }
-.trading-card-nameplate h3 { margin: 0; line-height: var(--leading-xl); }
-.trading-card-art { aspect-ratio: 4 / 3; display: grid; place-items: center; overflow: hidden; margin: var(--space-2) 0; border: var(--border-width) solid var(--action-edge); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); text-align: center; }
+.trading-card-inner { display: flex; flex-direction: column; height: 100%; min-height: var(--tile-min); gap: var(--space-1); padding: var(--space-1); border: var(--hairline) solid var(--warning-edge); border-radius: var(--radius-sm); background: var(--action-tint); color: var(--text); }
+.trading-card-nameplate { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-1); padding: var(--space-2); border-radius: var(--radius-sm); background: var(--surface); }
+.trading-card-nameplate h3 { min-width: 0; margin: 0; font-size: var(--text-md); line-height: var(--leading-xl); overflow-wrap: anywhere; }
+.trading-card[data-kind='Equipment'] .trading-card-nameplate { grid-template-columns: minmax(0, 1fr); }
+.trading-card[data-kind='Equipment'] .trading-card-stage { justify-self: end; }
+.trading-card-stage { display: grid; place-items: center; align-content: center; min-width: var(--target); min-height: var(--target); padding: var(--space-1); border-radius: var(--radius-pill); background: var(--action); color: var(--action-on); font-weight: var(--weight-display); font-size: var(--text-sm); line-height: var(--leading-xl); }
+.trading-card-stage[data-rank] { position: relative; color: var(--rank-ink); border: var(--border-width) solid var(--rank-ink); font-size: var(--text-md); }
+.trading-card-stage[data-rank] span { position: relative; z-index: 1; }
+.trading-card-stage[data-rank='Bronze']::before, .trading-card-stage[data-rank='Silver']::before, .trading-card-stage[data-rank='Gold']::before { content: ''; position: absolute; z-index: 0; width: var(--space-5); height: var(--space-3); bottom: calc(-1 * var(--space-2)); background: inherit; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 55%, 0 100%); }
+.trading-card-stage[data-rank='Bronze']::after, .trading-card-stage[data-rank='Silver']::after, .trading-card-stage[data-rank='Gold']::after { content: ''; position: absolute; inset: var(--space-1); border: var(--hairline) dashed var(--rank-ink); border-radius: var(--radius-pill); }
+.trading-card-stage[data-rank='Bronze'] { background: var(--rank-bronze); }
+.trading-card-stage[data-rank='Silver'] { background: var(--rank-silver); border-style: double; }
+.trading-card-stage[data-rank='Gold'] { background: var(--rank-gold); border-style: double; }
+.trading-card-stage[data-rank='Bronze']::after { border-style: solid; }
+.trading-card-stage[data-rank='Gold']::after { border-width: var(--border-width); border-style: double; }
+.trading-card-stage[data-rank='Platinum'] { background: var(--rank-platinum); border-radius: 0; clip-path: polygon(0 0, 100% 0, 100% 65%, 50% 100%, 0 65%); }
+.trading-card-stage[data-rank='Diamond'] { background: var(--rank-diamond); border-radius: 0; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.trading-card-stage[data-rank='Diamond']::after { content: ''; position: absolute; inset: var(--space-2); border: var(--hairline) solid var(--rank-ink); transform: rotate(45deg); }
+.trading-card-gear { border-radius: var(--radius-sm); }
+.trading-card-art { aspect-ratio: 3 / 2; display: grid; place-items: center; overflow: hidden; border: var(--hairline) solid var(--warning-edge); background: var(--action); color: var(--action-on); text-align: center; }
 .trading-card-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.trading-card-copy { flex: 1; padding: var(--space-2); border-radius: var(--radius-sm); background: var(--surface); }
+.trading-card-back { padding: var(--space-2); border: var(--border-width) solid currentColor; border-radius: var(--radius-pill); font-weight: var(--weight-bold); }
+.trading-card-back small { display: block; }
+.trading-card-rail { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1); padding: var(--space-1) var(--space-2); font-weight: var(--weight-bold); font-size: var(--text-sm); }
+.trading-card-copy { flex: 1; padding: var(--space-2); background: var(--surface); }
 .trading-card-copy p { margin: 0 0 var(--space-1); }
 .trading-card-state { font-weight: var(--weight-bold); }
+.trading-card-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); font-size: var(--text-sm); font-weight: var(--weight-bold); }
+.trading-card-footer .trading-card-state { padding: var(--space-1); border: var(--hairline) solid var(--action-ink); border-radius: var(--radius-pill); }
 .trading-card-action { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
 .trading-card-hero { max-width: var(--measure-notice); margin: var(--space-4) auto; }
