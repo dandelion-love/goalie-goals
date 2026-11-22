@@ -148,6 +148,9 @@ describe('what the keeper sees (AC2, AC3)', () => {
     const d = (await plankCard()).dossier!;
     expect(d.name).toBe('Front plank');
     expect(d.headline).toBe(PLANK.dossier.why.headline);
+    // Earlier dossier approvals covered the original two sections only.
+    expect(d).not.toHaveProperty('context');
+    expect(d).not.toHaveProperty('whyUnavailable');
     expect(d.why.map((c) => c.label)).toEqual(['Dives', 'Set position', 'Set position', 'Jumps and landings']);
     expect(d.expect.map((c) => c.label)).toEqual(['6 weeks', '9 weeks', 'Keep it up']);
     expect(d.expect[0].text).toContain('8 to 22%');
