@@ -71,13 +71,17 @@ export interface SessionInstance {
   itemVersion: string;
   cards: { cardId: string; itemVersion: string }[];
   recordId: string | null;
+  /** Server-assigned start order. Absent on legacy instances. */
+  sequence?: number;
+  /** A start received after an offline queue: receipt order cannot prove occurrence order. */
+  late?: boolean;
 }
 
 /** The household's records. Behind an interface like the other stores. */
 export interface HistoryStore {
   /** Keep a record; false (and nothing written) when one with its id is already kept. */
   add(record: HistoryRecord): Promise<boolean>;
-  startInstance(instance: SessionInstance): Promise<boolean>;
+  startInstance(instance: SessionInstance, late?: boolean): Promise<boolean>;
   addBound(record: HistoryRecord, instanceId: string): Promise<boolean>;
   /** Verify the persisted instance binds this exact record and card versions. */
   isBound(record: HistoryRecord): Promise<boolean>;
@@ -95,6 +99,7 @@ const copy = (r: HistoryRecord): HistoryRecord => ({ ...structuredClone(r), at: 
 export class MemoryHistoryStore implements HistoryStore {
   #records = new Map<string, HistoryRecord>();
   #instances = new Map<string, SessionInstance>();
+  #sequence = 0;
 
   async add(record: HistoryRecord): Promise<boolean> {
     if (this.#records.has(record.id)) return false;
@@ -102,10 +107,10 @@ export class MemoryHistoryStore implements HistoryStore {
     return true;
   }
 
-  async startInstance(instance: SessionInstance): Promise<boolean> {
+  async startInstance(instance: SessionInstance, late = false): Promise<boolean> {
     const old = this.#instances.get(instance.id);
     if (old) return sameInstance(old, instance);
-    this.#instances.set(instance.id, structuredClone(instance));
+    this.#instances.set(instance.id, structuredClone({ ...instance, sequence: ++this.#sequence, late }));
     return true;
   }
 
@@ -142,6 +147,7 @@ export class MemoryHistoryStore implements HistoryStore {
   async deleteAll(): Promise<void> {
     this.#records.clear();
     this.#instances.clear();
+    this.#sequence = 0;
   }
 }
 
@@ -185,7 +191,9 @@ function readInstance(id: string, value: unknown): SessionInstance | null {
   if (!ID_RE.test(id) || v.id !== id || typeof v.itemId !== 'string' || typeof v.itemVersion !== 'string' ||
       !(v.recordId === null || (typeof v.recordId === 'string' && ID_RE.test(v.recordId))) || !Array.isArray(v.cards) ||
       !v.cards.every((card) => card && typeof card === 'object' && typeof card.cardId === 'string' && typeof card.itemVersion === 'string')) return null;
-  return { id, itemId: v.itemId, itemVersion: v.itemVersion, recordId: v.recordId as string | null, cards: v.cards.map((card) => ({ cardId: card.cardId, itemVersion: card.itemVersion })) };
+  if (v.sequence !== undefined && (!Number.isSafeInteger(v.sequence) || (v.sequence as number) < 1)) return null;
+  if (v.late !== undefined && typeof v.late !== 'boolean') return null;
+  return { id, itemId: v.itemId, itemVersion: v.itemVersion, recordId: v.recordId as string | null, cards: v.cards.map((card) => ({ cardId: card.cardId, itemVersion: card.itemVersion })), ...(v.sequence !== undefined ? { sequence: v.sequence as number } : {}), ...(v.late !== undefined ? { late: v.late as boolean } : {}) };
 }
 function sameBoundRecord(old: HistoryRecord, next: HistoryRecord, instanceId: string): boolean {
   const comparable = (r: HistoryRecord) => ({ id: r.id, date: r.date, itemId: r.itemId, itemVersion: r.itemVersion,
@@ -283,13 +291,20 @@ export class FirestoreHistoryStore implements HistoryStore {
     }
   }
 
-  async startInstance(instance: SessionInstance): Promise<boolean> {
+  async startInstance(instance: SessionInstance, late = false): Promise<boolean> {
     const db = this.db as unknown as FsDb;
     const ref = db.collection(INSTANCE_COLLECTION).doc(instance.id);
+    const counter = db.collection('sessionSequence').doc('counter');
     return db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       if (snap.exists) return sameInstance(snap.data() as unknown as SessionInstance, instance);
-      tx.create(ref, { ...instance });
+      const counterSnap = await tx.get(counter);
+      const old = counterSnap.get('value');
+      if (old !== undefined && (!Number.isSafeInteger(old) || (old as number) < 0)) throw new Error('Invalid session sequence');
+      const sequence = (old as number | undefined ?? 0) + 1;
+      if (!Number.isSafeInteger(sequence)) throw new Error('Session sequence exhausted');
+      tx.create(ref, { ...instance, sequence, late });
+      tx.set(counter, { value: sequence });
       return true;
     });
   }
@@ -356,6 +371,7 @@ export class FirestoreHistoryStore implements HistoryStore {
     for (const d of snap.docs) await d.ref.delete();
     const instances = await this.db.collection(INSTANCE_COLLECTION).get();
     for (const d of instances.docs) await d.ref.delete();
+    await (this.db as unknown as FsDb).collection('sessionSequence').doc('counter').delete();
   }
 }
 
@@ -439,11 +455,11 @@ export class HistoryService {
     this.clock = clock;
   }
 
-  async startInstance(id: string, itemId: string, itemVersion: string): Promise<boolean> {
+  async startInstance(id: string, itemId: string, itemVersion: string, late = false): Promise<boolean> {
     if (!ID_RE.test(id)) return false;
     const shape = this.training.sessionCards(itemId, itemVersion);
     if (!shape) return false;
-    return this.store.startInstance({ id, itemId, itemVersion, cards: shape.cards.map(({ cardId, itemVersion: version }) => ({ cardId, itemVersion: version })), recordId: null });
+    return this.store.startInstance({ id, itemId, itemVersion, cards: shape.cards.map(({ cardId, itemVersion: version }) => ({ cardId, itemVersion: version })), recordId: null }, late);
   }
 
   /**

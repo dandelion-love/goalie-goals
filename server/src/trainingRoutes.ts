@@ -59,7 +59,7 @@ export function registerTrainingRoutes(
       try {
       if (currentGeneration && requestGeneration(req.headers[GENERATION_HEADER]) !== currentGeneration()) return reply.code(409).send({ error: 'stale_generation' });
       if (await isPaused()) return reply.code(409).send({ error: 'paused' });
-      const bind = () => typeof instanceId === 'string' ? history!.startInstance(instanceId, itemId, itemVersion) : Promise.resolve(true);
+      const bind = () => typeof instanceId === 'string' ? history!.startInstance(instanceId, itemId, itemVersion, late === true) : Promise.resolve(true);
       let started = await training.markStarted(itemId, itemVersion, bind);
       let wasLate = false;
       if (!started &&
