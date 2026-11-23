@@ -512,6 +512,41 @@
       "licence": "CC-BY-SA-4.0",
       "source": "owner-approved review packet for this repository",
       "checked": "2026-11-22"
+    },
+    {
+      "path": "content/anatomy/body-muscles-1.0.0.json",
+      "title": "Body muscles anatomy path data",
+      "author": "Ivan Vulović",
+      "licence": "Apache-2.0",
+      "source": "https://github.com/vulovix/body-muscles",
+      "checked": "2026-11-22",
+      "adapted": true,
+      "changes": "Extracted front and back identifiers and SVG paths into JSON."
+    },
+    {
+      "path": "content/anatomy/NOTICE",
+      "title": "Body muscles anatomy notice",
+      "author": "Ivan Vulović",
+      "licence": "Apache-2.0",
+      "source": "https://github.com/vulovix/body-muscles",
+      "checked": "2026-11-22",
+      "adapted": false
+    },
+    {
+      "path": "content/anatomy/LICENSE",
+      "title": "Body muscles Apache licence",
+      "author": "Apache Software Foundation",
+      "licence": "Apache-2.0",
+      "source": "https://github.com/vulovix/body-muscles",
+      "checked": "2026-11-22"
+    },
+    {
+      "path": "content/anatomy/README.md",
+      "title": "Body map provenance",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo",
+      "checked": "2026-11-22"
     }
   ]
 }

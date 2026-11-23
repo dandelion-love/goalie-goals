@@ -65,6 +65,9 @@ import { ownerApprovedSquatVersions } from './ownerProgression.js';
 import { hasCompletedSquatPrefix, hasCompletedSquatSeries } from './squatSeries.js';
 import { resolveSquatDoseStage } from './squatDoseStage.js';
 import { SquatDoseReview } from './squatDoseReview.js';
+import { ownerFocusVersions, ownerSquatFocus } from './ownerFocus.js';
+import { FocusReviews } from './focusReviews.js';
+import { registerFocusRoutes } from './focusRoutes.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -409,6 +412,14 @@ export async function buildApp({
       training: trainingService,
       clock: progressionClock,
     });
+  const focusCandidate = ownerSquatFocus(loadContent(config.contentRoot || defaultContentRoot()));
+  if (focusCandidate) {
+    const focusReviews = new FocusReviews(approvalService, ownerFocusVersions);
+    registerFocusRoutes(app, focusCandidate, focusReviews, roleStore, resetPainGate, () => currentGeneration, async () => {
+      const source = trainingService.library.cards.get('squat-to-box');
+      return !!source && await approvalService.isApproved('card-squat-to-box', cardSnapshot(source).itemVersion);
+    });
+  }
   // The revision guard requires every participant to use the same Firestore household.
   // Custom or in-memory services remain unknown instead of asserting complete evidence.
   const proofStore = db && ownPain instanceof FirestorePainStore && own?.store instanceof FirestoreApprovalStore && historyService.store instanceof FirestoreHistoryStore && !syntheticSquatProof ? new FirestoreSquatProofStore(db) : undefined;

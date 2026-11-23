@@ -1,0 +1,35 @@
+import Fastify from 'fastify';
+import { expect, it } from 'vitest';
+import { ApprovalService, MemoryApprovalStore, MemoryAuditLog } from '../src/approvals.js';
+import { loadContent } from '../src/content.js';
+import { FocusReviews } from '../src/focusReviews.js';
+import { registerFocusRoutes } from '../src/focusRoutes.js';
+import { ResetPainGate } from '../src/householdReset.js';
+import { InAppNotifier } from '../src/notifier.js';
+import { ownerFocusVersions, ownerSquatFocus } from '../src/ownerFocus.js';
+import { MemoryRoleStore } from '../src/roles.js';
+
+it('requires a parent decision on the exact preview before exposing focus', async () => {
+  const candidate = ownerSquatFocus(loadContent());
+  expect(candidate).toBeTruthy();
+  const approvals = new ApprovalService({ store: new MemoryApprovalStore(), audit: new MemoryAuditLog(), notifier: new InAppNotifier() });
+  const app = Fastify();
+  app.addHook('onRequest', async (req) => { req.identity = { account: String(req.headers['x-test-account'] ?? ''), subject: 'test' }; });
+  const roles = MemoryRoleStore.fromSeed('parent@example.com=parent,keeper@example.com=keeper');
+  let cardApproved = true;
+  registerFocusRoutes(app, candidate!, new FocusReviews(approvals, ownerFocusVersions), roles, new ResetPainGate(), () => 0, async () => cardApproved);
+  const get = (url: string, account: string) => app.inject({ method: 'GET', url, headers: { 'x-test-account': account } });
+  const post = (account: string, version: string, generation = '0') => app.inject({ method: 'POST', url: '/api/focus/squat-to-box/approve', headers: { 'x-test-account': account, 'x-household-generation': generation }, payload: { itemVersion: version } });
+  expect((await get('/api/focus/squat-to-box', 'keeper@example.com')).json()).toEqual({ focus: null });
+  expect((await get('/api/focus/squat-to-box/review', 'keeper@example.com')).statusCode).toBe(403);
+  const preview = await get('/api/focus/squat-to-box/review', 'parent@example.com');
+  expect(preview.json().focus.note.text).toContain('general squats');
+  expect((await post('keeper@example.com', candidate!.itemVersion)).statusCode).toBe(403);
+  expect((await post('parent@example.com', 'wrong')).statusCode).toBe(400);
+  expect((await post('parent@example.com', candidate!.itemVersion, '1')).statusCode).toBe(409);
+  expect((await post('parent@example.com', candidate!.itemVersion)).statusCode).toBe(200);
+  expect((await get('/api/focus/squat-to-box', 'keeper@example.com')).json().focus).toEqual(candidate!.preview);
+  cardApproved = false;
+  expect((await get('/api/focus/squat-to-box', 'keeper@example.com')).json()).toEqual({ focus: null });
+  await app.close();
+});
