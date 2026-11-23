@@ -547,6 +547,24 @@
       "licence": "CC-BY-SA-4.0",
       "source": "written for this repo",
       "checked": "2026-11-22"
+    },
+    {
+      "path": "content/progression-candidates/bridge/glute-bridge-14.json",
+      "title": "Glute bridge 14-repetition review candidate",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "adapted from the existing glute bridge card and documented repetition step",
+      "checked": "2026-11-23",
+      "adapted": true,
+      "changes": "Raised the proposed dose from 12 to 14 and replaced an unsupported load claim."
+    },
+    {
+      "path": "content/progression-candidates/bridge/glute-bridge-14.spec.md",
+      "title": "Glute bridge 14-repetition candidate specification",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the existing card and progression rules",
+      "checked": "2026-11-23"
     }
   ]
 }

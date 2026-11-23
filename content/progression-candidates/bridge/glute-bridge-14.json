@@ -1,0 +1,90 @@
+{
+  "id": "glute-bridge",
+  "name": "Glute bridge",
+  "aliases": [
+    "hip bridge"
+  ],
+  "category": "strength",
+  "why": "Practise lifting your hips with control.",
+  "goal": [
+    "hip-strength",
+    "trunk-stability"
+  ],
+  "risk": "low",
+  "needs": {
+    "all": [
+      "body only"
+    ],
+    "any": []
+  },
+  "space_m": [
+    2,
+    1
+  ],
+  "surface": "any",
+  "setup": {
+    "space": "Floor space about 2 m long to lie down.",
+    "equipment": "None.",
+    "parent": "Kneel beside the hips, side-on."
+  },
+  "steps": [
+    "Lie on your back, knees bent, feet flat on the floor. Keep your feet about a foot length from your hips.",
+    "Rest your arms flat on the floor beside you.",
+    "Squeeze your bottom and lift your hips. Stop when shoulders, hips and knees make a straight line.",
+    "Hold for one second at the top, then lower slowly."
+  ],
+  "cues": [
+    "Squeeze, then lift",
+    "Ribs down",
+    "Push through heels"
+  ],
+  "mistakes": [
+    {
+      "mistake": "Arching the lower back at the top",
+      "fix": "Stop when the body is straight and keep the ribs down."
+    },
+    {
+      "mistake": "Feet too far away",
+      "fix": "Move the feet in; shins near upright at the top."
+    }
+  ],
+  "parent_check": [
+    "Straight line from shoulder to knee at the top",
+    "Lowers slowly, no drop",
+    "Knees stay hip width apart"
+  ],
+  "stop_if": [
+    "Pain in the lower back, hips or knees",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint",
+    "Back-of-thigh cramp that does not ease with rest (end the set)"
+  ],
+  "easier": {
+    "variant": "Smaller lift, only halfway up.",
+    "use_when": "The back arches or the back of the thigh cramps."
+  },
+  "harder": {
+    "variant": "Single-leg bridge with the other knee held to the chest.",
+    "move_on_when": "Every rep clean two sessions in a row, and the owner approves."
+  },
+  "dose": {
+    "kind": "reps",
+    "sets": 2,
+    "reps": 14,
+    "per_side": false,
+    "rest_s": 45,
+    "tempo": "up in one second, hold one, down for three"
+  },
+  "timer": "reps",
+  "substitutes": [
+    "plank",
+    "squat-to-box"
+  ],
+  "media": {
+    "figure": "content/figures/glute-bridge.svg"
+  },
+  "spec": "content/progression-candidates/bridge/glute-bridge-14.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}
