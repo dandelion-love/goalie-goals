@@ -5,8 +5,9 @@ import { ProgressionTree, type RungState } from './ProgressionTree';
 import { ParentProgressionReview } from './ParentProgressionReview';
 import { TradingCard } from './CardTile';
 import { collectionArtwork } from './collectionArtwork';
-import { FocusReview, isFocusReviewData, type FocusReviewData } from './FocusReview';
+import { isFocusReviewData, type FocusReviewData } from './FocusReview';
 import { ParentFocusReview } from './ParentFocusReview';
+import { FocusCardBack } from './FocusCardBack';
 
 /** Role-authorized projections only; browsing does not post or change any household state. */
 export function ProgressionLibrary({ fetchImpl = fetch, refresh = 0, held = false, parent = false }: { fetchImpl?: typeof fetch; refresh?: number; held?: boolean; parent?: boolean }) {
@@ -15,6 +16,7 @@ export function ProgressionLibrary({ fetchImpl = fetch, refresh = 0, held = fals
   const [attempt, setAttempt] = useState(0);
   const [readiness, setReadiness] = useState<RungState>('unknown');
   const [focus, setFocus] = useState<FocusReviewData | null>(null);
+  const [rank, setRank] = useState(0);
   const [current, setCurrent] = useState<string | null>(() => new URL(location.href).searchParams.get('progressionExercise'));
   const origin = useRef<HTMLButtonElement | null>(null);
   const seriesButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -42,5 +44,13 @@ export function ProgressionLibrary({ fetchImpl = fetch, refresh = 0, held = fals
   const selected = current ? cards.find((card) => card.id === current) : undefined;
   const before = cards.find((card) => card.id === 'squat-to-box');
   const after = cards.find((card) => card.id === 'squat-to-box-pause');
-  return <><div hidden={!!current}>{before && after && !held && <section aria-label="Squat progression"><h2>Squat progression</h2><p role="status">Bronze to Silver earned.</p><div className="series-reveal-cards">{[before, after].map((card, index) => <TradingCard key={card.id} kind="Exercise" name={card.name} level={index + 1} series="Squat" footer={`Squat · ${index ? 'Silver' : 'Bronze'}`} state={index ? 'Earned' : 'Previous'} summary={card.dossier?.headline} artwork={collectionArtwork[card.id]} fallbackArtwork={card.figureUrl} buttonRef={(node) => { if (node) seriesButtons.current.set(card.id, node); else seriesButtons.current.delete(card.id); }} onOpen={() => open(card.id, seriesButtons.current.get(card.id) ?? null)} />)}</div><section aria-label="Training focus comparison"><h3>Training focus</h3>{focus ? <details><summary>Bronze training focus</summary><FocusReview name="Squat to box" focus={focus} review={false} /></details> : <p>Bronze training focus is not available.</p>}<p>{after.dossier?.musclesUnavailable ?? 'Training focus is not available for the next card.'}</p></section></section>}<ProgressionTree cards={cards.map((card) => ({ id: card.id, figureUrl: card.figureUrl, headline: card.dossier?.headline }))} states={{ 'squat-to-box': held ? 'held' : readiness }} onOpen={open} />{before && !after && focus && <details><summary>Squat to box training focus</summary><FocusReview name="Squat to box" focus={focus} review={false} /></details>}{parent && <><ParentProgressionReview fetchImpl={fetchImpl} onChanged={() => setAttempt((n) => n + 1)} /><ParentFocusReview fetchImpl={fetchImpl} onChanged={() => setAttempt((n) => n + 1)} /></>}</div>{current && (selected ? <ApprovedExerciseDetail exercise={selected} onBack={back} /> : <article className="card"><p>This exercise is not available.</p><button onClick={back}>Back</button></article>)}</>;
+  const comparison = rank === 0 ? before : after;
+  return <><div hidden={!!current}>
+    {before && after && !held && comparison && <section aria-label="Squat progression"><h2>Squat progression</h2><p role="status">Bronze to Silver earned.</p>
+      <div className="rank-selector" aria-label="Choose squat rank"><button type="button" aria-pressed={rank === 0} onClick={() => setRank(0)}>Bronze</button><button type="button" aria-pressed={rank === 1} onClick={() => setRank(1)}>Silver</button></div>
+      <div className="comparison-card"><TradingCard key={comparison.id} kind="Exercise" name={comparison.name} level={rank + 1} series="Squat" footer={`Squat · ${rank ? 'Silver' : 'Bronze'}`} state={rank ? 'Earned' : 'Previous'} summary={comparison.dossier?.headline} artwork={collectionArtwork[comparison.id]} fallbackArtwork={comparison.figureUrl} buttonRef={(node) => { if (node) seriesButtons.current.set(comparison.id, node); else seriesButtons.current.delete(comparison.id); }} onOpen={() => open(comparison.id, seriesButtons.current.get(comparison.id) ?? null)} backFace={<FocusCardBack name={comparison.name} focus={rank === 0 ? focus : null} />} /></div>
+    </section>}
+    <ProgressionTree cards={cards.map((card) => ({ id: card.id, figureUrl: card.figureUrl, headline: card.dossier?.headline }))} states={{ 'squat-to-box': held ? 'held' : readiness }} onOpen={open} />
+    {parent && <><ParentProgressionReview fetchImpl={fetchImpl} onChanged={() => setAttempt((n) => n + 1)} /><ParentFocusReview fetchImpl={fetchImpl} onChanged={() => setAttempt((n) => n + 1)} /></>}
+  </div>{current && (selected ? <ApprovedExerciseDetail exercise={selected} fetchImpl={fetchImpl} onBack={back} /> : <article className="card"><p>This exercise is not available.</p><button onClick={back}>Back</button></article>)}</>;
 }

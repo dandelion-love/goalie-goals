@@ -1405,3 +1405,16 @@ button:active:not(:disabled) {
 .muscle-map-views { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .muscle-map-views figure { margin: 0; text-align: center; font-weight: var(--weight-bold); }
 .muscle-map-views svg { display: block; width: 100%; height: var(--figure-max-height); min-height: var(--tile-min); }
+.rank-selector { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); }
+.rank-selector [aria-pressed='true'] { background: var(--action); color: var(--action-on); }
+.comparison-card { max-width: var(--measure-notice); }
+.trading-card-flippable { height: var(--flip-card-height); }
+.trading-card-flippable .trading-card-nameplate { grid-template-columns: minmax(0, 1fr) auto auto; }
+.trading-card-flippable .trading-card-nameplate.with-back { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.trading-card-flippable .trading-card-art { flex: 1; min-height: 0; aspect-ratio: auto; }
+.trading-card-flippable .trading-card-copy { flex: 0 1 auto; }
+.trading-card-flip { position: relative; z-index: 2; }
+.trading-card-face-back { display: flex; flex: 1; min-height: 0; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: var(--space-1); background: var(--surface); }
+.trading-card-face-back p { margin: 0; font-size: var(--text-sm); }
+.muscle-map-compact .muscle-map-views svg { height: var(--flip-map-height); min-height: 0; }
+.focus-evidence-dialog { max-width: var(--measure-notice); max-height: var(--flip-card-height); overflow: auto; color: var(--text); background: var(--surface); }

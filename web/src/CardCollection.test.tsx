@@ -35,3 +35,15 @@ it('uses the approved dossier headline on the card face', async () => {
   render(<CardCollection fetchImpl={fetcher} />);
   expect(await screen.findByText('Practice with control')).toBeTruthy();
 });
+it('shows the approved focus on an exercise detail back without changing the collection', async () => {
+  const squat = { ...exercise, id: 'squat-to-box', name: 'Squat to box', figureUrl: '/api/training/cards/squat/figure' };
+  const focus = { claims: [], note: { text: 'Adult evidence.', evidence: 'adult', sources: [] } };
+  const fetcher = vi.fn(async (url: string | URL | Request) => new Response(JSON.stringify(String(url).includes('/api/focus/') ? { focus } : { exercises: [squat] }), { status: 200 })) as unknown as typeof fetch;
+  render(<CardCollection fetchImpl={fetcher} />);
+  fireEvent.click(await screen.findByRole('button', { name: /Exercise: Squat to box/ }));
+  await waitFor(() => expect(fetcher).toHaveBeenCalledWith('/api/focus/squat-to-box', expect.anything()));
+  fireEvent.click(screen.getByRole('button', { name: 'Show muscles worked for Squat to box' }));
+  expect(await screen.findByText(/Adult general-squat evidence/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Show front of Squat to box' }));
+  expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
+});
