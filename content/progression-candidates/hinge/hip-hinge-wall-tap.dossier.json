@@ -1,0 +1,30 @@
+{
+  "id": "hip-hinge-wall-tap",
+  "card": "content/progression-candidates/hinge/hip-hinge-wall-tap.json",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0",
+  "reviewed_at": "2026-11-23T00:00:00Z",
+  "stale_after": "2027-11-23T00:00:00Z",
+  "sources": [
+    {
+      "id": "nsca-2009",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/19620931/",
+      "title": "Youth resistance training: updated position statement paper from the National Strength and Conditioning Association",
+      "kind": "position-statement",
+      "population": "youth",
+      "band": "children and adolescents",
+      "year": 2009
+    }
+  ],
+  "why": { "headline": "Practise moving the hips back with control.", "claims": [], "unavailable": "No reviewed goalkeeper-specific benefit is available for this candidate." },
+  "expect": { "claims": [], "unavailable": "No reviewed training-effect estimate is available for this candidate." },
+  "muscles": { "map": [], "unavailable": "No reviewed muscle map is available for this candidate." },
+  "clips": [],
+  "science": {
+    "claims": [
+      { "text": "The statement discusses youth resistance training. It emphasizes appropriate prescription and supervision.", "sources": ["nsca-2009"], "evidence": "youth" },
+      { "text": "The statement considers children and adolescents.", "sources": ["nsca-2009"], "evidence": "youth" }
+    ],
+    "limits": [{ "text": "Its abstract does not establish this wall-tap movement or ladder order.", "sources": ["nsca-2009"], "evidence": "youth", "negates": true }]
+  }
+}
