@@ -424,7 +424,8 @@ export async function buildApp({
     const approval = await approvalService.store.get(record.approvalId);
     return !!approval && approval.state === 'approved' && approval.itemId === 'card-squat-to-box' && approval.itemVersion === to && !!approval.decidedAt;
   };
-  const seriesComplete = () => hasCompletedSquatSeries(historyService.store, series, approvedDose, transitionValid);
+  const strengthCard = (id: string, version: string) => trainingService.cardIsStrength(id, version);
+  const seriesComplete = () => hasCompletedSquatSeries(historyService.store, series, approvedDose, transitionValid, strengthCard);
   const stage = () => db ? resolveSquatDoseStage(db, approvalService.store, root) : Promise.resolve(null);
   const baseLibrary = trainingService.library;
   const syncDose = async () => {
@@ -440,7 +441,7 @@ export async function buildApp({
     if (current.index > 0) await trainingService.proposeFor(utcDate(new Date()));
     return true;
   };
-  const proofFor = (index: number) => proofStore && ownPain && series[index] ? new SquatProofService(historyService.store, proofStore, painEvidenceSource(ownPain), approvedDose, progressionClock, series[index]) : null;
+  const proofFor = (index: number) => proofStore && ownPain && series[index] ? new SquatProofService(historyService.store, proofStore, painEvidenceSource(ownPain), approvedDose, progressionClock, series[index], (id, version) => trainingService.cardIsStrength(id, version)) : null;
   const activeProof = async () => { const current = await stage(); return current ? proofFor(current.index) : null; };
   const readiness = proofFor(3);
   const review = readiness && proofStore && db ? ProgressionReview.fromOwnerArchive(db, readiness, proofStore, root, 'sha256:836073df2f6a8c3c94e99bf990df658d', seriesComplete) : undefined;
@@ -472,7 +473,7 @@ export async function buildApp({
       if (current.index === 3) return { offer: () => review.offer(), decide: (id: string, actor: string) => review.decide(id, actor) };
       const active = proofFor(current.index);
       if (!active) return null;
-      const dose = SquatDoseReview.fromOwnerArchive(db, historyService.store, active, proofStore, root, series[current.index].version, series[current.index + 1].reps, () => hasCompletedSquatPrefix(historyService.store, series, current.index, approvedDose, transitionValid));
+      const dose = SquatDoseReview.fromOwnerArchive(db, historyService.store, active, proofStore, root, series[current.index].version, series[current.index + 1].reps, () => hasCompletedSquatPrefix(historyService.store, series, current.index, approvedDose, transitionValid, strengthCard));
       return { offer: () => dose.offer(), decide: (id: string, actor: string) => dose.approve(id, actor) };
     };
     registerProgressionReviewRoutes(app, { offer: async () => (await currentReview())?.offer() ?? null, decide: async (id, actor) => { const done = await (await currentReview())?.decide(id, actor) ?? false; if (done) await syncDose(); return done; } }, roleStore, resetPainGate, () => currentGeneration);

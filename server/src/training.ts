@@ -624,6 +624,12 @@ export class TrainingService {
     return snap ? [...snap.source.card.cues] : null;
   }
 
+  /** Classify only a known exact card snapshot; unknown versions cannot prove safety. */
+  cardIsStrength(cardId: string, version: string): boolean | null {
+    const snap = this.snapshots.cards.get(version);
+    return snap?.source.card.id === cardId ? snap.source.card.category === 'strength' : null;
+  }
+
   /** Dev-only demo reset (src/demo.ts): forget which sessions were started. */
   clearStarted(): void {
     this.snapshots.started.clear();

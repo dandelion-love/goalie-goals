@@ -67,7 +67,8 @@ const digest = (snapshot: Snapshot) => createHash('sha256').update(JSON.stringif
 export class SquatProofService {
   constructor(private readonly history: HistoryStore, private readonly proofs: SquatProofStore,
     private readonly painHistory: () => Promise<{ revision: string; anyPain: boolean }>, private readonly cardApproved: (version: string) => Promise<boolean>,
-    private readonly clock: () => Date = () => new Date(), private readonly target: { reps: number; version?: string } = { reps: 15 }) {}
+    private readonly clock: () => Date = () => new Date(), private readonly target: { reps: number; version?: string } = { reps: 15 },
+    private readonly strengthCard: (id: string, version: string) => boolean | null = (id) => id === 'squat-to-box' ? true : null) {}
 
   private async window(): Promise<{ snapshot: Snapshot; ordered: HistoryRecord[] } | null> {
     const snapshot = await this.history.readinessSnapshot();
@@ -80,13 +81,32 @@ export class SquatProofService {
     if (!squat.length) return null;
     const first = squat[Math.max(0, squat.length - 2)];
     const firstRecord = records.get(first.recordId!)!;
-    const window = sequenced.filter((i) => i.sequence! >= first.sequence!).sort((a, b) => a.sequence! - b.sequence!);
+    const firstDay = Date.parse(`${firstRecord.date}T00:00:00Z`);
+    if (!Number.isFinite(firstDay)) return null;
+    const monday = firstDay - ((new Date(firstDay).getUTCDay() + 6) % 7) * 86400000;
+    const boundaryDate = new Date(monday).toISOString().slice(0, 10);
+    const boundary = sequenced.filter((i) => i.sequence! <= first.sequence! && i.recordId && (records.get(i.recordId)?.date ?? '') >= boundaryDate).sort((a, b) => a.sequence! - b.sequence!)[0] ?? first;
+    const window = sequenced.filter((i) => i.sequence! >= boundary.sequence!).sort((a, b) => a.sequence! - b.sequence!);
     if (window.some((i) => i.late !== false || !i.recordId || !records.has(i.recordId))) return null;
     const ordered = window.map((i) => records.get(i.recordId!)!);
     if (new Set(ordered.map((r) => r.id)).size !== ordered.length || !(await Promise.all(ordered.map((r) => this.history.isBound(r)))).every(Boolean)) return null;
+    let previousStrength: number | null = null;
+    const strengthWeeks = new Map<number, number>();
+    for (const record of ordered) {
+      const kinds = record.cards.map((card) => this.strengthCard(card.cardId, card.itemVersion));
+      if (kinds.some((kind) => kind === null)) return null;
+      if (!kinds.includes(true)) continue;
+      const day = Date.parse(`${record.date}T00:00:00Z`);
+      if (!Number.isFinite(day) || (previousStrength !== null && (day - previousStrength) / 86400000 < 2)) return null;
+      previousStrength = day;
+      const week = day - ((new Date(day).getUTCDay() + 6) % 7) * 86400000;
+      const count = (strengthWeeks.get(week) ?? 0) + 1;
+      if (count > 3) return null;
+      strengthWeeks.set(week, count);
+    }
     const windowIds = new Set(ordered.map((r) => r.id));
     // A legacy/unbound record on or after the first day could fall between the pair.
-    if (snapshot.records.some((r) => !windowIds.has(r.id) && !snapshot.instances.some((i) => i.recordId === r.id && i.sequence !== undefined && i.sequence < first.sequence!) && r.date >= firstRecord.date)) return null;
+    if (snapshot.records.some((r) => !windowIds.has(r.id) && !snapshot.instances.some((i) => i.recordId === r.id && i.sequence !== undefined && i.sequence < boundary.sequence!) && r.date >= boundaryDate)) return null;
     return { snapshot, ordered };
   }
 

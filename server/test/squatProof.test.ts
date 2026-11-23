@@ -129,3 +129,24 @@ it('does not infer occurrence order from a queued late start', async () => {
   expect(await service.attest({ orderedRecordIds: ids, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true })).toBe(false);
   expect(await service.status()).toBe('unknown');
 });
+
+it('checks other strength sessions without treating footwork as strength', async () => {
+  const history = new MemoryHistoryStore(), proofs = new MemorySquatProofStore();
+  const ids: string[] = [];
+  for (const [index, date] of ['2026-01-05', '2026-01-06', '2026-01-07'].entries()) {
+    const squat = index !== 1, id = `spacing-record-${index}`, instanceId = `spacing-instance-${index}`;
+    const cardId = squat ? 'squat-to-box' : 'other-movement', version = squat ? 'squat-v1' : 'other-v1';
+    const row: HistoryRecord = { id, instanceId, date, itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: new Date(`${date}T12:00:00Z`), cards: [{ cardId, itemVersion: version, name: 'Example', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 15, perSide: false }, cueIds: [] }] };
+    await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, cards: [{ cardId, itemVersion: version }] });
+    await history.addBound(row, instanceId);
+    if (squat) for (const set of [0, 1]) await history.confirmSquatSet(id, version, set, { actualReps: 15, clean: true }, null);
+    ids.push(id);
+  }
+  let otherIsStrength = true;
+  const service = new SquatProofService(history, proofs, async () => ({ revision: 'clear', anyPain: false }), async () => true, () => new Date('2026-01-07T12:00:00Z'), { reps: 15 }, (id) => id === 'squat-to-box' || otherIsStrength);
+  const facts = { orderedRecordIds: ids, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true };
+  expect(await service.attest(facts)).toBe(false);
+  otherIsStrength = false;
+  expect(await service.attest(facts)).toBe(true);
+  expect(await service.status()).toBe('ready-for-parent');
+});
