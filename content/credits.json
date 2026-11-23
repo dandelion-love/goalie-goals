@@ -549,6 +549,38 @@
       "checked": "2026-11-22"
     },
     {
+      "path": "content/progression-candidates/hinge/hip-hinge-wall-tap.json",
+      "title": "Hip hinge wall tap candidate card",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the documented hinge ladder",
+      "checked": "2026-11-23"
+    },
+    {
+      "path": "content/progression-candidates/hinge/hip-hinge-wall-tap.spec.md",
+      "title": "Hip hinge wall tap candidate specification",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the documented hinge ladder and training rules",
+      "checked": "2026-11-23"
+    },
+    {
+      "path": "content/progression-candidates/hinge/hip-hinge-wall-tap.dossier.json",
+      "title": "Hip hinge wall tap candidate dossier",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the cited source",
+      "checked": "2026-11-23"
+    },
+    {
+      "path": "content/progression-candidates/hinge/hip-hinge-wall-tap.svg",
+      "title": "Hip hinge wall tap candidate position guide",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "original schematic drawn for this repo",
+      "checked": "2026-11-23"
+    },
+    {
       "path": "content/progression-candidates/bridge/glute-bridge-14.json",
       "title": "Glute bridge 14-repetition review candidate",
       "author": "the goalie-goals contributors",

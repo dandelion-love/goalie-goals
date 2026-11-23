@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 260" role="img" aria-labelledby="title desc">
+  <title id="title">Hip hinge wall tap: side views</title>
+  <desc id="desc">Two simplified side views show a person standing near a wall, then moving the hips back to touch it. The figure is a position guide, not an animation.</desc>
+  <rect width="480" height="260" rx="18" fill="#edf4fe"/>
+  <g fill="none" stroke="#13539b" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M190 40v170M430 40v170M20 210h200M260 210h200" stroke-width="5"/>
+    <circle cx="120" cy="54" r="16" fill="#ffffff" stroke-width="4"/>
+    <path d="M120 70 L122 125 L122 155 L110 197 L91 197 M122 155 L139 197 L154 197 M122 88 L103 122 L93 132" stroke-width="7"/>
+    <circle cx="368" cy="78" r="16" fill="#ffffff" stroke-width="4"/>
+    <path d="M380 91 L426 132 L369 165 L365 197 L348 197 M369 165 L379 197 L390 197 M385 105 L369 137 L356 145" stroke-width="7"/>
+  </g>
+  <g fill="#131e2b" font-family="sans-serif" font-size="17" font-weight="600" text-anchor="middle">
+    <text x="120" y="240">Start</text>
+    <text x="360" y="240">Move hips back</text>
+  </g>
+</svg>
