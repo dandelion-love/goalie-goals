@@ -38,3 +38,15 @@ it('reveals the approved squat transition with explicitly unavailable focus', as
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   await waitFor(() => expect(document.activeElement).toBe(button));
 });
+
+it('shows an approved Bronze focus and keeps Silver unavailable without writing', async () => {
+  const exercise = { id: 'squat-to-box', itemVersion: 'v1', name: 'Squat to box', why: 'Practice', setup: [], cautions: [], needs: null, figureUrl: '/api/training/cards/a', dossier: null };
+  const next = { ...exercise, id: 'squat-to-box-pause', itemVersion: 'v2', name: 'Paused squat' };
+  const focus = { claims: [], note: { text: 'Adult general squat evidence.', evidence: 'adult', sources: [] } };
+  const fetcher = vi.fn(async (url: string | URL | Request, _init?: RequestInit) => new Response(JSON.stringify(String(url).includes('/api/focus/') ? { focus } : String(url).includes('squat-evidence') ? { status: 'ready-for-parent' } : { exercises: [exercise, next] }), { status: 200 }));
+  render(<ProgressionLibrary fetchImpl={fetcher as unknown as typeof fetch} />);
+  fireEvent.click(await screen.findByText('Bronze training focus'));
+  expect(screen.getByText(/Adult general squat evidence/)).toBeTruthy();
+  expect(screen.getByText('Training focus is not available for the next card.')).toBeTruthy();
+  expect(fetcher.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
+});
