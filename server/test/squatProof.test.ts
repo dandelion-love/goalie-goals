@@ -47,7 +47,7 @@ async function record(store: HistoryStore, n: number, late = false) {
   const instanceId = `instance-proof-${n}`;
   const date = n % 2 ? '2026-01-03' : '2026-01-05';
   const row: HistoryRecord = { id, instanceId, date, itemId: 'session-proof', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: new Date(`${date}T12:00:00Z`), cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1', name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 15, perSide: false }, cueIds: [] }] };
-  expect(await store.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1' }], recordId: null }, late)).toBe(true);
+  expect(await store.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1' }], recordId: null, plannedDate: row.date, startedAt: `${row.date}T12:00:00Z` }, late)).toBe(true);
   expect(await store.addBound(row, instanceId)).toBe(true);
   for (const set of [0, 1]) expect(await store.confirmSquatSet(id, 'card-v1', set, { actualReps: 15, clean: true }, null)).toBe(true);
   return id;
@@ -137,7 +137,7 @@ it('checks other strength sessions without treating footwork as strength', async
     const squat = index !== 1, id = `spacing-record-${index}`, instanceId = `spacing-instance-${index}`;
     const cardId = squat ? 'squat-to-box' : 'other-movement', version = squat ? 'squat-v1' : 'other-v1';
     const row: HistoryRecord = { id, instanceId, date, itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: new Date(`${date}T12:00:00Z`), cards: [{ cardId, itemVersion: version, name: 'Example', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 15, perSide: false }, cueIds: [] }] };
-    await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, cards: [{ cardId, itemVersion: version }] });
+    await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, plannedDate: row.date, startedAt: `${row.date}T12:00:00Z`, cards: [{ cardId, itemVersion: version }] });
     await history.addBound(row, instanceId);
     if (squat) for (const set of [0, 1]) await history.confirmSquatSet(id, version, set, { actualReps: 15, clean: true }, null);
     ids.push(id);
@@ -149,4 +149,19 @@ it('checks other strength sessions without treating footwork as strength', async
   otherIsStrength = false;
   expect(await service.attest(facts)).toBe(true);
   expect(await service.status()).toBe('ready-for-parent');
+});
+
+it('cannot use local-date changes to make two simultaneous starts qualify', async () => {
+  const history = new MemoryHistoryStore(), proofs = new MemorySquatProofStore();
+  for (const [index, date] of ['2026-01-06', '2026-01-08'].entries()) {
+    const id = `date-record-${index}`, instanceId = `date-instance-${index}`;
+    const row: HistoryRecord = { id, instanceId, date, itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: new Date('2026-01-07T10:00:00Z'), cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1', name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 15, perSide: false }, cueIds: [] }] };
+    await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, plannedDate: date, startedAt: '2026-01-07T10:00:00.000Z', cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1' }] });
+    expect(await history.addBound({ ...row, date: '2026-01-07' }, instanceId)).toBe(false);
+    expect(await history.addBound(row, instanceId)).toBe(true);
+    for (const set of [0, 1]) await history.confirmSquatSet(id, 'card-v1', set, { actualReps: 15, clean: true }, null);
+  }
+  const service = new SquatProofService(history, proofs, async () => ({ revision: 'clear', anyPain: false }), async () => true, () => new Date('2026-01-08T12:00:00Z'));
+  expect(await service.reviewWindow()).toBeNull();
+  expect(await service.status()).toBe('unknown');
 });

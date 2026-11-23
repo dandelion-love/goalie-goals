@@ -407,6 +407,7 @@ export async function buildApp({
     new HistoryService({
       store: historyStore ?? (db ? new FirestoreHistoryStore(db) : new MemoryHistoryStore()),
       training: trainingService,
+      clock: progressionClock,
     });
   // The revision guard requires every participant to use the same Firestore household.
   // Custom or in-memory services remain unknown instead of asserting complete evidence.

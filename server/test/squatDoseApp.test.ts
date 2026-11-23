@@ -27,13 +27,21 @@ it('uses normal routes and separately approved sessions through each invented do
     const today = (await get(`/api/training/today?date=${date}`, 'keeper@example.com')).json();
     const session = today.today ?? today.lastApproved;
     expect(session).not.toBeNull();
+    if (sequence === 1) {
+      const impossibleDate = new Date(testDay.getTime() - 10 * 86400000).toISOString().slice(0, 10);
+      expect((await post('/api/training/started', { itemId: session.itemId, itemVersion: session.itemVersion, instanceId: 'forged-date-instance', date: impossibleDate }, 'keeper@example.com')).statusCode).toBe(409);
+    }
     expect((await post('/api/training/started', { itemId: session.itemId, itemVersion: session.itemVersion, instanceId, date }, 'keeper@example.com')).statusCode).toBe(200);
     const cards = session.cards.map((card: { id: string; itemVersion: string; dose: { sets: number } }) => ({ cardId: card.id, itemVersion: card.itemVersion, setsDone: card.dose.sets, cues: [] }));
     const completed = { id, instanceId, date, itemId: session.itemId, itemVersion: session.itemVersion, outcome: 'done', cards };
+    if (sequence === 1) expect((await post('/api/history/sessions', { ...completed, date: '2026-01-08' }, 'keeper@example.com')).statusCode).toBe(409);
     expect((await post('/api/history/sessions', completed, 'keeper@example.com')).statusCode).toBe(200);
     if (sequence === 1) {
+      const originalDay = new Date(testDay);
+      testDay = new Date(testDay.getTime() + 10 * 86400000);
       expect((await post('/api/training/started', { itemId: session.itemId, itemVersion: session.itemVersion, instanceId, date }, 'keeper@example.com')).statusCode).toBe(200);
       expect((await post('/api/history/sessions', completed, 'keeper@example.com')).statusCode).toBe(200);
+      testDay = originalDay;
     }
     return { id, session, date };
   };

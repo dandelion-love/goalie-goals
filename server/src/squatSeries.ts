@@ -1,4 +1,5 @@
 import type { HistoryStore } from './history.js';
+import { onLocalDate } from './approvals.js';
 
 export type SquatDoseVersion = { version: string; reps: number };
 
@@ -28,19 +29,21 @@ export async function hasCompletedSquatPrefix(history: HistoryStore, steps: read
   if (snapshot.records.some((record) => !bound.has(record.id) && record.date >= firstDate && record.cards.some((card) => strengthCard(card.cardId, card.itemVersion) !== false))) return false;
   if (snapshot.instances.some((instance) => instance.sequence === undefined && instance.cards.some((card) => strengthCard(card.cardId, card.itemVersion) !== false) && (!instance.recordId || !records.has(instance.recordId) || records.get(instance.recordId)!.date >= firstDate))) return false;
   let stage = 0, clean = 0, lastCleanSequence = 0;
-  let previousDay: number | null = null;
+  let previousDay: number | null = null, previousStart: number | null = null;
   const weeks = new Map<number, number>();
   for (const instance of ordered) {
     if (instance.sequence! < boundary.sequence!) continue;
     const kinds = instance.cards.map((card) => strengthCard(card.cardId, card.itemVersion));
     if (kinds.some((kind) => kind === null)) return false;
     if (!kinds.includes(true)) continue;
-    if (instance.late !== false || !instance.recordId) return false;
+    if (instance.late !== false || !instance.recordId || !instance.plannedDate || !instance.startedAt || !onLocalDate(new Date(instance.startedAt), instance.plannedDate)) return false;
     const record = records.get(instance.recordId!);
-    if (!record || !(await history.isBound(record))) return false;
+    if (!record || record.date !== instance.plannedDate || !(await history.isBound(record))) return false;
     const day = Date.parse(`${record.date}T00:00:00Z`);
-    if (!Number.isFinite(day) || (previousDay !== null && (day - previousDay) / 86400000 < 2)) return false;
+    const start = Date.parse(instance.startedAt);
+    if (!Number.isFinite(day) || !Number.isFinite(start) || (previousDay !== null && (day - previousDay) / 86400000 < 2) || (previousStart !== null && start - previousStart < 86400000)) return false;
     previousDay = day;
+    previousStart = start;
     const monday = day - ((new Date(day).getUTCDay() + 6) % 7) * 86400000;
     const inWeek = (weeks.get(monday) ?? 0) + 1;
     if (inWeek > 3) return false;

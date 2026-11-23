@@ -31,7 +31,7 @@ it('uses normal authenticated Firestore routes for a synthetic parent review and
     const id = `normal-record-${n}`, instanceId = `normal-instance-${n}`;
     const step = Math.floor((n - 1) / 2), reps = [10, 12, 14, 15][step], version = versions[step];
     const row: HistoryRecord = { id, instanceId, date: dates[n - 1], itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: now, cards: [{ cardId: 'squat-to-box', itemVersion: version, name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps, perSide: false }, cueIds: [] }] };
-    expect(await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, cards: [{ cardId: 'squat-to-box', itemVersion: version }] })).toBe(true);
+    expect(await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, plannedDate: row.date, startedAt: `${row.date}T12:00:00Z`, cards: [{ cardId: 'squat-to-box', itemVersion: version }] })).toBe(true);
     expect(await history.addBound(row, instanceId)).toBe(true);
     ids.push(id);
   }

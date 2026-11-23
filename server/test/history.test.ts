@@ -362,7 +362,11 @@ describe('the demo reset deletes the household with its history', () => {
     });
     app = dev;
     const asDev = (account: string) => ({ cookie: `dev_as=${account}` });
-    const today = (await dev.inject({ method: 'GET', url: '/api/training/today', headers: asDev(KAI) })).json();
+    let today = (await dev.inject({ method: 'GET', url: '/api/training/today', headers: asDev(KAI) })).json();
+    for (let offset = 1; !today.today && !today.lastApproved && offset <= 7; offset++) {
+      const date = new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+      today = (await dev.inject({ method: 'GET', url: `/api/training/today?date=${date}`, headers: asDev(KAI) })).json();
+    }
     const s = (today.today ?? today.lastApproved) as ClientSession | null;
     expect(s).not.toBeNull();
     await dev.inject({ method: 'POST', url: '/api/training/started', headers: asDev(KAI), payload: { itemId: s!.itemId, itemVersion: s!.itemVersion } });

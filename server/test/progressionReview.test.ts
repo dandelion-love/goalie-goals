@@ -19,7 +19,7 @@ it('offers and records a parent review only for current synthetic evidence', asy
     const id = `review-record-${n}`, instanceId = `review-instance-${n}`;
     const date = n === 1 ? '2026-01-03' : '2026-01-05';
     const row: HistoryRecord = { id, instanceId, date, itemId: 'session', itemVersion: 'session-v1', title: 'Example', outcome: 'done', at: new Date(`${date}T12:00:00Z`), cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1', name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: 15, perSide: false }, cueIds: [] }] };
-    expect(await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1' }] })).toBe(true);
+    expect(await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, plannedDate: row.date, startedAt: `${row.date}T12:00:00Z`, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-v1' }] })).toBe(true);
     expect(await history.addBound(row, instanceId)).toBe(true);
     for (const set of [0, 1]) expect(await history.confirmSquatSet(id, 'card-v1', set, { actualReps: 15, clean: true }, null)).toBe(true);
     ids.push(id);

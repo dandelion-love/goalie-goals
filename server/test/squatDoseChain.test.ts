@@ -25,13 +25,15 @@ it('advances each invented dose through its own guarded parent decision', async 
       const id = `chain-record-${stage}-${rep}`, instanceId = `chain-instance-${stage}-${rep}`;
       const date = dates[stage * 2 + rep - 1]; now = new Date(`${date}T12:00:00Z`);
       const row: HistoryRecord = { id, instanceId, date, itemId: 'session', itemVersion: `session-${stage}`, title: 'Example', outcome: 'done', at: now, cards: [{ cardId: 'squat-to-box', itemVersion: step.version, name: 'Squat', setsDone: 2, setsPlanned: 2, dose: { kind: 'reps', reps: step.reps, perSide: false }, cueIds: [] }] };
-      expect(await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, cards: [{ cardId: 'squat-to-box', itemVersion: step.version }] })).toBe(true);
+      expect(await history.startInstance({ id: instanceId, itemId: row.itemId, itemVersion: row.itemVersion, recordId: null, plannedDate: row.date, startedAt: `${row.date}T12:00:00Z`, cards: [{ cardId: 'squat-to-box', itemVersion: step.version }] })).toBe(true);
       expect(await history.addBound(row, instanceId)).toBe(true);
       for (const set of [0, 1]) expect(await history.confirmSquatSet(id, step.version, set, { actualReps: step.reps, clean: true }, null)).toBe(true);
       ids.push(id);
     }
     const proof = new SquatProofService(history, proofs, async () => ({ revision: 'clear', anyPain: false }), approved, () => now, { reps: step.reps, version: step.version });
-    expect(await proof.attest({ orderedRecordIds: ids, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true })).toBe(true);
+    const ordered = (await proof.reviewWindow())!.map((record) => record.id);
+    expect(ordered.filter((id) => ids.includes(id))).toEqual(ids);
+    expect(await proof.attest({ orderedRecordIds: ordered, allDevicesSynced: true, growthClear: true, breakRestartClear: true, stepDownClear: true })).toBe(true);
     services.push(proof);
     if (stage < 3) {
       const review = SquatDoseReview.fromOwnerArchive(db, history, proof, proofs, root, step.version, steps[stage + 1].reps, async () => (await resolveSquatDoseStage(db, approvals, root))?.index === stage);

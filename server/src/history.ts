@@ -25,6 +25,7 @@ import type { Dose, DoseKind } from './content.js';
 import { DATE_RE, type TrainingService } from './training.js';
 import type { Outcome } from './progression.js';
 import type { FsDb } from './firestoreDb.js';
+import { onLocalDate } from './approvals.js';
 
 export const OUTCOMES: readonly Outcome[] = ['done', 'stopped', 'hurt'];
 
@@ -76,13 +77,16 @@ export interface SessionInstance {
   sequence?: number;
   /** A start received after an offline queue: receipt order cannot prove occurrence order. */
   late?: boolean;
+  /** Planned local day and server-observed start time; absent on legacy starts. */
+  plannedDate?: string;
+  startedAt?: string;
 }
 
 /** The household's records. Behind an interface like the other stores. */
 export interface HistoryStore {
   /** Keep a record; false (and nothing written) when one with its id is already kept. */
   add(record: HistoryRecord): Promise<boolean>;
-  startInstance(instance: SessionInstance, late?: boolean): Promise<boolean>;
+  startInstance(instance: SessionInstance, late?: boolean, allowCreate?: boolean): Promise<boolean>;
   addBound(record: HistoryRecord, instanceId: string): Promise<boolean>;
   /** Verify the persisted instance binds this exact record and card versions. */
   isBound(record: HistoryRecord): Promise<boolean>;
@@ -108,9 +112,10 @@ export class MemoryHistoryStore implements HistoryStore {
     return true;
   }
 
-  async startInstance(instance: SessionInstance, late = false): Promise<boolean> {
+  async startInstance(instance: SessionInstance, late = false, allowCreate = true): Promise<boolean> {
     const old = this.#instances.get(instance.id);
     if (old) return sameInstance(old, instance);
+    if (!allowCreate) return false;
     this.#instances.set(instance.id, structuredClone({ ...instance, sequence: ++this.#sequence, late }));
     return true;
   }
@@ -179,10 +184,10 @@ export const INSTANCE_COLLECTION = 'sessionInstances';
 const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 
 function sameInstance(a: SessionInstance, b: SessionInstance): boolean {
-  return a.id === b.id && a.itemId === b.itemId && a.itemVersion === b.itemVersion && JSON.stringify(a.cards) === JSON.stringify(b.cards);
+  return a.id === b.id && a.itemId === b.itemId && a.itemVersion === b.itemVersion && a.plannedDate === b.plannedDate && JSON.stringify(a.cards) === JSON.stringify(b.cards);
 }
 function instanceMatches(i: SessionInstance, r: HistoryRecord): boolean {
-  return i.itemId === r.itemId && i.itemVersion === r.itemVersion &&
+  return i.itemId === r.itemId && i.itemVersion === r.itemVersion && (i.plannedDate === undefined || i.plannedDate === r.date) &&
     JSON.stringify(i.cards) === JSON.stringify(r.cards.map(({ cardId, itemVersion }) => ({ cardId, itemVersion })));
 }
 function readInstance(id: string, value: unknown): SessionInstance | null {
@@ -193,7 +198,8 @@ function readInstance(id: string, value: unknown): SessionInstance | null {
       !v.cards.every((card) => card && typeof card === 'object' && typeof card.cardId === 'string' && typeof card.itemVersion === 'string')) return null;
   if (v.sequence !== undefined && (!Number.isSafeInteger(v.sequence) || (v.sequence as number) < 1)) return null;
   if (v.late !== undefined && typeof v.late !== 'boolean') return null;
-  return { id, itemId: v.itemId, itemVersion: v.itemVersion, recordId: v.recordId as string | null, cards: v.cards.map((card) => ({ cardId: card.cardId, itemVersion: card.itemVersion })), ...(v.sequence !== undefined ? { sequence: v.sequence as number } : {}), ...(v.late !== undefined ? { late: v.late as boolean } : {}) };
+  if ((v.plannedDate === undefined) !== (v.startedAt === undefined) || (v.plannedDate !== undefined && (typeof v.plannedDate !== 'string' || !DATE_RE.test(v.plannedDate) || typeof v.startedAt !== 'string' || !Number.isFinite(Date.parse(v.startedAt))))) return null;
+  return { id, itemId: v.itemId, itemVersion: v.itemVersion, recordId: v.recordId as string | null, cards: v.cards.map((card) => ({ cardId: card.cardId, itemVersion: card.itemVersion })), ...(v.sequence !== undefined ? { sequence: v.sequence as number } : {}), ...(v.late !== undefined ? { late: v.late as boolean } : {}), ...(v.plannedDate !== undefined ? { plannedDate: v.plannedDate as string, startedAt: v.startedAt as string } : {}) };
 }
 function sameBoundRecord(old: HistoryRecord, next: HistoryRecord, instanceId: string): boolean {
   const comparable = (r: HistoryRecord) => ({ id: r.id, date: r.date, itemId: r.itemId, itemVersion: r.itemVersion,
@@ -294,13 +300,14 @@ export class FirestoreHistoryStore implements HistoryStore {
     });
   }
 
-  async startInstance(instance: SessionInstance, late = false): Promise<boolean> {
+  async startInstance(instance: SessionInstance, late = false, allowCreate = true): Promise<boolean> {
     const db = this.db as unknown as FsDb;
     const ref = db.collection(INSTANCE_COLLECTION).doc(instance.id);
     const counter = db.collection('sessionSequence').doc('counter');
     return db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       if (snap.exists) return sameInstance(snap.data() as unknown as SessionInstance, instance);
+      if (!allowCreate) return false;
       const counterSnap = await tx.get(counter);
       const old = counterSnap.get('value');
       if (old !== undefined && (!Number.isSafeInteger(old) || (old as number) < 0)) throw new Error('Invalid session sequence');
@@ -467,11 +474,14 @@ export class HistoryService {
     this.clock = clock;
   }
 
-  async startInstance(id: string, itemId: string, itemVersion: string, late = false): Promise<boolean> {
+  async startInstance(id: string, itemId: string, itemVersion: string, late = false, plannedDate?: string): Promise<boolean> {
     if (!ID_RE.test(id)) return false;
+    const startedAt = this.clock();
+    if (plannedDate !== undefined && !DATE_RE.test(plannedDate)) return false;
+    const allowCreate = plannedDate === undefined || late || onLocalDate(startedAt, plannedDate);
     const shape = this.training.sessionCards(itemId, itemVersion);
     if (!shape) return false;
-    return this.store.startInstance({ id, itemId, itemVersion, cards: shape.cards.map(({ cardId, itemVersion: version }) => ({ cardId, itemVersion: version })), recordId: null }, late);
+    return this.store.startInstance({ id, itemId, itemVersion, cards: shape.cards.map(({ cardId, itemVersion: version }) => ({ cardId, itemVersion: version })), recordId: null, ...(plannedDate ? { plannedDate, startedAt: startedAt.toISOString() } : {}) }, late, allowCreate);
   }
 
   /**

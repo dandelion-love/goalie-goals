@@ -3,6 +3,7 @@ import type { HistoryRecord, HistoryStore, SessionInstance } from './history.js'
 import type { FsDb } from './firestoreDb.js';
 import { evaluateSquatDoseReadiness, type ReadinessFacts, type SquatReadiness } from './squatReadiness.js';
 import { bumpEvidenceRevision, evidenceRevisionRef, readEvidenceRevision } from './evidenceRevision.js';
+import { onLocalDate } from './approvals.js';
 
 /** No free text or client-provided eligibility. A parent confirms facts, not a promotion. */
 export type SquatAttestation = { orderedRecordIds: string[]; allDevicesSynced: boolean; growthClear: boolean; breakRestartClear: boolean; stepDownClear: boolean };
@@ -87,18 +88,20 @@ export class SquatProofService {
     const boundaryDate = new Date(monday).toISOString().slice(0, 10);
     const boundary = sequenced.filter((i) => i.sequence! <= first.sequence! && i.recordId && (records.get(i.recordId)?.date ?? '') >= boundaryDate).sort((a, b) => a.sequence! - b.sequence!)[0] ?? first;
     const window = sequenced.filter((i) => i.sequence! >= boundary.sequence!).sort((a, b) => a.sequence! - b.sequence!);
-    if (window.some((i) => i.late !== false || !i.recordId || !records.has(i.recordId))) return null;
+    if (window.some((i) => i.late !== false || !i.recordId || !records.has(i.recordId) || !i.plannedDate || !i.startedAt || records.get(i.recordId)?.date !== i.plannedDate || !onLocalDate(new Date(i.startedAt), i.plannedDate))) return null;
     const ordered = window.map((i) => records.get(i.recordId!)!);
     if (new Set(ordered.map((r) => r.id)).size !== ordered.length || !(await Promise.all(ordered.map((r) => this.history.isBound(r)))).every(Boolean)) return null;
-    let previousStrength: number | null = null;
+    let previousStrength: number | null = null, previousStart: number | null = null;
     const strengthWeeks = new Map<number, number>();
-    for (const record of ordered) {
+    for (const [index, record] of ordered.entries()) {
       const kinds = record.cards.map((card) => this.strengthCard(card.cardId, card.itemVersion));
       if (kinds.some((kind) => kind === null)) return null;
       if (!kinds.includes(true)) continue;
       const day = Date.parse(`${record.date}T00:00:00Z`);
-      if (!Number.isFinite(day) || (previousStrength !== null && (day - previousStrength) / 86400000 < 2)) return null;
+      const start = Date.parse(window[index].startedAt!);
+      if (!Number.isFinite(day) || !Number.isFinite(start) || (previousStrength !== null && (day - previousStrength) / 86400000 < 2) || (previousStart !== null && start - previousStart < 86400000)) return null;
       previousStrength = day;
+      previousStart = start;
       const week = day - ((new Date(day).getUTCDay() + 6) % 7) * 86400000;
       const count = (strengthWeeks.get(week) ?? 0) + 1;
       if (count > 3) return null;

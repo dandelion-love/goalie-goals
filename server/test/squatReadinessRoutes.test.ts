@@ -7,6 +7,7 @@ import { IDENTITY_HEADER, ProxyJwtVerifier } from '../src/identity.js';
 import { InAppNotifier } from '../src/notifier.js';
 import { STARTER_SESSION, SingleSessionPlan, TrainingService } from '../src/training.js';
 import type { SyntheticSquatProof } from '../src/historyRoutes.js';
+import { HistoryService, MemoryHistoryStore } from '../src/history.js';
 
 it('uses bound records and parent confirmations on the normal route with synthetic server proof', async () => {
   const audience = '/test/squat';
@@ -24,11 +25,14 @@ it('uses bound records and parent confirmations on the normal route with synthet
   for (const request of await approvals.pending()) await approvals.approve(request.id, parent);
   const session = (await training.today(date)).today!;
   const proof: SyntheticSquatProof = { orderedRecordIds: [], safety: { pain: 'clear', growth: 'clear', breakRestart: 'clear', stepDown: 'clear' } };
-  const app = await buildApp({ config: { audience, devMockIdentity: false, devMockAccount: 'keeper@example.com', roleSeed: 'keeper@example.com=keeper;parent@example.com=parent', roleStore: 'memory', port: 0, webRoot: '', production: false }, verifier: new ProxyJwtVerifier(audience, signer.keys), approvals, training, syntheticSquatProof: async () => proof });
+  let recordedDay = '2026-01-03';
+  const history = new HistoryService({ store: new MemoryHistoryStore(), training, clock: () => new Date(`${recordedDay}T12:00:00Z`) });
+  const app = await buildApp({ config: { audience, devMockIdentity: false, devMockAccount: 'keeper@example.com', roleSeed: 'keeper@example.com=keeper;parent@example.com=parent', roleStore: 'memory', port: 0, webRoot: '', production: false }, verifier: new ProxyJwtVerifier(audience, signer.keys), approvals, training, history, syntheticSquatProof: async () => proof });
   const status = async (who: string) => (await app.inject({ method: 'GET', url: '/api/history/squat-evidence', headers: as(who) })).json();
   try {
     for (const n of [1, 2]) {
       const recordedDate = n === 1 ? '2026-01-03' : '2026-01-05';
+      recordedDay = recordedDate;
       const instanceId = `instance-test-${n}`;
       const id = `record-test-${n}`;
       expect((await app.inject({ method: 'POST', url: '/api/training/started', headers: as('keeper@example.com'), payload: { date: recordedDate, itemId: session.itemId, itemVersion: session.itemVersion, instanceId } })).statusCode).toBe(200);
