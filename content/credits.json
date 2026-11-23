@@ -579,6 +579,24 @@
       "licence": "CC-BY-SA-4.0",
       "source": "original schematic drawn for this repo",
       "checked": "2026-11-23"
+    },
+    {
+      "path": "content/progression-candidates/bridge/glute-bridge-14.json",
+      "title": "Glute bridge 14-repetition review candidate",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "adapted from the existing glute bridge card and documented repetition step",
+      "checked": "2026-11-23",
+      "adapted": true,
+      "changes": "Proposed 14 reps, replaced an unsupported load claim, and withheld the unresolved successor."
+    },
+    {
+      "path": "content/progression-candidates/bridge/glute-bridge-14.spec.md",
+      "title": "Glute bridge 14-repetition candidate specification",
+      "author": "the goalie-goals contributors",
+      "licence": "CC-BY-SA-4.0",
+      "source": "written for this repo from the existing card and progression rules",
+      "checked": "2026-11-23"
     }
   ]
 }
