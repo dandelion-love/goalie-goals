@@ -603,6 +603,12 @@ export class ApprovalService {
     return this.decide(id, actor, 'approved', null);
   }
 
+  /** Focus has a separate versioned preview and may only be approved through that path. */
+  async approveReviewedFocus(id: string, actor: { account: string; role: Role }, itemId: string, version: string): Promise<ApprovalRequest> {
+    if (!itemId.startsWith('focus-')) throw new ApprovalError('invalid', 'Not a focus request.');
+    return this.decide(id, actor, 'approved', null, { itemId, version });
+  }
+
   async decline(id: string, actor: { account: string; role: Role }, reason: string | null): Promise<ApprovalRequest> {
     return this.decide(id, actor, 'declined', reason?.trim() || null);
   }
@@ -612,6 +618,7 @@ export class ApprovalService {
     actor: { account: string; role: Role },
     state: 'approved' | 'declined',
     reason: string | null,
+    focus?: { itemId: string; version: string },
   ): Promise<ApprovalRequest> {
     await this.expireDue();
     const request = await this.store.get(id);
@@ -622,6 +629,7 @@ export class ApprovalService {
       throw new ApprovalError('forbidden', 'Only a parent can answer a request.');
     }
     if (!request) throw new ApprovalError('not_found', 'No such request.');
+    if (state === 'approved' && request.itemId.startsWith('focus-') && (!focus || focus.itemId !== request.itemId || focus.version !== request.itemVersion)) throw new ApprovalError('forbidden', 'Review this exact focus first.');
     const done = await this.store.decide(id, { state, decidedAt: this.clock(), decidedBy: actor.account, reason });
     if (!done) throw new ApprovalError('not_pending', `This request is already ${request.state}.`);
     await this.log(done, state, actor.role, actor.account, reason);

@@ -15,7 +15,8 @@ it('keeps sourced focus unavailable until separate exact owner and parent decisi
   expect(reviews.preview(candidate, request)).toEqual(candidate.preview);
   expect(await reviews.approved(candidate)).toBeNull();
   await expect(approvals.approve(request.id, { account: 'keeper@example.com', role: 'keeper' })).rejects.toThrow();
-  await approvals.approve(request.id, { account: 'parent@example.com', role: 'parent' });
+  await expect(approvals.approve(request.id, { account: 'parent@example.com', role: 'parent' })).rejects.toThrow();
+  await reviews.approve(candidate, { account: 'parent@example.com', role: 'parent' });
   expect(await reviews.approved(candidate)).toEqual(candidate.preview);
   owner.clear();
   expect(await reviews.approved(candidate)).toBeNull();

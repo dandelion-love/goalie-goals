@@ -1,11 +1,10 @@
 import type { ApprovalRequest, ApprovalService } from './approvals.js';
 import type { DossierSource } from './content.js';
+import type { Role } from './roles.js';
 import { focusCandidate, reviewedFocus, validFocusCandidate, type FocusCandidate } from './focusCandidate.js';
 
 /**
- * Isolated review service. Do not wire proposal into the inbox until the parent preview route
- * displays every claim, qualification and source in this exact snapshot before a decision.
- * The owner-version lookup must be server-owned; no client value may supply it.
+ * The owner-version lookup is server-owned; the parent reviews the exact snapshot separately.
  */
 export class FocusReviews {
   constructor(private readonly approvals: ApprovalService, private readonly ownerVersions: () => ReadonlySet<string>) {}
@@ -21,5 +20,12 @@ export class FocusReviews {
   async approved(candidate: FocusCandidate) {
     const request = await this.approvals.store.approvedVersion(candidate.itemId, candidate.itemVersion);
     return reviewedFocus(candidate, this.ownerVersions(), request);
+  }
+  async approve(candidate: FocusCandidate, actor: { account: string; role: Role }) {
+    if (actor.role !== 'parent' || !validFocusCandidate(candidate) || !this.ownerVersions().has(candidate.itemVersion)) return null;
+    const request = await this.propose(candidate);
+    if (!request) return null;
+    if (request.state === 'approved') return request;
+    return this.approvals.approveReviewedFocus(request.id, actor, candidate.itemId, candidate.itemVersion);
   }
 }

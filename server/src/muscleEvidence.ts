@@ -35,5 +35,8 @@ export function prepareFocusDraft(dossier: Dossier): FocusDraft | null {
   }
   const noteSources = refs(source.note.sources);
   if (typeof source.note.text !== 'string' || !source.note.text || !evidence(source.note.evidence) || !noteSources || !matchesEvidence(source.note.evidence, noteSources)) return null;
-  return { claims, note: { text: source.note.text, evidence: source.note.evidence, sources: noteSources } };
+  const text = dossier.id === 'squat-to-box' && noteSources.some((source) => source.id === 'slater-2017')
+    ? `${source.note.text} The cited study measured general squats, not this box variation. The map is not a measure of individual strength.`
+    : source.note.text;
+  return { claims, note: { text, evidence: source.note.evidence, sources: noteSources } };
 }

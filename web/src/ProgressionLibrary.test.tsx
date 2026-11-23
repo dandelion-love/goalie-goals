@@ -31,7 +31,7 @@ it('reveals the approved squat transition with explicitly unavailable focus', as
   expect(await screen.findByText('Bronze to Silver earned.')).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Bronze, level 1' })).toBeTruthy();
   expect(screen.getByRole('img', { name: 'Silver, level 2' })).toBeTruthy();
-  expect(screen.getByText('Training focus is not available for the previous card.')).toBeTruthy();
+  expect(screen.getByText('Bronze training focus is not available.')).toBeTruthy();
   expect(screen.getByText('Training focus is not available for the next card.')).toBeTruthy();
   const button = screen.getByRole('button', { name: /Exercise: Paused squat/ });
   fireEvent.click(button);
