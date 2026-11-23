@@ -184,7 +184,7 @@ export const INSTANCE_COLLECTION = 'sessionInstances';
 const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 
 function sameInstance(a: SessionInstance, b: SessionInstance): boolean {
-  return a.id === b.id && a.itemId === b.itemId && a.itemVersion === b.itemVersion && a.plannedDate === b.plannedDate && JSON.stringify(a.cards) === JSON.stringify(b.cards);
+  return a.id === b.id && a.itemId === b.itemId && a.itemVersion === b.itemVersion && (a.plannedDate === undefined || a.plannedDate === b.plannedDate) && JSON.stringify(a.cards) === JSON.stringify(b.cards);
 }
 function instanceMatches(i: SessionInstance, r: HistoryRecord): boolean {
   return i.itemId === r.itemId && i.itemVersion === r.itemVersion && (i.plannedDate === undefined || i.plannedDate === r.date) &&

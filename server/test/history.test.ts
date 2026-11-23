@@ -504,6 +504,10 @@ describe('session occurrence binding', () => {
     const record: HistoryRecord = { id: 'record-000002', date: DATE, itemId: 'session-test', itemVersion: 'session-version', title: 'Example', outcome: 'done', at: new Date(),
       cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version', name: 'Squat to box', setsDone: 1, setsPlanned: 2, dose: { kind: 'reps', reps: 10, perSide: false }, cueIds: [] }] };
     expect(await store.startInstance({ id, itemId: record.itemId, itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null })).toBe(true);
+    expect(await store.startInstance({ id, itemId: record.itemId, itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null, plannedDate: DATE, startedAt: '2026-01-05T12:00:00.000Z' })).toBe(true);
+    const dated = { id: 'instance-dated', itemId: record.itemId, itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null, plannedDate: DATE, startedAt: '2026-01-05T12:00:00.000Z' };
+    expect(await store.startInstance(dated)).toBe(true);
+    expect(await store.startInstance({ ...dated, plannedDate: '2026-01-06' })).toBe(false);
     expect(await store.startInstance({ id, itemId: 'session-other', itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null })).toBe(false);
     expect(await store.addBound(record, id)).toBe(true);
     const bound = (await store.list())[0];
