@@ -1414,7 +1414,13 @@ button:active:not(:disabled) {
 .trading-card-flippable .trading-card-art { flex: 1; min-height: 0; aspect-ratio: auto; }
 .trading-card-flippable .trading-card-copy { flex: 0 1 auto; }
 .trading-card-flip { position: relative; z-index: 2; }
+.trading-card-nameplate .trading-card-flip { color: var(--text); }
+.trading-card-nameplate .trading-card-flip:hover { color: var(--text); background: var(--action-tint); }
+.trading-card-nameplate .trading-card-flip:focus-visible { outline: var(--focus-width) solid var(--action-ink); outline-offset: var(--focus-offset); }
 .trading-card-face-back { display: flex; flex: 1; min-height: 0; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: var(--space-1); background: var(--surface); }
 .trading-card-face-back p { margin: 0; font-size: var(--text-sm); }
 .muscle-map-compact .muscle-map-views svg { height: var(--flip-map-height); min-height: 0; }
 .focus-evidence-dialog { max-width: var(--measure-notice); max-height: var(--flip-card-height); overflow: auto; color: var(--text); background: var(--surface); }
+@media (max-height: 700px) {
+  .muscle-map-compact .muscle-map-views svg { height: var(--flip-short-map-height); }
+}

@@ -122,6 +122,7 @@
   --collection-card-min: 10rem;
   --flip-card-height: min(28rem, 54dvh);
   --flip-map-height: min(8rem, 15dvh);
+  --flip-short-map-height: 10dvh;
   --rank-ink: #131e2b;
   --rank-bronze: #e2ab7b;
   --rank-silver: #d3dbe5;
