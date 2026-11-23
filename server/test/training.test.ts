@@ -216,6 +216,18 @@ describe('request text the parent reads', () => {
 });
 
 describe("today's session", () => {
+  it('does not start an archived version while its progression gate is held', async () => {
+    let available = true;
+    training.registerArchivedCard(CONTENT.cards.get('plank')!, async () => available);
+    await training.proposeFor(DATE);
+    await approveAllPending();
+    const session = (await training.today(DATE)).today!;
+    expect(session).not.toBeNull();
+    available = false;
+    expect((await training.today(DATE)).today).toBeNull();
+    expect(await training.markStarted(session.itemId, session.itemVersion)).toBe(false);
+    expect(await training.markStartedLate(session.itemId, session.itemVersion, PARENT, DATE)).toBe(false);
+  });
   it('proposes the session and each of its cards to the parent', async () => {
     await training.proposeFor(DATE);
     const pending = await approvals.pending();

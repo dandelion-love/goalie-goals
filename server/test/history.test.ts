@@ -14,8 +14,6 @@ import {
   HistoryService,
   MemoryHistoryStore,
   readRecord,
-  type HistoryDb,
-  type HistoryDocRef,
   type HistoryRecord,
   type HistoryStore,
 } from '../src/history.js';
@@ -35,36 +33,6 @@ const BRIDGE = CONTENT.cards.get('glute-bridge')!.card;
 
 const signer = new TestSigner();
 const as = (account: string) => ({ [IDENTITY_HEADER]: signer.sign({ account, audience: AUDIENCE }) });
-
-/** A fake of the Firestore client slice: documents by id, `create` refusing an id that is there. */
-class FakeFirestore implements HistoryDb {
-  readonly docs = new Map<string, Record<string, unknown>>();
-  collection(path: string) {
-    const ref = (id: string): HistoryDocRef => ({
-      create: async (data) => {
-        const key = `${path}/${id}`;
-        if (this.docs.has(key)) throw Object.assign(new Error('already exists'), { code: 6 });
-        // Stored as Firestore would: a Date comes back as a Timestamp-like value.
-        const at = data.at as Date;
-        this.docs.set(key, { ...JSON.parse(JSON.stringify(data)), at: { toDate: () => new Date(at) } });
-      },
-      delete: async () => {
-        this.docs.delete(`${path}/${id}`);
-      },
-    });
-    return {
-      doc: ref,
-      get: async () => ({
-        docs: [...this.docs.entries()]
-          .filter(([k]) => k.startsWith(`${path}/`))
-          .map(([k, v]) => {
-            const id = k.slice(path.length + 1);
-            return { id, ref: ref(id), data: () => v };
-          }),
-      }),
-    };
-  }
-}
 
 let approvals: ApprovalService;
 let training: TrainingService;
@@ -350,7 +318,7 @@ describe('the store: memory and Firestore behave the same', () => {
 
   it.each([
     ['memory', () => new MemoryHistoryStore()],
-    ['firestore', () => new FirestoreHistoryStore(new FakeFirestore())],
+    ['firestore', () => new FirestoreHistoryStore(new TransactionFirestore())],
   ] as const)('%s: keeps an id once, reads it back, and deletes every record with the household', async (_name, make) => {
     const store = make();
     expect(await store.add(record('rec-aaaaaaa1'))).toBe(true);
@@ -363,9 +331,9 @@ describe('the store: memory and Firestore behave the same', () => {
   });
 
   it('firestore: one document per record in its own collection, holding no cue text', async () => {
-    const db = new FakeFirestore();
+    const db = new TransactionFirestore();
     await new FirestoreHistoryStore(db).add(record('rec-ccccccc3'));
-    expect([...db.docs.keys()]).toEqual([`${HISTORY_COLLECTION}/rec-ccccccc3`]);
+    expect(db.paths()).toEqual(['progressionEvidence/revision', `${HISTORY_COLLECTION}/rec-ccccccc3`]);
     expect(JSON.stringify([...db.docs.values()])).not.toMatch(/Stay|breath/i);
   });
 
@@ -378,11 +346,11 @@ describe('the store: memory and Firestore behave the same', () => {
   });
 
   it('a server built on a Firestore store keeps the record there', async () => {
-    const db = new FakeFirestore();
+    const db = new TransactionFirestore();
     const { a, session } = await ready(new FirestoreHistoryStore(db));
     await started(a, session);
     expect((await send(a, body(session))).statusCode).toBe(200);
-    expect(db.docs.size).toBe(1);
+    expect(db.paths()).toContain(`${HISTORY_COLLECTION}/rec-00000001`);
     expect((await read(a, SAM))[0].id).toBe('rec-00000001');
   });
 });
@@ -394,7 +362,11 @@ describe('the demo reset deletes the household with its history', () => {
     });
     app = dev;
     const asDev = (account: string) => ({ cookie: `dev_as=${account}` });
-    const today = (await dev.inject({ method: 'GET', url: '/api/training/today', headers: asDev(KAI) })).json();
+    let today = (await dev.inject({ method: 'GET', url: '/api/training/today', headers: asDev(KAI) })).json();
+    for (let offset = 1; !today.today && !today.lastApproved && offset <= 7; offset++) {
+      const date = new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+      today = (await dev.inject({ method: 'GET', url: `/api/training/today?date=${date}`, headers: asDev(KAI) })).json();
+    }
     const s = (today.today ?? today.lastApproved) as ClientSession | null;
     expect(s).not.toBeNull();
     await dev.inject({ method: 'POST', url: '/api/training/started', headers: asDev(KAI), payload: { itemId: s!.itemId, itemVersion: s!.itemVersion } });
@@ -532,8 +504,16 @@ describe('session occurrence binding', () => {
     const record: HistoryRecord = { id: 'record-000002', date: DATE, itemId: 'session-test', itemVersion: 'session-version', title: 'Example', outcome: 'done', at: new Date(),
       cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version', name: 'Squat to box', setsDone: 1, setsPlanned: 2, dose: { kind: 'reps', reps: 10, perSide: false }, cueIds: [] }] };
     expect(await store.startInstance({ id, itemId: record.itemId, itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null })).toBe(true);
+    expect(await store.startInstance({ id, itemId: record.itemId, itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null, plannedDate: DATE, startedAt: '2026-01-05T12:00:00.000Z' })).toBe(true);
+    const dated = { id: 'instance-dated', itemId: record.itemId, itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null, plannedDate: DATE, startedAt: '2026-01-05T12:00:00.000Z' };
+    expect(await store.startInstance(dated)).toBe(true);
+    expect(await store.startInstance({ ...dated, plannedDate: '2026-01-06' })).toBe(false);
     expect(await store.startInstance({ id, itemId: 'session-other', itemVersion: record.itemVersion, cards: [{ cardId: 'squat-to-box', itemVersion: 'card-version' }], recordId: null })).toBe(false);
     expect(await store.addBound(record, id)).toBe(true);
+    const bound = (await store.list())[0];
+    expect(await store.isBound(bound)).toBe(true);
+    expect(await store.isBound({ ...bound, instanceId: 'instance-missing' })).toBe(false);
+    expect(await store.isBound({ ...bound, itemVersion: 'wrong-session' })).toBe(false);
     expect(await store.confirmSquatSet(record.id, 'wrong-version', 0, { actualReps: 10, clean: true }, null)).toBe(false);
     expect(await store.confirmSquatSet(record.id, 'card-version', 1, { actualReps: 10, clean: true }, null)).toBe(false);
     expect(await store.confirmSquatSet(record.id, 'card-version', 0, { actualReps: 10, clean: true }, null)).toBe(true);

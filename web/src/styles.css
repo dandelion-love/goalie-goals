@@ -1355,6 +1355,7 @@ button:active:not(:disabled) {
 
 /* Portrait trading cards share one structure in the collection and detail views. */
 .collection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--collection-card-min)), 1fr)); gap: var(--space-4); }
+.series-reveal-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--collection-card-min)), 1fr)); gap: var(--space-4); }
 .trading-card { position: relative; min-width: 0; padding: var(--space-2); border: var(--stripe) solid var(--action-edge); border-radius: var(--radius-md); background: var(--action); box-shadow: var(--shadow-2); }
 .trading-card[data-level]:not([data-level='1']) { border-color: var(--rest-edge); background: var(--rest); }
 .trading-card:focus-within { outline: var(--focus-width) solid var(--action-ink); outline-offset: var(--focus-offset); }

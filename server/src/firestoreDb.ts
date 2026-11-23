@@ -83,17 +83,23 @@ export async function createOrdered(
   id: string,
   data: Record<string, unknown>,
 ): Promise<boolean> {
-  const ref = db.collection(collection).doc(id);
-  const counter = db.collection(COUNTERS_COLLECTION).doc(collection);
   return db.runTransaction(async (tx) => {
-    const [doc, count] = [await tx.get(ref), await tx.get(counter)];
-    if (doc.exists) return false;
-    const last = asObject(count.data())?.next;
-    const seq = typeof last === 'number' && Number.isInteger(last) ? last : 0;
-    tx.create(ref, { ...data, seq });
-    tx.set(counter, { next: seq + 1 });
+    const write = await prepareOrderedCreate(tx, db, collection, id, data);
+    if (!write) return false;
+    write();
     return true;
   });
+}
+
+/** Prepare a create without writing, so multiple ordered records can share a transaction. */
+export async function prepareOrderedCreate(tx: FsTx, db: FsDb, collection: string, id: string, data: Record<string, unknown>): Promise<(() => void) | null> {
+  const ref = db.collection(collection).doc(id), counter = db.collection(COUNTERS_COLLECTION).doc(collection);
+  const doc = await tx.get(ref), count = await tx.get(counter);
+  if (doc.exists) return null;
+  const last = asObject(count.data())?.next;
+  if (last !== undefined && (!Number.isSafeInteger(last) || (last as number) < 0 || !Number.isSafeInteger((last as number) + 1))) throw new Error('Invalid collection sequence');
+  const seq = last as number | undefined ?? 0;
+  return () => { tx.create(ref, { ...data, seq }); tx.set(counter, { next: seq + 1 }); };
 }
 
 /** The sequence number `createOrdered` gave a document; documents without one sort first. */

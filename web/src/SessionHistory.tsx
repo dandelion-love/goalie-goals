@@ -50,11 +50,11 @@ function SquatSetForm({ session, card, set, fetchImpl, onSaved }: { session: His
 }
 
 export function SquatEvidenceStatus({ fetchImpl, refresh = 0 }: { fetchImpl?: typeof fetch; refresh?: number }) {
-  const [evidence, setEvidence] = useState<{ status: 'unknown' | 'held'; detail?: string }>({ status: 'unknown' });
+  const [evidence, setEvidence] = useState<{ status: 'unknown' | 'held' | 'one-qualifying' | 'ready-for-parent'; detail?: string }>({ status: 'unknown' });
   useEffect(() => {
     let live = true;
     (fetchImpl ?? fetch)('/api/history/squat-evidence', { credentials: 'same-origin', cache: 'no-store', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-      .then((r) => r.ok ? r.json() : Promise.reject()).then((v: { status?: string; detail?: string }) => { if (live) setEvidence({ status: v.status === 'held' ? 'held' : 'unknown', detail: v.detail }); })
+      .then((r) => r.ok ? r.json() : Promise.reject()).then((v: { status?: string; detail?: string }) => { if (live) setEvidence({ status: v.status === 'held' || v.status === 'one-qualifying' || v.status === 'ready-for-parent' ? v.status : 'unknown', detail: v.detail }); })
       .catch(() => { if (live) setEvidence({ status: 'unknown' }); });
     return () => { live = false; };
   }, [fetchImpl, refresh]);
@@ -67,7 +67,8 @@ export function SquatEvidenceStatus({ fetchImpl, refresh = 0 }: { fetchImpl?: ty
     'below-target': ' A recorded squat is below the ladder goal.',
     'safety-unknown': ' Safety and session order still need checking.',
   };
-  return <p className="meta">{evidence.status === 'held' ? 'Squat progress is on hold.' : `Squat readiness: evidence incomplete or unknown.${details[evidence.detail ?? ''] ?? ''}`} Paused box squat needs its own approval.</p>;
+  const label = evidence.status === 'held' ? 'Squat progress is on hold.' : evidence.status === 'one-qualifying' ? 'One qualifying squat session is recorded.' : evidence.status === 'ready-for-parent' ? 'Two qualifying squat sessions are recorded. Ready for parent consideration.' : `Squat readiness: evidence incomplete or unknown.${details[evidence.detail ?? ''] ?? ''}`;
+  return <p className="meta">{label} Paused box squat needs its own approval.</p>;
 }
 
 function SessionLine({ session, parent, fetchImpl, onSaved }: { session: HistorySession; parent: boolean; fetchImpl?: typeof fetch; onSaved: () => void }) {

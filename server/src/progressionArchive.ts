@@ -15,12 +15,14 @@ const within = (root: string, path: string) => { const r = relative(realpathSync
  * alone is not owner approval; a caller must independently enforce the recorded decision.
  * This never proposes, approves, schedules or changes the active content library.
  */
-export function loadProgressionArchive(contentRoot: string, archiveName: string): ArchivedProgressionVersion[] {
+export function loadProgressionArchive(contentRoot: string, archiveName: string, expectedManifestSha256?: string): ArchivedProgressionVersion[] {
   if (!/^[a-z0-9-]+$/.test(archiveName)) throw new Error('Invalid progression archive');
   const archive = resolve(contentRoot, 'progression-versions', archiveName);
   const repo = dirname(contentRoot);
   if (!within(contentRoot, archive)) throw new Error('Invalid progression archive');
-  const manifest = JSON.parse(readFileSync(resolve(archive, 'manifest.json'), 'utf8')) as { format?: unknown; versions?: unknown };
+  const manifestText = readFileSync(resolve(archive, 'manifest.json'), 'utf8');
+  if (expectedManifestSha256 !== undefined && sha(manifestText) !== expectedManifestSha256) throw new Error('Progression archive has no matching owner decision');
+  const manifest = JSON.parse(manifestText) as { format?: unknown; versions?: unknown };
   if (manifest.format !== 1 || !Array.isArray(manifest.versions)) throw new Error('Invalid progression manifest');
   const credits = JSON.parse(readFileSync(resolve(contentRoot, 'credits.json'), 'utf8')) as { entries: CreditEntry[] };
   const read = (path: string, expected: string, isContent = false) => {

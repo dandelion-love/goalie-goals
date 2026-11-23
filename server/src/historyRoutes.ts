@@ -7,10 +7,15 @@ import type { RoleStore } from './roles.js';
 import type { HistoryService } from './history.js';
 import type { ResetPainGate } from './householdReset.js';
 import { GENERATION_HEADER, requestGeneration } from './generation.js';
+import { evaluateSquatReadiness, type ReadinessFacts } from './squatReadiness.js';
+import type { SquatProofService } from './squatProof.js';
+
+/** Test fixture only: a live authority for complete occurrence order does not yet exist. */
+export type SyntheticSquatProof = { orderedRecordIds: string[]; safety: ReadinessFacts['safety'] };
 
 export function registerHistoryRoutes(
   app: FastifyInstance,
-  { history, roles, gate, isPaused, currentGeneration }: { history: HistoryService; roles: RoleStore; gate: ResetPainGate; isPaused: () => Promise<boolean>; currentGeneration: () => number },
+  { history, roles, gate, isPaused, currentGeneration, syntheticSquatProof, cardApproved, readiness }: { history: HistoryService; roles: RoleStore; gate: ResetPainGate; isPaused: () => Promise<boolean>; currentGeneration: () => number; syntheticSquatProof?: () => Promise<SyntheticSquatProof | null>; cardApproved: (version: string) => Promise<boolean>; readiness?: () => Promise<SquatProofService | null> },
 ): void {
   app.post<{ Body: unknown }>('/api/history/sessions', async (req, reply) => {
     reply.header('cache-control', 'no-store');
@@ -38,10 +43,29 @@ export function registerHistoryRoutes(
     reply.header('cache-control', 'no-store');
     const role = await roles.roleFor(req.identity!.account);
     if (role !== 'keeper' && role !== 'parent') return reply.code(403).send({ error: 'forbidden' });
-    // A cleared pain pause does not establish growth, break, or step-down conditions.
-    // Until those have authoritative evidence, readiness is unknown, never ready.
+    // Only the isolated test fixture can supply a proven order today. Production has no
+    // such authority and remains unknown; receipt order and client claims are not proof.
     try {
       if (await isPaused()) return { status: 'held' };
+      if (readiness) {
+        const status = await (await readiness())?.status() ?? 'unknown';
+        return status === 'unknown' ? { status, detail: await history.squatEvidenceDetail() } : { status };
+      }
+      const proof = await syntheticSquatProof?.();
+      if (proof) {
+        if (Object.values(proof.safety).includes('held')) return { status: 'held' };
+        const records = await history.store.list();
+        const byId = new Map(records.map((record) => [record.id, record]));
+        const ids = proof.orderedRecordIds;
+        if (byId.size !== records.length || ids.length !== records.length || new Set(ids).size !== ids.length || ids.some((id) => !byId.has(id))) return { status: 'unknown' };
+        const ordered = ids.map((id) => byId.get(id)!);
+        const squat = ordered.filter((record) => record.cards.some((card) => card.cardId === 'squat-to-box'));
+        if (!(await Promise.all(squat.map((record) => history.store.isBound(record)))).every(Boolean)) return { status: 'unknown' };
+        const versions = [...new Set(squat.flatMap((record) => record.cards.filter((card) => card.cardId === 'squat-to-box').map((card) => card.itemVersion)))];
+        const approved = await Promise.all(versions.map((version) => cardApproved(version)));
+        const status = evaluateSquatReadiness(ordered, { orderedHistoryComplete: true, safety: proof.safety, approvedCardVersions: new Set(versions.filter((_, i) => approved[i])) });
+        return status === 'unknown' ? { status, detail: await history.squatEvidenceDetail() } : { status };
+      }
       return { status: 'unknown', detail: await history.squatEvidenceDetail() };
     } catch {
       return { status: 'unknown' };

@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
@@ -31,8 +32,8 @@ import {
   seedDemoHousehold,
   type DemoTarget,
 } from './demo.js';
-import { loadContent } from './content.js';
-import { FirestoreStartedStore, TrainingService, utcDate } from './training.js';
+import { defaultContentRoot, loadContent } from './content.js';
+import { cardSnapshot, FirestoreStartedStore, TrainingService, utcDate } from './training.js';
 import { registerTrainingRoutes } from './trainingRoutes.js';
 import { registerDossierRoutes } from './dossierRoutes.js';
 import { InAppNotifier } from './notifier.js';
@@ -45,8 +46,8 @@ import { WeeklyPlan } from './weeklyPlan.js';
 import { FirestoreScheduleStore, MemoryScheduleStore, ScheduleService, type ScheduleStore } from './schedule.js';
 import { registerScheduleRoutes } from './scheduleRoutes.js';
 import { FirestoreHistoryStore, HistoryService, MemoryHistoryStore, type HistoryStore } from './history.js';
-import { registerHistoryRoutes } from './historyRoutes.js';
-import type { FsDb } from './firestoreDb.js';
+import { registerHistoryRoutes, type SyntheticSquatProof } from './historyRoutes.js';
+import { asDate, deleteCollection, type FsDb } from './firestoreDb.js';
 import {
   FirestoreGenerationStore,
   GENERATION_HEADER,
@@ -56,6 +57,14 @@ import {
 } from './generation.js';
 import { HouseholdReset, ResetPainGate, registerHouseholdRoutes } from './householdReset.js';
 import { FirestoreEquipmentStore, MemoryEquipmentStore, registerEquipmentRoutes } from './equipment.js';
+import { FirestoreSquatProofStore, SquatProofService } from './squatProof.js';
+import { painEvidenceSource } from './painEvidence.js';
+import { ProgressionReview, registerProgressionReviewRoutes } from './progressionReview.js';
+import { registerSquatProofRoutes } from './squatProofRoutes.js';
+import { ownerApprovedSquatVersions } from './ownerProgression.js';
+import { hasCompletedSquatPrefix, hasCompletedSquatSeries } from './squatSeries.js';
+import { resolveSquatDoseStage } from './squatDoseStage.js';
+import { SquatDoseReview } from './squatDoseReview.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -124,6 +133,10 @@ export interface AppDeps {
   history?: HistoryService;
   /** The store for the session history when no `history` is given (tests pass a fake). */
   historyStore?: HistoryStore;
+  /** Synthetic proof fixture; forbidden in production and never supplied by HTTP clients. */
+  syntheticSquatProof?: () => Promise<SyntheticSquatProof | null>;
+  /** Test-only clock for progression evidence; refused in production. */
+  progressionClock?: () => Date;
   /**
    * The household's Firestore database when `config.scheduleStore` is `firestore` (story 118):
    * approvals, the audit log, progress, pain pauses and the started marker live there, beside
@@ -180,6 +193,8 @@ export async function buildApp({
   scheduleStore,
   history,
   historyStore,
+  syntheticSquatProof,
+  progressionClock,
   firestore,
   generation,
   logger = false,
@@ -188,6 +203,8 @@ export async function buildApp({
   if (config.devMockIdentity && config.production) {
     throw new ConfigError(`${DEV_MOCK_FLAG} is refused in production.`);
   }
+  if (syntheticSquatProof && config.production) throw new ConfigError('Synthetic squat proof is refused in production.');
+  if (progressionClock && config.production) throw new ConfigError('Synthetic progression clock is refused in production.');
   if (config.demoSeed && (config.production || !config.devMockIdentity)) {
     throw new ConfigError(`${DEMO_SEED_FLAG} needs ${DEV_MOCK_FLAG}=1 and is refused in production.`);
   }
@@ -390,13 +407,87 @@ export async function buildApp({
     new HistoryService({
       store: historyStore ?? (db ? new FirestoreHistoryStore(db) : new MemoryHistoryStore()),
       training: trainingService,
+      clock: progressionClock,
     });
+  // The revision guard requires every participant to use the same Firestore household.
+  // Custom or in-memory services remain unknown instead of asserting complete evidence.
+  const proofStore = db && ownPain instanceof FirestorePainStore && own?.store instanceof FirestoreApprovalStore && historyService.store instanceof FirestoreHistoryStore && !syntheticSquatProof ? new FirestoreSquatProofStore(db) : undefined;
+  const root = config.contentRoot || defaultContentRoot();
+  const archive = proofStore ? ownerApprovedSquatVersions(root) : [];
+  const firstSquat = trainingService.library.cards.get('squat-to-box');
+  const series = firstSquat ? [{ version: cardSnapshot(firstSquat).itemVersion, reps: 10 }, ...[12, 14, 15].map((reps) => ({ version: archive.find((entry) => entry.rung === 'squat-to-box' && entry.dose === `2 x ${reps}`)?.itemVersion ?? '', reps }))] : [];
+  const approvedDose = (version: string) => approvalService.isApproved('card-squat-to-box', version);
+  const transitionValid = async (from: string, to: string, after: number, before: number) => {
+    if (!db) return false;
+    const key = createHash('sha256').update(`${from}\0${to}`).digest('hex');
+    const record = (await db.collection('squatDoseTransitions').doc(key).get()).data() as { from?: unknown; to?: unknown; afterSequence?: unknown; decisionSequence?: unknown; approvalId?: unknown; approvedAt?: unknown; guardToken?: unknown } | undefined;
+    if (!record || record.from !== from || record.to !== to || record.afterSequence !== after || typeof record.decisionSequence !== 'number' || !Number.isSafeInteger(record.decisionSequence) || record.decisionSequence < after || record.decisionSequence >= before || typeof record.approvalId !== 'string') return false;
+    const approval = await approvalService.store.get(record.approvalId);
+    const marker = (await db.collection('approvalRequests').doc(record.approvalId).get()).get('guardToken');
+    return typeof record.guardToken === 'string' && marker === record.guardToken && !!approval && approval.state === 'approved' && approval.itemId === 'card-squat-to-box' && approval.itemVersion === to && !!approval.decidedAt && approval.decidedAt.getTime() === asDate(record.approvedAt)?.getTime();
+  };
+  const strengthCard = (id: string, version: string) => trainingService.cardIsStrength(id, version);
+  const seriesComplete = () => hasCompletedSquatSeries(historyService.store, series, approvedDose, transitionValid, strengthCard);
+  const stage = () => db ? resolveSquatDoseStage(db, approvalService.store, root) : Promise.resolve(null);
+  const baseLibrary = trainingService.library;
+  const syncDose = async () => {
+    const current = await stage();
+    if (!current) return false;
+    const templates = trainingService.plan.sessions ? [...trainingService.plan.sessions()] : [trainingService.plan.sessionFor(utcDate(new Date()))].filter((item) => item !== null);
+    // Reconstruct earlier exact session snapshots as well as the current one after a restart.
+    for (let n = 0; n <= current.index; n++) {
+      const cards = new Map(baseLibrary.cards); cards.set('squat-to-box', current.snapshots[n].source);
+      trainingService.setContent({ ...baseLibrary, cards });
+      for (const template of templates) trainingService.currentSession(template);
+    }
+    if (current.index > 0) await trainingService.proposeFor(utcDate(new Date()));
+    return true;
+  };
+  const proofFor = (index: number) => proofStore && ownPain && series[index] ? new SquatProofService(historyService.store, proofStore, painEvidenceSource(ownPain), approvedDose, progressionClock, series[index], (id, version) => trainingService.cardIsStrength(id, version)) : null;
+  const activeProof = async () => { const current = await stage(); return current ? proofFor(current.index) : null; };
+  const readiness = proofFor(3);
+  const review = readiness && proofStore && db ? ProgressionReview.fromOwnerArchive(db, readiness, proofStore, root, 'sha256:836073df2f6a8c3c94e99bf990df658d', seriesComplete) : undefined;
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused(), history: historyService, gate: resetPainGate, currentGeneration: () => currentGeneration });
-  registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration });
+  registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration, syntheticSquatProof, cardApproved: approvedDose, readiness: readiness ? activeProof : undefined });
+  if (readiness && review) {
+    const safetyClear = async () => {
+      if (!ownPain || !proofStore || await proofStore.held() || (await painEvidenceSource(ownPain)()).anyPain) return false;
+      const latest = (await historyService.store.list()).map((record) => record.date).sort().at(-1);
+      if (!latest) return false;
+      const days = (Date.parse(`${(progressionClock?.() ?? new Date()).toISOString().slice(0, 10)}T00:00:00Z`) - Date.parse(`${latest}T00:00:00Z`)) / 86400000;
+      return Number.isFinite(days) && days >= -1 && days < 6;
+    };
+    for (let n = 1; n < series.length; n++) {
+      const entry = archive.find((item) => item.itemVersion === series[n].version);
+      if (!entry || !ownPain || !proofStore) throw new ConfigError('Approved dose version missing');
+      trainingService.registerArchivedCard(entry.card, async () => {
+        const current = await stage();
+        return !!current && current.index >= n && await safetyClear();
+      });
+    }
+    await syncDose();
+    const candidate = archive.find((entry) => entry.itemVersion === 'sha256:836073df2f6a8c3c94e99bf990df658d');
+    if (!candidate) throw new ConfigError('Approved progression candidate missing');
+    // Conservative until durable restart and transition state are available: no readiness,
+    // no archived card projection. This does not add the card to a scheduled session.
+    trainingService.registerArchivedCard(candidate.card, async () => await review.hasGuardedApproval() && await safetyClear() && await seriesComplete());
+    registerSquatProofRoutes(app, activeProof, roleStore, resetPainGate, () => currentGeneration);
+    const currentReview = async () => {
+      const current = await stage();
+      if (!current || !db || !proofStore) return null;
+      if (current.index === 3) return { offer: () => review.offer(), decide: (id: string, actor: string) => review.decide(id, actor) };
+      const active = proofFor(current.index);
+      if (!active) return null;
+      const dose = SquatDoseReview.fromOwnerArchive(db, historyService.store, active, proofStore, root, series[current.index].version, series[current.index + 1].reps, () => hasCompletedSquatPrefix(historyService.store, series, current.index, approvedDose, transitionValid, strengthCard));
+      return { offer: () => dose.offer(), decide: (id: string, actor: string) => dose.approve(id, actor) };
+    };
+    registerProgressionReviewRoutes(app, { offer: async () => (await currentReview())?.offer() ?? null, decide: async (id, actor) => { const done = await (await currentReview())?.decide(id, actor) ?? false; if (done) await syncDose(); return done; } }, roleStore, resetPainGate, () => currentGeneration);
+  }
 
   // Every store the app made or was given that can delete its part of the household.
   const parts: HouseholdPart[] = [];
-  for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store, equipment]) {
+  const doseTransitions = review && db ? { deleteAll: async () => { await deleteCollection(db, 'squatDoseTransitions'); await deleteCollection(db, 'squatDoseOffers'); trainingService.setContent(baseLibrary); } } : undefined;
+  for (const p of [own?.store, own?.audit, ownPain, ownProgress, startedStore, usedScheduleStore, historyService.store, equipment, proofStore, review, doseTransitions]) {
     if (isPart(p)) parts.push(p);
   }
   // Starting fresh keeps the parent's training days (story 121).

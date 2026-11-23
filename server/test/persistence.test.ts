@@ -364,7 +364,7 @@ describe('AC3: an open pause is never lost when the store is unreachable', () =>
 });
 
 describe("AC4: the household's own collections, deleted with the household", () => {
-  it('writes only to the named collections, keeps the note out of the logs, and deletes every document', async () => {
+  it('deletes household records and retains only the opaque evidence revision', async () => {
     const db = new FakeFirestore();
     const a = await boot(db);
     await approveAll(a);
@@ -384,6 +384,7 @@ describe("AC4: the household's own collections, deleted with the household", () 
         HISTORY_COLLECTION,
         PAIN_COLLECTION,
         PROGRESS_COLLECTION,
+        'progressionEvidence',
         SCHEDULE_COLLECTION,
         STARTED_COLLECTION,
       ].sort(),
@@ -391,7 +392,8 @@ describe("AC4: the household's own collections, deleted with the household", () 
     expect(logLines.join('\n')).not.toContain(NOTE);
 
     await a.household.deleteAll();
-    expect(db.paths()).toEqual([]);
+    expect(db.paths()).toEqual(['progressionEvidence/revision']);
+    expect(Object.keys(db.docs.get('progressionEvidence/revision') ?? {})).toEqual(['value']);
   });
 });
 

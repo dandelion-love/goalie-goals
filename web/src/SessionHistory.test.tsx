@@ -65,6 +65,14 @@ const SESSIONS: HistorySession[] = [
 ];
 
 describe('squat evidence', () => {
+  it.each([true, false])('shows qualifying evidence without claiming an unlock to parent=%s', async (parent) => {
+    const fetchImpl = (async (input: RequestInfo | URL) => String(input) === '/api/history/squat-evidence'
+      ? json({ status: 'ready-for-parent' }) : json({ sessions: [] })) as typeof fetch;
+    render(<SessionHistory parent={parent} fetchImpl={fetchImpl} />);
+    expect(await screen.findByText(/Two qualifying squat sessions are recorded. Ready for parent consideration/)).toBeTruthy();
+    expect(screen.getByText(/Paused box squat needs its own approval/)).toBeTruthy();
+    expect(screen.queryByText(/unlocked/i)).toBeNull();
+  });
   it.each([true, false])('shows missing parent confirmation to parent=%s', async (parent) => {
     const fetchImpl = (async (input: RequestInfo | URL) => String(input) === '/api/history/squat-evidence'
       ? json({ status: 'unknown', detail: 'missing-confirmation' }) : json({ sessions: [] })) as typeof fetch;

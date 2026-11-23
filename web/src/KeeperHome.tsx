@@ -401,7 +401,7 @@ export function KeeperHome({
       void (fetchImpl ?? fetch)('/api/training/started', {
         method: 'POST', credentials: 'same-origin', cache: 'no-store',
         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        body: JSON.stringify({ itemId: session.itemId, itemVersion: session.itemVersion, instanceId: event.instanceId }),
+        body: JSON.stringify({ itemId: session.itemId, itemVersion: session.itemVersion, instanceId: event.instanceId, date: event.date }),
       }).then((response) => {
         if (!response.ok || pauseStore.read()) throw new Error();
         sessionInstance.current = event.instanceId;
