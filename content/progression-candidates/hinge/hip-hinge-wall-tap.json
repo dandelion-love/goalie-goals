@@ -1,0 +1,49 @@
+{
+  "id": "hip-hinge-wall-tap",
+  "name": "Hip hinge wall tap",
+  "aliases": ["wall-tap hinge"],
+  "category": "strength",
+  "why": "Practise moving the hips back with control.",
+  "goal": ["hip-strength", "movement-control"],
+  "risk": "low",
+  "needs": { "all": ["body only", "other:wall"], "any": [] },
+  "space_m": [1, 1],
+  "surface": "any",
+  "setup": {
+    "space": "Clear floor space in front of a wall.",
+    "equipment": "A fixed wall and a non-slip floor.",
+    "parent": "Stand side-on where you can see the hips and back."
+  },
+  "steps": [
+    "Stand facing away from the wall, about one foot length away.",
+    "Keep your feet flat and knees soft.",
+    "Move your hips back until your bottom touches the wall.",
+    "Keep your back long as your chest moves forward.",
+    "Push through your feet and stand tall."
+  ],
+  "cues": ["Hips move back", "Feet stay flat", "Stand tall"],
+  "mistakes": [
+    { "mistake": "Back rounds", "fix": "Use a smaller movement and keep the back long." },
+    { "mistake": "Knees travel far forward", "fix": "Move the hips back towards the wall." }
+  ],
+  "parent_check": [
+    "Bottom touches the wall on each rep",
+    "Shins stay nearly upright",
+    "Back stays flat from the side, not curved"
+  ],
+  "stop_if": [
+    "Pain in the lower back, hips or knees",
+    "Pain that changes how you move",
+    "Chest pain, a racing heartbeat or unusual shortness of breath",
+    "Dizziness or feeling faint"
+  ],
+  "easier": { "variant": "Use an approved easier exercise or leave it out.", "use_when": "The movement is not controlled." },
+  "harder": { "variant": "No next exercise is authorized by this candidate.", "move_on_when": "Every rep clean two sessions in a row and the owner approves. Other rules and parent approval still apply." },
+  "dose": { "kind": "reps", "sets": 2, "reps": 10, "per_side": false, "rest_s": 60, "tempo": "move slowly, touch lightly, stand smoothly" },
+  "timer": "reps",
+  "substitutes": ["glute-bridge"],
+  "media": { "figure": "content/progression-candidates/hinge/hip-hinge-wall-tap.svg" },
+  "spec": "content/progression-candidates/hinge/hip-hinge-wall-tap.spec.md",
+  "approved": false,
+  "licence": "CC-BY-SA-4.0"
+}
