@@ -22,3 +22,19 @@ it('opens only an approved projection, returns focus, and performs reads only', 
   await waitFor(() => expect(document.activeElement).toBe(returned));
   expect(fetcher.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
 });
+
+it('reveals the approved squat transition with explicitly unavailable focus', async () => {
+  const exercise = { id: 'squat-to-box', itemVersion: 'v1', name: 'Squat to box', why: 'Practice', setup: [], cautions: [], needs: null, figureUrl: '/api/training/cards/a', dossier: null };
+  const next = { ...exercise, id: 'squat-to-box-pause', itemVersion: 'v2', name: 'Paused squat', figureUrl: '/api/training/cards/b' };
+  const fetcher = vi.fn(async (url: string | URL | Request) => new Response(JSON.stringify(String(url).includes('squat-evidence') ? { status: 'ready-for-parent' } : { exercises: [exercise, next] }), { status: 200 }));
+  render(<ProgressionLibrary fetchImpl={fetcher as unknown as typeof fetch} />);
+  expect(await screen.findByText('Bronze to Silver earned.')).toBeTruthy();
+  expect(screen.getByRole('img', { name: 'Bronze, level 1' })).toBeTruthy();
+  expect(screen.getByRole('img', { name: 'Silver, level 2' })).toBeTruthy();
+  expect(screen.getByText('Training focus is not available for the previous card.')).toBeTruthy();
+  expect(screen.getByText('Training focus is not available for the next card.')).toBeTruthy();
+  const button = screen.getByRole('button', { name: /Exercise: Paused squat/ });
+  fireEvent.click(button);
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+  await waitFor(() => expect(document.activeElement).toBe(button));
+});

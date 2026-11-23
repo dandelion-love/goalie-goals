@@ -320,11 +320,11 @@ function requestData(r: ApprovalRequest): Record<string, unknown> {
 
 /** Prepare an explicitly reviewed new approval and its audit event in the caller's transaction.
  * All reads happen before the returned function writes, as required by Firestore. */
-export async function prepareReviewedApproval(tx: FsTx, db: FsDb, request: ApprovalRequest, event: Omit<AuditEvent, 'id'>): Promise<(() => void) | null> {
+export async function prepareReviewedApproval(tx: FsTx, db: FsDb, request: ApprovalRequest, event: Omit<AuditEvent, 'id'>, guardToken: string): Promise<(() => void) | null> {
   if (request.state !== 'approved' || !request.decidedAt || event.action !== 'approved' || event.actorRole !== 'parent' ||
       event.requestId !== request.id || event.itemId !== request.itemId || event.itemVersion !== request.itemVersion ||
-      event.kind !== request.kind || event.actor !== request.decidedBy) throw new Error('Invalid reviewed approval');
-  const writeApproval = await prepareOrderedCreate(tx, db, APPROVALS_COLLECTION, request.id, requestData(request));
+      event.kind !== request.kind || event.actor !== request.decidedBy || !/^[0-9a-f-]{36}$/.test(guardToken)) throw new Error('Invalid reviewed approval');
+  const writeApproval = await prepareOrderedCreate(tx, db, APPROVALS_COLLECTION, request.id, { ...requestData(request), guardToken });
   const writeAudit = await prepareOrderedCreate(tx, db, AUDIT_COLLECTION, request.id, auditEventData(event) as unknown as Record<string, unknown>);
   if (!writeApproval || !writeAudit) return null;
   return () => { writeApproval(); writeAudit(); };

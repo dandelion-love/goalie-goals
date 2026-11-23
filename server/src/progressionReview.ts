@@ -8,8 +8,8 @@ import { ownerApprovedSquatVersions } from './ownerProgression.js';
 import type { ExerciseCard } from './content.js';
 import { dossierSnapshot, type ClientDossier } from './dossiers.js';
 import { cardSnapshot } from './training.js';
-import { prepareReviewedApproval, REQUEST_TTL_MS } from './approvals.js';
-import { deleteCollection } from './firestoreDb.js';
+import { FirestoreApprovalStore, prepareReviewedApproval, REQUEST_TTL_MS } from './approvals.js';
+import { asDate, deleteCollection } from './firestoreDb.js';
 import { GENERATION_HEADER, requestGeneration } from './generation.js';
 import type { ResetPainGate } from './householdReset.js';
 
@@ -31,6 +31,21 @@ export class ProgressionReview {
   async deleteAll(): Promise<void> {
     await deleteCollection(this.db, 'progressionReviewOffers');
     await deleteCollection(this.db, 'progressionReviewDecisions');
+  }
+
+  /** A prior guarded parent decision survives restart; an undone approval does not. */
+  async hasGuardedApproval(): Promise<boolean> {
+    const decisions = await this.db.collection('progressionReviewDecisions').get();
+    const approvals = new FirestoreApprovalStore(this.db);
+    for (const doc of decisions.docs) {
+      const data = doc.data() as { itemId?: unknown; version?: unknown; approvedAt?: unknown; guardToken?: unknown } | undefined;
+      if (data?.itemId !== this.candidate.itemId || data.version !== this.candidate.version) continue;
+      const offer = (await this.db.collection('progressionReviewOffers').doc(doc.id).get()).data() as { itemId?: unknown; version?: unknown } | undefined;
+      const approval = await approvals.get(doc.id);
+      const marker = (await this.db.collection('approvalRequests').doc(doc.id).get()).get('guardToken');
+      if (typeof data.guardToken === 'string' && marker === data.guardToken && offer?.itemId === this.candidate.itemId && offer.version === this.candidate.version && approval?.state === 'approved' && approval.itemId === `card-${this.candidate.itemId}` && approval.itemVersion === this.candidate.version && approval.decidedAt && approval.decidedAt.getTime() === asDate(data.approvedAt)?.getTime()) return true;
+    }
+    return false;
   }
 
   async offer(): Promise<({ id: string } & ReviewCandidate) | null> {
@@ -65,13 +80,13 @@ export class ProgressionReview {
       const proof = (await tx.get(proofRef)).get('proof');
       const decision = await tx.get(decisionRef);
       if (Date.now() >= (previous.expiresAt as number) || revision !== previous.revision || JSON.stringify(offer) !== JSON.stringify(previous) || JSON.stringify(proof) !== JSON.stringify(previous.proof) || decision.exists) return false;
-      const at = new Date(), itemId = `card-${this.candidate.itemId}`;
+      const at = new Date(), itemId = `card-${this.candidate.itemId}`, guardToken = randomUUID();
       const writeApproval = await prepareReviewedApproval(tx, this.db,
         { id, kind: 'exercise', itemId, itemVersion: this.candidate.version, content: this.candidate.approvalContent, state: 'approved', createdAt: at, decidedAt: at, decidedBy: actor, reason: null },
-        { at, action: 'approved', actorRole: 'parent', actor, requestId: id, kind: 'exercise', itemId, itemVersion: this.candidate.version, title: this.candidate.title, reason: null });
+        { at, action: 'approved', actorRole: 'parent', actor, requestId: id, kind: 'exercise', itemId, itemVersion: this.candidate.version, title: this.candidate.title, reason: null }, guardToken);
       if (!writeApproval) return false;
       writeApproval();
-      tx.create(decisionRef, { itemId: this.candidate.itemId, version: this.candidate.version, revision });
+      tx.create(decisionRef, { itemId: this.candidate.itemId, version: this.candidate.version, revision, approvedAt: at, guardToken });
       bumpEvidenceRevision(tx, revisionRef);
       return true;
     });

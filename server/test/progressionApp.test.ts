@@ -23,7 +23,10 @@ it('uses normal authenticated Firestore routes for a synthetic parent review and
   for (let n = 0; n < 3; n++) {
     const from = versions[n], to = versions[n + 1], afterSequence = (n + 1) * 2;
     const key = createHash('sha256').update(`${from}\0${to}`).digest('hex');
-    await db.collection('squatDoseTransitions').doc(key).create({ from, to, afterSequence, decisionSequence: afterSequence, approvalId: `synthetic-dose-approved-${n + 1}` });
+    const approvalId = `synthetic-dose-approved-${n + 1}`, guardToken = `synthetic-token-${n}`;
+    const ref = db.collection('approvalRequests').doc(approvalId);
+    await db.runTransaction(async (tx) => { const snap = await tx.get(ref); tx.set(ref, { ...(snap.data() as object), guardToken }); });
+    await db.collection('squatDoseTransitions').doc(key).create({ from, to, afterSequence, decisionSequence: afterSequence, approvalId, approvedAt: now, guardToken });
     await db.collection('squatDoseOffers').doc(`synthetic-dose-approved-${n + 1}`).create({ from, to, afterSequence, expiresAt: now.getTime() + 86400000, proof: { target: { version: from, reps: [10, 12, 14][n] } } });
   }
   const history = new FirestoreHistoryStore(db), ids: string[] = [];

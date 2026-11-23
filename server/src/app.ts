@@ -47,7 +47,7 @@ import { FirestoreScheduleStore, MemoryScheduleStore, ScheduleService, type Sche
 import { registerScheduleRoutes } from './scheduleRoutes.js';
 import { FirestoreHistoryStore, HistoryService, MemoryHistoryStore, type HistoryStore } from './history.js';
 import { registerHistoryRoutes, type SyntheticSquatProof } from './historyRoutes.js';
-import { deleteCollection, type FsDb } from './firestoreDb.js';
+import { asDate, deleteCollection, type FsDb } from './firestoreDb.js';
 import {
   FirestoreGenerationStore,
   GENERATION_HEADER,
@@ -420,10 +420,11 @@ export async function buildApp({
   const transitionValid = async (from: string, to: string, after: number, before: number) => {
     if (!db) return false;
     const key = createHash('sha256').update(`${from}\0${to}`).digest('hex');
-    const record = (await db.collection('squatDoseTransitions').doc(key).get()).data() as { from?: unknown; to?: unknown; afterSequence?: unknown; decisionSequence?: unknown; approvalId?: unknown } | undefined;
+    const record = (await db.collection('squatDoseTransitions').doc(key).get()).data() as { from?: unknown; to?: unknown; afterSequence?: unknown; decisionSequence?: unknown; approvalId?: unknown; approvedAt?: unknown; guardToken?: unknown } | undefined;
     if (!record || record.from !== from || record.to !== to || record.afterSequence !== after || typeof record.decisionSequence !== 'number' || !Number.isSafeInteger(record.decisionSequence) || record.decisionSequence < after || record.decisionSequence >= before || typeof record.approvalId !== 'string') return false;
     const approval = await approvalService.store.get(record.approvalId);
-    return !!approval && approval.state === 'approved' && approval.itemId === 'card-squat-to-box' && approval.itemVersion === to && !!approval.decidedAt;
+    const marker = (await db.collection('approvalRequests').doc(record.approvalId).get()).get('guardToken');
+    return typeof record.guardToken === 'string' && marker === record.guardToken && !!approval && approval.state === 'approved' && approval.itemId === 'card-squat-to-box' && approval.itemVersion === to && !!approval.decidedAt && approval.decidedAt.getTime() === asDate(record.approvedAt)?.getTime();
   };
   const strengthCard = (id: string, version: string) => trainingService.cardIsStrength(id, version);
   const seriesComplete = () => hasCompletedSquatSeries(historyService.store, series, approvedDose, transitionValid, strengthCard);
@@ -449,16 +450,19 @@ export async function buildApp({
   registerTrainingRoutes(app, { training: trainingService, roles: roleStore, isPaused: () => painService.isPaused(), history: historyService, gate: resetPainGate, currentGeneration: () => currentGeneration });
   registerHistoryRoutes(app, { history: historyService, roles: roleStore, gate: resetPainGate, isPaused: () => painService.isPaused(), currentGeneration: () => currentGeneration, syntheticSquatProof, cardApproved: approvedDose, readiness: readiness ? activeProof : undefined });
   if (readiness && review) {
+    const safetyClear = async () => {
+      if (!ownPain || !proofStore || await proofStore.held() || (await painEvidenceSource(ownPain)()).anyPain) return false;
+      const latest = (await historyService.store.list()).map((record) => record.date).sort().at(-1);
+      if (!latest) return false;
+      const days = (Date.parse(`${(progressionClock?.() ?? new Date()).toISOString().slice(0, 10)}T00:00:00Z`) - Date.parse(`${latest}T00:00:00Z`)) / 86400000;
+      return Number.isFinite(days) && days >= -1 && days < 6;
+    };
     for (let n = 1; n < series.length; n++) {
       const entry = archive.find((item) => item.itemVersion === series[n].version);
       if (!entry || !ownPain || !proofStore) throw new ConfigError('Approved dose version missing');
       trainingService.registerArchivedCard(entry.card, async () => {
         const current = await stage();
-        if (!current || current.index < n || await proofStore.held() || (await painEvidenceSource(ownPain)()).anyPain) return false;
-        const latest = (await historyService.store.list()).map((record) => record.date).sort().at(-1);
-        if (!latest) return false;
-        const days = (Date.parse(`${(progressionClock?.() ?? new Date()).toISOString().slice(0, 10)}T00:00:00Z`) - Date.parse(`${latest}T00:00:00Z`)) / 86400000;
-        return Number.isFinite(days) && days >= -1 && days < 6;
+        return !!current && current.index >= n && await safetyClear();
       });
     }
     await syncDose();
@@ -466,7 +470,7 @@ export async function buildApp({
     if (!candidate) throw new ConfigError('Approved progression candidate missing');
     // Conservative until durable restart and transition state are available: no readiness,
     // no archived card projection. This does not add the card to a scheduled session.
-    trainingService.registerArchivedCard(candidate.card, async () => await readiness.status() === 'ready-for-parent' && await seriesComplete());
+    trainingService.registerArchivedCard(candidate.card, async () => await review.hasGuardedApproval() && await safetyClear() && await seriesComplete());
     registerSquatProofRoutes(app, activeProof, roleStore, resetPainGate, () => currentGeneration);
     const currentReview = async () => {
       const current = await stage();

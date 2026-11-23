@@ -62,13 +62,13 @@ export class SquatDoseReview {
       const offer = (await tx.get(ref)).data(), saved = (await tx.get(proofRef)).get('proof');
       const existing = await tx.get(transition), sequence = (await tx.get(counter)).get('value');
       if (Date.now() >= (before.expiresAt as number) || revision !== before.revision || JSON.stringify(offer) !== JSON.stringify(before) || JSON.stringify(saved) !== JSON.stringify(before.proof) || existing.exists || typeof sequence !== 'number' || !Number.isSafeInteger(sequence) || sequence < (before.afterSequence as number)) return false;
-      const at = new Date(), itemId = this.target.itemId;
+      const at = new Date(), itemId = this.target.itemId, guardToken = randomUUID();
       const writeApproval = await prepareReviewedApproval(tx, this.db,
         { id, kind: 'exercise', itemId, itemVersion: this.target.itemVersion, content: this.target.content, state: 'approved', createdAt: at, decidedAt: at, decidedBy: actor, reason: null },
-        { at, action: 'approved', actorRole: 'parent', actor, requestId: id, kind: 'exercise', itemId, itemVersion: this.target.itemVersion, title: this.target.content.title, reason: null });
+        { at, action: 'approved', actorRole: 'parent', actor, requestId: id, kind: 'exercise', itemId, itemVersion: this.target.itemVersion, title: this.target.content.title, reason: null }, guardToken);
       if (!writeApproval) return false;
       writeApproval();
-      tx.create(transition, { from: this.from, to: this.target.itemVersion, afterSequence: before.afterSequence, decisionSequence: sequence, approvalId: id });
+      tx.create(transition, { from: this.from, to: this.target.itemVersion, afterSequence: before.afterSequence, decisionSequence: sequence, approvalId: id, approvedAt: at, guardToken });
       bumpEvidenceRevision(tx, revisionRef);
       return true;
     });

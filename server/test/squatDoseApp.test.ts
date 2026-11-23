@@ -49,6 +49,7 @@ it('uses normal routes and separately approved sessions through each invented do
     await approvePending();
     expect((await app.inject({ method: 'PUT', url: '/api/equipment', headers: headers('parent@example.com'), payload: { gloves: 'available' } })).statusCode).toBe(200);
     let previousWednesday: Date | null = null;
+    let finalOffer = '';
     for (let stage = 0; stage < 4; stage++) {
       const current = (await resolveSquatDoseStage(db, approvals, root))!;
       expect(current.index).toBe(stage);
@@ -80,6 +81,7 @@ it('uses normal routes and separately approved sessions through each invented do
       expect(offer.json().dose).toBe(stage === 3 ? '2 x 10' : `2 x ${[12, 14, 15][stage]}`);
       expect((await post(`/api/progression/review-offer/${offer.json().id}/approve`, {}, 'keeper@example.com')).statusCode).toBe(403);
       expect((await post(`/api/progression/review-offer/${offer.json().id}/approve`)).statusCode).toBe(200);
+      if (stage === 3) finalOffer = offer.json().id;
       if (stage < 3) {
         const pending = (await get('/api/approvals/pending')).json().requests as { kind: string; detail: string }[];
         expect(pending.some((request) => request.kind === 'plan' && request.detail.includes(`${[12, 14, 15][stage]} reps`))).toBe(true);
@@ -90,5 +92,10 @@ it('uses normal routes and separately approved sessions through each invented do
       }
     }
     expect(await approvals.approvedVersion('card-squat-to-box-pause', 'sha256:836073df2f6a8c3c94e99bf990df658d')).not.toBeNull();
+    await complete(new Date(previousWednesday!.getTime() + 2 * 86400000));
+    expect(JSON.stringify((await get('/api/training/collection', 'keeper@example.com')).json())).toContain('squat-to-box-pause');
+    expect((await post(`/api/approvals/${finalOffer}/undo`)).statusCode).toBe(200);
+    expect((await post(`/api/approvals/${finalOffer}/approve`)).statusCode).toBe(200);
+    expect(JSON.stringify((await get('/api/training/collection', 'keeper@example.com')).json())).not.toContain('squat-to-box-pause');
   } finally { await app.close(); }
 }, 30000);
