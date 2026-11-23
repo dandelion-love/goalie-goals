@@ -556,7 +556,7 @@
       "source": "adapted from the existing glute bridge card and documented repetition step",
       "checked": "2026-11-23",
       "adapted": true,
-      "changes": "Raised the proposed dose from 12 to 14 and replaced an unsupported load claim."
+      "changes": "Proposed 14 reps, replaced an unsupported load claim, and withheld the unresolved successor."
     },
     {
       "path": "content/progression-candidates/bridge/glute-bridge-14.spec.md",

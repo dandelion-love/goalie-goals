@@ -12,4 +12,6 @@ it('keeps the 14-repetition bridge candidate separate from the live 12-repetitio
   expect(live.dose).toMatchObject({ kind: 'reps', sets: 2, reps: 12, rest_s: 45 });
   expect(candidate.stop_if).toEqual(live.stop_if);
   expect(candidate.media.figure).toBe(live.media.figure);
+  expect(candidate.harder.variant).toBe('No later rung is authorized by this candidate.');
+  expect(candidate.harder.move_on_when).toBe('Unavailable until the sequence and dose rule are resolved.');
 });
